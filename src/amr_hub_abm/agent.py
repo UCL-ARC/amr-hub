@@ -2,6 +2,11 @@
 
 from dataclasses import dataclass
 from enum import Enum
+from logging import getLogger
+
+from amr_hub_abm.space import Location
+
+logger = getLogger(__name__)
 
 
 class AgentType(Enum):
@@ -28,3 +33,17 @@ class Agent:
     idx: int
     agent_type: AgentType
     infection_status: InfectionStatus
+    location: Location
+    heading: float
+
+    def __post_init__(self) -> None:
+        """Post-initialization to log agent creation."""
+        self.heading = self.heading % 360
+
+        logger.debug(
+            "Created Agent id %s of type %s at location %s with heading %s",
+            self.idx,
+            self.agent_type,
+            self.location,
+            self.heading,
+        )
