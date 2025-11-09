@@ -1,10 +1,11 @@
 """Module to represent an agent in the AMR Hub ABM simulation."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from logging import getLogger
 
 from amr_hub_abm.space import Location
+from amr_hub_abm.task import Task
 
 logger = getLogger(__name__)
 
@@ -35,6 +36,7 @@ class Agent:
     infection_status: InfectionStatus
     location: Location
     heading: float
+    tasks: list[Task] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """Post-initialization to log agent creation."""
