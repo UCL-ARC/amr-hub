@@ -1,7 +1,7 @@
 """Tests for the agent module."""
 
 from amr_hub_abm.agent import Agent, AgentType, InfectionStatus
-from amr_hub_abm.space import Location
+from amr_hub_abm.space import Building, Location
 
 
 def test_agent_creation() -> None:
@@ -10,11 +10,13 @@ def test_agent_creation() -> None:
         idx=1,
         agent_type=AgentType.PATIENT,
         infection_status=InfectionStatus.SUSCEPTIBLE,
-        location=Location(x=0.0, y=0.0, floor=1),
+        location=Location(x=0.0, y=0.0, floor=1, building=Building(name="Hospital")),
         heading=90.0,
     )
 
-    expected_location = Location(x=0.0, y=0.0, floor=1)
+    expected_location = Location(
+        x=0.0, y=0.0, floor=1, building=Building(name="Hospital")
+    )
     expected_heading = 90.0
 
     assert agent.idx == 1
@@ -30,7 +32,7 @@ def test_heading_modulo() -> None:
         idx=2,
         agent_type=AgentType.HEALTHCARE_WORKER,
         infection_status=InfectionStatus.INFECTED,
-        location=Location(x=5.0, y=5.0, floor=2),
+        location=Location(x=5.0, y=5.0, floor=2, building=Building(name="Hospital")),
         heading=450.0,  # 450 degrees should wrap to 90 degrees
     )
 
