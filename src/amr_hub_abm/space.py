@@ -19,7 +19,7 @@ class Location:
     x: float
     y: float
     floor: int
-    building: Building
+    building: Building | None = None
 
     def move(self, new_x: float, new_y: float, new_floor: int) -> None:
         """Move the location to new coordinates."""
