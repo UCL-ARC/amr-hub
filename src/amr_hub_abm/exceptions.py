@@ -4,11 +4,16 @@
 class InvalidDistanceError(Exception):
     """Exception raised when an invalid distance calculation is attempted."""
 
-    def __init__(self, floors: tuple[int, int]) -> None:
+    def __init__(self, locations: tuple, building: bool) -> None:  # noqa: FBT001
         """Initialize the InvalidDistanceError."""
-        super().__init__(
-            f"Invalid distance calculation between floors: {floors[0]} and {floors[1]}."
-        )
+        initial_string = "Invalid distance calculation between"
+
+        if building:
+            super().__init__(
+                f"{initial_string} buildings: {locations[0]} and {locations[1]}."
+            )
+
+        super().__init__(f"{initial_string} floors: {locations[0]} and {locations[1]}.")
 
 
 class NegativeTimeError(Exception):

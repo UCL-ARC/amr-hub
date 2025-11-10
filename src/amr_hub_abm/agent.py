@@ -32,11 +32,12 @@ class Agent:
     """Representation of an agent in the AMR Hub ABM simulation."""
 
     idx: int
-    agent_type: AgentType
-    infection_status: InfectionStatus
     location: Location
     heading: float
     tasks: list[Task] = field(default_factory=list)
+    agent_type: AgentType = field(default=AgentType.GENERIC)
+    infection_status: InfectionStatus = field(default=InfectionStatus.SUSCEPTIBLE)
+    infection_details: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Post-initialization to log agent creation."""
