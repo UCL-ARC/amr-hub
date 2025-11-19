@@ -1,55 +1,55 @@
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-    "setuptools",
-    "setuptools-scm",
+  "setuptools",
+  "setuptools-scm"
 ]
 
 [dependency-groups]
 dev = [
-    "build",
-    "mypy",
-    "pre-commit",
-    "pytest-cov>=7.0.0",
-    "pytest>=8.4.2",
-    "ruff",
-    "tox",
-    "twine",
+  "build",
+  "mypy",
+  "pre-commit",
+  "pytest-cov>=7.0.0",
+  "pytest>=8.4.2",
+  "ruff",
+  "tox",
+  "twine"
 ]
 docs = [
-    "mkdocs",
-    "mkdocs-include-markdown-plugin",
-    "mkdocs-material",
-    "mkdocstrings",
-    "mkdocstrings-python",
+  "mkdocs",
+  "mkdocs-include-markdown-plugin",
+  "mkdocs-material",
+  "mkdocstrings",
+  "mkdocstrings-python"
 ]
 test = [
-    "pytest",
-    "pytest-cov",
+  "pytest",
+  "pytest-cov"
 ]
 
 [project]
 authors = [
-    {email = "arindam.saha@ucl.ac.uk", name = "Arindam Saha"},
+  {email = "arindam.saha@ucl.ac.uk", name = "Arindam Saha"}
 ]
 classifiers = [
-    "Operating System :: POSIX",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.13",
-    "Typing :: Typed",
+  "Operating System :: POSIX",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.13",
+  "Typing :: Typed"
 ]
 dependencies = [
 ]
 description = "An agent based model for spread of Anti Microbial Resistant infections in hospitals"
 dynamic = [
-    "version",
+  "version"
 ]
 keywords = [
 ]
 license = "MIT"
 license-files = [
-    "LICENSE.md",
+  "LICENSE.md"
 ]
 name = "amr-hub-abm"
 readme = "README.md"
@@ -59,11 +59,11 @@ urls.homepage = "https://github.com/arindamsaha1507/amr-hub-abm"
 [tool.coverage]
 report = {sort = "cover"}
 run = {branch = true, parallel = true, source = [
-    "amr-hub-abm",
+  "amr-hub-abm"
 ]}
 paths.source = [
-    "src",
-    ".tox*/*/lib/python*/site-packages",
+  "src",
+  ".tox*/*/lib/python*/site-packages"
 ]
 
 [tool.mypy]
@@ -71,38 +71,38 @@ explicit_package_bases = true
 
 [tool.pytest.ini_options]
 addopts = [
-    "--color=yes",
-    "--import-mode=importlib",
-    "--verbose",
+  "--color=yes",
+  "--import-mode=importlib",
+  "--verbose"
 ]
 testpaths = [
-    "tests",
+  "tests"
 ]
 
 [tool.ruff]
 fix = true
 force-exclude = true
 lint.ignore = [
-    "COM812", # trailing commas (ruff-format recommended)
-    "D203", # no-blank-line-before-class
-    "D212", # multi-line-summary-first-line
-    "D407", # removed dashes lines under sections
-    "D417", # argument description in docstring (unreliable)
-    "ISC001", # simplify implicit str concatenation (ruff-format recommended)
+  "COM812", # trailing commas (ruff-format recommended)
+  "D203", # no-blank-line-before-class
+  "D212", # multi-line-summary-first-line
+  "D407", # removed dashes lines under sections
+  "D417", # argument description in docstring (unreliable)
+  "ISC001" # simplify implicit str concatenation (ruff-format recommended)
 ]
 lint.per-file-ignores = {"tests*" = [
-    "INP001", # File is part of an implicit namespace package.
-    "S101", # Use of `assert` detected
+  "INP001", # File is part of an implicit namespace package.
+  "S101" # Use of `assert` detected
 ]}
 lint.select = [
-    "ALL",
+  "ALL"
 ]
 lint.isort.known-first-party = [
-    "amr_hub_abm",
+  "amr_hub_abm"
 ]
 lint.mccabe.max-complexity = 18
 lint.pep8-naming.classmethod-decorators = [
-    "classmethod",
+  "classmethod"
 ]
 
 [tool.setuptools_scm]
@@ -121,24 +121,24 @@ overrides."tool.tox.env_run_base.commands".inline_arrays = false
 
 [tool.tox]
 env_list = [
-    "py313",
+  "py313"
 ]
 env_run_base = {commands = [
-    [
-        "pytest",
-        "--cov",
-        "--cov-report=xml",
-    ],
+  [
+    "pytest",
+    "--cov",
+    "--cov-report=xml"
+  ]
 ], dependency_groups = [
-    "test",
+  "test"
 ]}
 env.docs = {commands = [
-    [
-        "mkdocs",
-        "build",
-        "--strict",
-    ],
+  [
+    "mkdocs",
+    "build",
+    "--strict"
+  ]
 ], dependency_groups = [
-    "docs",
+  "docs"
 ]}
 gh.python."3.13" = ["py313"]

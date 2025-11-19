@@ -47,7 +47,9 @@ Centre for Advanced Research Computing, University College London
 
 ### Prerequisites
 
-<!-- Any tools or versions of languages needed to run code. For example specific Python or Node versions. Minimum hardware requirements also go here. -->
+<!-- Any tools or versions of languages needed to run code.
+For example specific Python or Node versions.
+Minimum hardware requirements also go here. -->
 
 `amr-hub-abm` requires Python 3.13.
 
