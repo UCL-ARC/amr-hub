@@ -1,0 +1,51 @@
+"""Module for AMR Hub ABM tasks."""
+
+from dataclasses import dataclass
+from enum import Enum
+
+from amr_hub_abm.exceptions import NegativeTimeError
+
+
+class TaskProgress(Enum):
+    """Enumeration of possible task progress states."""
+
+    NOT_STARTED = "not_started"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+class TaskType(Enum):
+    """Enumeration of possible task types."""
+
+    OFFICE_WORK = "office_work"
+    NURSE_ROUND = "nurse_round"
+    PATIENT_CARE = "patient_care"
+    GOTO_LOCATION = "goto_location"
+    GOTO_AGENT = "goto_agent"
+    ATTEND_BELL = "attend_bell"
+    STAY_IN_BED = "stay_in_bed"
+    STAY_IN_ROOM = "stay_in_room"
+    INTERACT_WITH_AGENT = "interact_with_agent"
+
+
+class TaskPriority(Enum):
+    """Enumeration of possible task priority levels."""
+
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+
+
+@dataclass
+class Task:
+    """Representation of a task assigned to an agent."""
+
+    task_type: TaskType
+    progress: TaskProgress
+    priority: TaskPriority
+    time_needed: int
+
+    def __post_init__(self) -> None:
+        """Post-initialization to validate task attributes."""
+        if self.time_needed < 0:
+            raise NegativeTimeError(self.time_needed)

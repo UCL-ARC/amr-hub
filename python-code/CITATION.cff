@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: "Saha"
+    given-names: "Arindam"
+    email: "arindam.saha@ucl.ac.uk"
+repository-code: "https://github.com/arindamsaha1507/amr-hub-abm"
+title: "AMR Hub ABM: An agent based model for spread of Anti Microbial Resistant infections in hospitals"
+license: "MIT"
