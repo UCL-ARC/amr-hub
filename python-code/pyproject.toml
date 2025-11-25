@@ -40,6 +40,8 @@ classifiers = [
   "Typing :: Typed"
 ]
 dependencies = [
+  "matplotlib>=3.10.7",
+  "shapely>=2.1.2"
 ]
 description = "An agent based model for spread of Anti Microbial Resistant infections in hospitals"
 dynamic = [
