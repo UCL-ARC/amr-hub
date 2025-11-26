@@ -51,14 +51,14 @@ pip install git+https://github.com/UCL-ARC/amr-hub.git
 
 For development or to make local modifications:
 
-1. Clone the repository:
+- Clone the repository:
 
 ```sh
 git clone https://github.com/UCL-ARC/amr-hub.git
 cd amr-hub/python-code
 ```
 
-2. Install in editable mode:
+- Install in editable mode:
 
 ```sh
 pip install -e .
@@ -162,6 +162,7 @@ pre-commit run --all-files
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
 Please make sure to:
+
 - Update tests as appropriate
 - Follow the existing code style
 - Run the test suite before submitting
@@ -177,5 +178,6 @@ This project is supported by the [Centre for Advanced Research Computing](https:
 ## Contact
 
 For questions or support, please contact:
+
 - **Project Lead**: Arindam Saha ([arindam.saha@ucl.ac.uk](mailto:arindam.saha@ucl.ac.uk))
 - **ARC Collaborations**: [arc.collaborations@ucl.ac.uk](mailto:arc.collaborations@ucl.ac.uk)
