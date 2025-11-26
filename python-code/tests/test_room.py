@@ -112,6 +112,20 @@ def test_room_with_doors() -> None:
 
     room = Room(room_id=5, walls=walls, doors=[door1])
 
-    fig, ax = plt.subplots()
-    room.plot(ax=ax)
-    plt.close(fig)  # Close the plot to avoid displaying during tests
+    assert len(room.doors) == 1
+
+
+def test_room_region_area_calculation() -> None:
+    """Test the region calculation of a room."""
+    walls = [
+        Wall(start=(0, 0), end=(0, 4)),
+        Wall(start=(0, 4), end=(4, 4)),
+        Wall(start=(4, 4), end=(4, 0)),
+        Wall(start=(4, 0), end=(0, 0)),
+    ]
+
+    doors = []
+    room = Room(room_id=6, walls=walls, doors=doors)
+
+    expected_area = 16.0  # 4x4 square
+    assert room.region.area == expected_area
