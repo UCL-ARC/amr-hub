@@ -1,9 +1,9 @@
-site_name: "AMR Hub ABM"
+site_name: "AMR Hub"
 site_description: "Documentation website for AMR Hub ABM"
-site_author: "Arindam Saha"
-copyright: "Copyright © 2025 Arindam Saha"
-repo_url: "https://github.com/arindamsaha1507/amr-hub-abm/"
-repo_name: "arindamsaha1507/amr-hub-abm"
+site_author: "UCL ARC"
+copyright: "Copyright © 2025 UCL ARC"
+repo_url: "https://github.com/UCL-ARC/amr-hub"
+repo_name: "UCL-ARC/amr-hub"
 edit_uri: edit/main/docs/
 
 validation:
@@ -60,4 +60,4 @@ plugins:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: "https://github.com/arindamsaha1507"
+      link: "https://github.com/UCL-ARC"
