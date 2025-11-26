@@ -24,3 +24,11 @@ class NegativeTimeError(Exception):
         super().__init__(
             f"Negative time value encountered: {time}. Time must be non-negative."
         )
+
+
+class InvalidRoomError(Exception):
+    """Exception raised when a room is defined with invalid parameters."""
+
+    def __init__(self, message: str) -> None:
+        """Initialize the InvalidRoomError."""
+        super().__init__(f"Invalid room definition: {message}.")

@@ -1,13 +1,12 @@
 """Module containing space-related classes for the AMR Hub ABM simulation."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-import matplotlib.pyplot as plt
 import shapely.geometry
 import shapely.ops
 from matplotlib.axes import Axes
 
-from amr_hub_abm.exceptions import InvalidDistanceError
+from amr_hub_abm.exceptions import InvalidDistanceError, InvalidRoomError
 
 
 @dataclass
@@ -64,7 +63,7 @@ class Wall:
     def plot(self, ax: Axes, **kwargs: dict) -> None:
         """Plot the wall on a given matplotlib axis."""
         x, y = self.polygon.exterior.xy
-        ax.fill(x, y, **kwargs)
+        ax.fill(x, y, **kwargs)  # pyright: ignore[reportArgumentType]
 
 
 @dataclass
@@ -78,13 +77,26 @@ class Room:
     building: Building | None = None
     floor: int | None = None
 
-    @property
-    def region(self) -> shapely.geometry.Polygon:
+    region: shapely.geometry.Polygon = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Post-initialization to validate walls and doors."""
+        if len(self.walls) < 3:  # noqa: PLR2004
+            msg = "A room must have at least 3 walls to form a closed region."
+            raise InvalidRoomError(msg)
+
+        self.region = self.form_region()
+
+    def form_region(self) -> shapely.geometry.Polygon:
         """Get the polygonal region of the room based on its walls."""
         merged_lines = shapely.ops.linemerge(
             [wall.line for wall in self.walls] + self.doors
         )
         polygon = shapely.ops.polygonize(merged_lines)
+
+        if len(polygon) == 0:
+            msg = "The walls do not form a valid closed region."
+            raise InvalidRoomError(msg)
 
         return polygon[0]
 
@@ -131,6 +143,5 @@ if __name__ == "__main__":
         doors=[],
     )
 
-    fig, ax = plt.subplots()
-    room.plot(ax)
-    plt.show()
+    # check if a point is inside the room
+    point = shapely.geometry.Point(1.5, 1.5)
