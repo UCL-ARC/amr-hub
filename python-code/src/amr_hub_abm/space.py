@@ -67,12 +67,26 @@ class Wall:
 
 
 @dataclass
+class Door:
+    """Representation of a door in the AMR Hub ABM simulation."""
+
+    start: tuple[float, float]
+    end: tuple[float, float]
+    open: bool = field(default=False)
+
+    @property
+    def line(self) -> shapely.geometry.LineString:
+        """Get the line representation of the door."""
+        return shapely.geometry.LineString([self.start, self.end])
+
+
+@dataclass
 class Room:
     """Representation of a room in the AMR Hub ABM simulation."""
 
     room_id: int
     walls: list[Wall]
-    doors: list[shapely.geometry.LineString]
+    doors: list[Door]
 
     building: Building | None = None
     floor: int | None = None
@@ -90,8 +104,9 @@ class Room:
     def form_region(self) -> shapely.geometry.Polygon:
         """Get the polygonal region of the room based on its walls."""
         merged_lines = shapely.ops.linemerge(
-            [wall.line for wall in self.walls] + self.doors
+            [wall.line for wall in self.walls] + [door.line for door in self.doors]
         )
+
         polygon = shapely.ops.polygonize(merged_lines)
 
         if len(polygon) == 0:
@@ -106,42 +121,10 @@ class Room:
             wall.plot(ax, color="black")  # type: ignore  # noqa: PGH003
 
         for door in self.doors:
-            x, y = door.xy
+            x, y = door.line.xy
             ax.plot(
                 x,
                 y,
                 color=kwargs.get("door_color", "brown"),
                 linewidth=kwargs.get("door_width", 2),
             )
-
-
-def create_basic_room(
-    room_id: int,
-    walls: list[Wall],
-    doors: list[shapely.geometry.LineString],
-) -> Room:
-    """Create a basic rectangular room with given width and height."""
-    return Room(room_id=room_id, walls=walls, doors=doors)
-
-
-if __name__ == "__main__":
-    # Example usage
-
-    wall1 = Wall(start=(0, 0), end=(5, 0))
-    wall2 = Wall(start=(5, 0), end=(5, 5))
-    wall3 = Wall(start=(5, 5), end=(0, 5))
-    wall4 = Wall(start=(0, 5), end=(0, 0))
-
-    wall5 = Wall(start=(1, 1), end=(1, 2))
-    wall6 = Wall(start=(1, 2), end=(2, 2))
-    wall7 = Wall(start=(2, 2), end=(2, 1))
-    wall8 = Wall(start=(2, 1), end=(1, 1))
-
-    room = Room(
-        room_id=1,
-        walls=[wall1, wall2, wall3, wall4, wall5, wall6, wall7, wall8],
-        doors=[],
-    )
-
-    # check if a point is inside the room
-    point = shapely.geometry.Point(1.5, 1.5)

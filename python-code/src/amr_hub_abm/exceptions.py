@@ -12,8 +12,10 @@ class InvalidDistanceError(Exception):
             super().__init__(
                 f"{initial_string} buildings: {locations[0]} and {locations[1]}."
             )
-
-        super().__init__(f"{initial_string} floors: {locations[0]} and {locations[1]}.")
+        else:
+            super().__init__(
+                f"{initial_string} floors: {locations[0]} and {locations[1]}."
+            )
 
 
 class NegativeTimeError(Exception):
