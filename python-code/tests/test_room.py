@@ -17,7 +17,7 @@ def test_simple_room_creation() -> None:
         Wall(start=(5, 0), end=(0, 0)),
     ]
 
-    doors = []
+    doors: list[Door] = []
     room = Room(room_id=1, walls=walls, doors=doors)
     assert room.room_id == 1
     assert len(room.walls) == 4  # noqa: PLR2004
@@ -56,7 +56,7 @@ def test_invalid_room_too_few_walls() -> None:
         Wall(start=(0, 5), end=(5, 5)),
     ]
 
-    doors = []
+    doors: list[Door] = []
 
     with pytest.raises(InvalidRoomError) as exc_info:
         Room(room_id=2, walls=walls, doors=doors)
@@ -74,7 +74,7 @@ def test_invalid_room_non_closed_walls() -> None:
         # Missing wall to close the room
     ]
 
-    doors = []
+    doors: list[Door] = []
 
     with pytest.raises(InvalidRoomError) as exc_info:
         Room(room_id=3, walls=walls, doors=doors)
@@ -90,7 +90,7 @@ def test_plot_room() -> None:
         Wall(start=(5, 0), end=(0, 0)),
     ]
 
-    doors = []
+    doors: list[Door] = []
     room = Room(room_id=4, walls=walls, doors=doors)
 
     fig, ax = plt.subplots()
@@ -124,7 +124,7 @@ def test_room_region_area_calculation() -> None:
         Wall(start=(4, 0), end=(0, 0)),
     ]
 
-    doors = []
+    doors: list[Door] = []
     room = Room(room_id=6, walls=walls, doors=doors)
 
     expected_area = 16.0  # 4x4 square
