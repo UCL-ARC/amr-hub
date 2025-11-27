@@ -49,3 +49,15 @@ class Task:
         """Post-initialization to validate task attributes."""
         if self.time_needed < 0:
             raise NegativeTimeError(self.time_needed)
+
+
+@dataclass
+class TaskGotoLocation(Task):
+    """Representation of a 'goto location' task."""
+
+    location_id: int
+
+    def __post_init__(self) -> None:
+        """Post-initialization to set task type."""
+        super().__post_init__()
+        self.task_type = TaskType.GOTO_LOCATION

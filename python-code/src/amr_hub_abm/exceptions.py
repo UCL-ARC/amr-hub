@@ -12,8 +12,10 @@ class InvalidDistanceError(Exception):
             super().__init__(
                 f"{initial_string} buildings: {locations[0]} and {locations[1]}."
             )
-
-        super().__init__(f"{initial_string} floors: {locations[0]} and {locations[1]}.")
+        else:
+            super().__init__(
+                f"{initial_string} floors: {locations[0]} and {locations[1]}."
+            )
 
 
 class NegativeTimeError(Exception):
@@ -24,3 +26,11 @@ class NegativeTimeError(Exception):
         super().__init__(
             f"Negative time value encountered: {time}. Time must be non-negative."
         )
+
+
+class InvalidRoomError(Exception):
+    """Exception raised when a room is defined with invalid parameters."""
+
+    def __init__(self, message: str) -> None:
+        """Initialize the InvalidRoomError."""
+        super().__init__(f"Invalid room definition: {message}.")
