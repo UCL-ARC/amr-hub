@@ -19,7 +19,7 @@ from amr_hub_abm.space.wall import Wall
 @pytest.fixture
 def test_building() -> Building:
     """Fixture for a test building."""
-    return Building(name="Test Building")
+    return Building(name="Test Building", floors=[])
 
 
 @pytest.fixture

@@ -60,8 +60,8 @@ def test_distance_to_different_floors() -> None:
 
 def test_distance_to_different_buildings() -> None:
     """Test that distance calculation raises an error for different buildings."""
-    building_a = Building(name="Building A")
-    building_b = Building(name="Building B")
+    building_a = Building(name="Building A", floors=[])
+    building_b = Building(name="Building B", floors=[])
 
     loc1 = Location(x=0.0, y=0.0, floor=1, building=building_a)
     loc2 = Location(x=3.0, y=4.0, floor=1, building=building_b)
