@@ -72,6 +72,7 @@ def room_with_door_on_left_wall() -> tuple[list[Wall], list[SpatialDoor]]:
 
     doors = [
         SpatialDoor(
+            door_id=1,
             start=(0, 2),
             end=(0, 3),
             open=True,
@@ -237,6 +238,7 @@ def test_room_with_doors(
         ],
         [
             SpatialDoor(
+                door_id=1,
                 start=(0, 2),
                 end=(0, 3),
                 open=True,
@@ -278,6 +280,7 @@ def test_room_plotting_with_doors(
 
     doors = [
         SpatialDoor(
+            door_id=1,
             start=(0, 3),
             end=(0, 4),
             open=True,

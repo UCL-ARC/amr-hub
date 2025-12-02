@@ -10,6 +10,7 @@ import shapely.geometry
 class Door(ABC):
     """Representation of a door in the AMR Hub ABM simulation."""
 
+    door_id: int
     open: bool
     connecting_rooms: tuple[int, int]
     access_control: tuple[bool, bool]
@@ -26,3 +27,8 @@ class SpatialDoor(Door):
     def line(self) -> shapely.geometry.LineString:
         """Get the line representation of the door."""
         return shapely.geometry.LineString([self.start, self.end])
+
+
+@dataclass
+class TopologicalDoor(Door):
+    """Representation of a topological door in the AMR Hub ABM simulation."""

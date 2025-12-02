@@ -11,7 +11,7 @@ from matplotlib.axes import Axes
 from amr_hub_abm.exceptions import InvalidRoomError
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.content import Content
-from amr_hub_abm.space.door import Door, SpatialDoor
+from amr_hub_abm.space.door import Door, SpatialDoor, TopologicalDoor
 from amr_hub_abm.space.wall import Wall
 
 
@@ -28,6 +28,12 @@ class Room(ABC):
     @abstractmethod
     def get_area(self) -> float:
         """Get the area of the room."""
+
+    def __post_init__(self) -> None:
+        """Post-initialization to validate room attributes."""
+        if self.get_area() <= 0:
+            msg = f"Room area must be positive. Got {self.get_area()}."
+            raise InvalidRoomError(msg)
 
 
 @dataclass
@@ -78,3 +84,15 @@ class SpatialRoom(Room):
                 color=kwargs.get("door_color", "brown"),
                 linewidth=kwargs.get("door_width", 2),
             )
+
+
+@dataclass
+class TopologicalRoom(Room):
+    """Representation of a topological room in the AMR Hub ABM simulation."""
+
+    area: float
+    doors: Sequence[TopologicalDoor]
+
+    def get_area(self) -> float:
+        """Get the area of the room."""
+        return self.area
