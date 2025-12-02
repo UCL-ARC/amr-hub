@@ -1,7 +1,7 @@
 """Tests for the agent module."""
 
 from amr_hub_abm.agent import Agent, AgentType, InfectionStatus
-from amr_hub_abm.space import Building, Location
+from amr_hub_abm.space.location import Building, Location
 
 
 def test_agent_creation() -> None:

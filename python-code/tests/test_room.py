@@ -5,7 +5,11 @@ import pytest
 import shapely
 
 from amr_hub_abm.exceptions import InvalidRoomError
-from amr_hub_abm.space import Building, Content, SpatialDoor, SpatialRoom, Wall
+from amr_hub_abm.space.building import Building
+from amr_hub_abm.space.content import Content
+from amr_hub_abm.space.door import SpatialDoor
+from amr_hub_abm.space.room import SpatialRoom
+from amr_hub_abm.space.wall import Wall
 
 # ============================================================================
 # Fixtures

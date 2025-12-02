@@ -3,7 +3,7 @@
 import pytest
 
 from amr_hub_abm.exceptions import InvalidDistanceError
-from amr_hub_abm.space import Building, Location
+from amr_hub_abm.space.location import Building, Location
 
 
 def test_location_creation() -> None:
