@@ -5,7 +5,7 @@ import pytest
 import shapely
 
 from amr_hub_abm.exceptions import InvalidRoomError
-from amr_hub_abm.space import Door, Room, Wall
+from amr_hub_abm.space import Building, Content, SpatialDoor, SpatialRoom, Wall
 
 
 def test_simple_room_creation() -> None:
@@ -17,8 +17,17 @@ def test_simple_room_creation() -> None:
         Wall(start=(5, 0), end=(0, 0)),
     ]
 
-    doors: list[Door] = []
-    room = Room(room_id=1, walls=walls, doors=doors)
+    doors: list[SpatialDoor] = []
+    contents: list[Content] = []
+
+    room = SpatialRoom(
+        room_id=1,
+        building=Building(name="Test Building"),
+        floor=1,
+        walls=walls,
+        doors=doors,
+        contents=contents,
+    )
     assert room.room_id == 1
     assert len(room.walls) == 4  # noqa: PLR2004
 
@@ -35,10 +44,13 @@ def test_complex_room_with_internal_walls() -> None:
     wall7 = Wall(start=(2, 2), end=(2, 1))
     wall8 = Wall(start=(2, 1), end=(1, 1))
 
-    room = Room(
+    room = SpatialRoom(
         room_id=1,
+        building=Building(name="Test Building"),
+        floor=1,
         walls=[wall1, wall2, wall3, wall4, wall5, wall6, wall7, wall8],
         doors=[],
+        contents=[],
     )
 
     # check if a point is inside the room
@@ -56,10 +68,18 @@ def test_invalid_room_too_few_walls() -> None:
         Wall(start=(0, 5), end=(5, 5)),
     ]
 
-    doors: list[Door] = []
+    doors: list[SpatialDoor] = []
+    contents: list[Content] = []
 
     with pytest.raises(InvalidRoomError) as exc_info:
-        Room(room_id=2, walls=walls, doors=doors)
+        SpatialRoom(
+            room_id=2,
+            building=Building(name="Test Building"),
+            floor=1,
+            walls=walls,
+            doors=doors,
+            contents=contents,
+        )
     assert "A room must have at least 3 walls to form a closed region." in str(
         exc_info.value
     )
@@ -74,10 +94,18 @@ def test_invalid_room_non_closed_walls() -> None:
         # Missing wall to close the room
     ]
 
-    doors: list[Door] = []
+    doors: list[SpatialDoor] = []
+    contents: list[Content] = []
 
     with pytest.raises(InvalidRoomError) as exc_info:
-        Room(room_id=3, walls=walls, doors=doors)
+        SpatialRoom(
+            room_id=3,
+            building=Building(name="Test Building"),
+            floor=1,
+            walls=walls,
+            doors=doors,
+            contents=contents,
+        )
     assert "The walls do not form a valid closed region." in str(exc_info.value)
 
 
@@ -90,9 +118,17 @@ def test_plot_room() -> None:
         Wall(start=(5, 0), end=(0, 0)),
     ]
 
-    doors: list[Door] = []
-    room = Room(room_id=4, walls=walls, doors=doors)
+    doors: list[SpatialDoor] = []
+    contents: list[Content] = []
 
+    room = SpatialRoom(
+        room_id=4,
+        building=Building(name="Test Building"),
+        floor=1,
+        walls=walls,
+        doors=doors,
+        contents=contents,
+    )
     fig, ax = plt.subplots()
     room.plot(ax=ax)
     plt.close(fig)  # Close the plot to avoid displaying during tests
@@ -108,9 +144,24 @@ def test_room_with_doors() -> None:
         Wall(start=(5, 0), end=(0, 0)),
     ]
 
-    door1 = Door(start=(0, 2), end=(0, 3))  # Door on the left wall
+    door1 = SpatialDoor(
+        start=(0, 2),
+        end=(0, 3),
+        open=True,
+        connecting_rooms=(1, 2),
+        access_control=(True, True),
+    )  # Door on the left wall
 
-    room = Room(room_id=5, walls=walls, doors=[door1])
+    contents: list[Content] = []
+
+    room = SpatialRoom(
+        room_id=5,
+        building=Building(name="Test Building"),
+        floor=1,
+        walls=walls,
+        doors=[door1],
+        contents=contents,
+    )
 
     assert len(room.doors) == 1
 
@@ -124,8 +175,51 @@ def test_room_region_area_calculation() -> None:
         Wall(start=(4, 0), end=(0, 0)),
     ]
 
-    doors: list[Door] = []
-    room = Room(room_id=6, walls=walls, doors=doors)
+    doors: list[SpatialDoor] = []
+    contents: list[Content] = []
+
+    room = SpatialRoom(
+        room_id=6,
+        building=Building(name="Test Building"),
+        floor=1,
+        walls=walls,
+        doors=doors,
+        contents=contents,
+    )
 
     expected_area = 16.0  # 4x4 square
     assert room.region.area == expected_area
+
+
+def test_room_plotting_with_doors() -> None:
+    """Test plotting a room with doors."""
+    walls = [
+        Wall(start=(0, 0), end=(0, 3)),
+        Wall(start=(0, 4), end=(0, 5)),
+        Wall(start=(0, 5), end=(5, 5)),
+        Wall(start=(5, 5), end=(5, 0)),
+        Wall(start=(5, 0), end=(0, 0)),
+    ]
+
+    door1 = SpatialDoor(
+        start=(0, 3),
+        end=(0, 4),
+        open=True,
+        connecting_rooms=(1, 2),
+        access_control=(True, True),
+    )  # Door on the left wall
+
+    contents: list[Content] = []
+
+    room = SpatialRoom(
+        room_id=7,
+        building=Building(name="Test Building"),
+        floor=1,
+        walls=walls,
+        doors=[door1],
+        contents=contents,
+    )
+
+    fig, ax = plt.subplots()
+    room.plot(ax=ax)
+    plt.close(fig)  # Close the plot to avoid displaying during tests

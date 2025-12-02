@@ -1,5 +1,6 @@
 """Module containing space-related classes for the AMR Hub ABM simulation."""
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 import shapely.geometry
@@ -70,9 +71,17 @@ class Wall:
 class Door:
     """Representation of a door in the AMR Hub ABM simulation."""
 
+    open: bool
+    connecting_rooms: tuple[int, int]
+    access_control: tuple[bool, bool]
+
+
+@dataclass
+class SpatialDoor(Door):
+    """Representation of a door in the AMR Hub ABM simulation."""
+
     start: tuple[float, float]
     end: tuple[float, float]
-    open: bool = field(default=False)
 
     @property
     def line(self) -> shapely.geometry.LineString:
@@ -80,16 +89,45 @@ class Door:
         return shapely.geometry.LineString([self.start, self.end])
 
 
+class Content:
+    """Enumeration of possible room contents."""
+
+
 @dataclass
-class Room:
+class Bed(Content):
+    """Representation of a bed in the AMR Hub ABM simulation."""
+
+    bed_id: int
+
+
+@dataclass
+class Workstation(Content):
+    """Representation of a workstation in the AMR Hub ABM simulation."""
+
+    workstation_id: int
+
+
+@dataclass
+class Room(ABC):
     """Representation of a room in the AMR Hub ABM simulation."""
 
     room_id: int
-    walls: list[Wall]
     doors: list[Door]
+    building: Building
+    floor: int
+    contents: list[Content]
 
-    building: Building | None = None
-    floor: int | None = None
+    @abstractmethod
+    def get_area(self) -> float:
+        """Get the area of the room."""
+
+
+@dataclass
+class SpatialRoom(Room):
+    """Representation of a room in the AMR Hub ABM simulation."""
+
+    walls: list[Wall]
+    doors: list[SpatialDoor]
 
     region: shapely.geometry.Polygon = field(init=False)
 
@@ -114,6 +152,10 @@ class Room:
             raise InvalidRoomError(msg)
 
         return polygon[0]
+
+    def get_area(self) -> float:
+        """Get the area of the room."""
+        return self.region.area
 
     def plot(self, ax: Axes, **kwargs: dict) -> None:
         """Plot the room on a given matplotlib axis."""
