@@ -1,34 +1,30 @@
 """Module defining door representation for the AMR Hub ABM simulation."""
 
-from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import shapely.geometry
 
+from amr_hub_abm.exceptions import SimulationModeError
+
 
 @dataclass
-class Door(ABC):
+class Door:
     """Representation of a door in the AMR Hub ABM simulation."""
 
     door_id: int
     open: bool
     connecting_rooms: tuple[int, int]
     access_control: tuple[bool, bool]
-
-
-@dataclass
-class SpatialDoor(Door):
-    """Representation of a door in the AMR Hub ABM simulation."""
-
-    start: tuple[float, float]
-    end: tuple[float, float]
+    start: tuple[float, float] = field(default=(0.0, 0.0))
+    end: tuple[float, float] = field(default=(0.0, 0.0))
 
     @property
     def line(self) -> shapely.geometry.LineString:
         """Get the line representation of the door."""
+        if self.start == self.end == (0.0, 0.0):
+            msg = """
+            Dummy start and end points for door line.
+            Probably simulation in topological mode.
+            """
+            raise SimulationModeError(msg)
         return shapely.geometry.LineString([self.start, self.end])
-
-
-@dataclass
-class TopologicalDoor(Door):
-    """Representation of a topological door in the AMR Hub ABM simulation."""

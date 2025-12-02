@@ -7,8 +7,8 @@ import shapely
 from amr_hub_abm.exceptions import InvalidRoomError
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.content import Content
-from amr_hub_abm.space.door import SpatialDoor
-from amr_hub_abm.space.room import SpatialRoom
+from amr_hub_abm.space.door import Door
+from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
 
 # ============================================================================
@@ -60,7 +60,7 @@ def room_with_internal_walls() -> list[Wall]:
 
 
 @pytest.fixture
-def room_with_door_on_left_wall() -> tuple[list[Wall], list[SpatialDoor]]:
+def room_with_door_on_left_wall() -> tuple[list[Wall], list[Door]]:
     """Fixture for a room with a door on the left wall."""
     walls = [
         Wall(start=(0, 0), end=(0, 2)),
@@ -71,7 +71,7 @@ def room_with_door_on_left_wall() -> tuple[list[Wall], list[SpatialDoor]]:
     ]
 
     doors = [
-        SpatialDoor(
+        Door(
             door_id=1,
             start=(0, 2),
             end=(0, 3),
@@ -91,7 +91,7 @@ def empty_contents() -> list[Content]:
 
 
 @pytest.fixture
-def empty_doors() -> list[SpatialDoor]:
+def empty_doors() -> list[Door]:
     """Fixture for an empty door list."""
     return []
 
@@ -100,11 +100,11 @@ def empty_doors() -> list[SpatialDoor]:
 def simple_room(
     test_building: Building,
     simple_walls: list[Wall],
-    empty_doors: list[SpatialDoor],
+    empty_doors: list[Door],
     empty_contents: list[Content],
-) -> SpatialRoom:
+) -> Room:
     """Fixture for a simple valid room."""
-    return SpatialRoom(
+    return Room(
         room_id=1,
         building=test_building,
         floor=1,
@@ -118,11 +118,11 @@ def simple_room(
 def room_4x4(
     test_building: Building,
     square_4x4_walls: list[Wall],
-    empty_doors: list[SpatialDoor],
+    empty_doors: list[Door],
     empty_contents: list[Content],
-) -> SpatialRoom:
+) -> Room:
     """Fixture for a 4x4 square room."""
-    return SpatialRoom(
+    return Room(
         room_id=6,
         building=test_building,
         floor=1,
@@ -137,20 +137,21 @@ def room_4x4(
 # ============================================================================
 
 
-def test_simple_room_creation(simple_room: SpatialRoom) -> None:
+def test_simple_room_creation(simple_room: Room) -> None:
     """Test creating a simple valid room."""
     assert simple_room.room_id == 1
+    assert simple_room.walls is not None
     assert len(simple_room.walls) == 4  # noqa: PLR2004
 
 
 def test_complex_room_with_internal_walls(
     test_building: Building,
     room_with_internal_walls: list[Wall],
-    empty_doors: list[SpatialDoor],
+    empty_doors: list[Door],
     empty_contents: list[Content],
 ) -> None:
     """Test creating a room with internal walls."""
-    room = SpatialRoom(
+    room = Room(
         room_id=1,
         building=test_building,
         floor=1,
@@ -169,7 +170,7 @@ def test_complex_room_with_internal_walls(
 
 def test_invalid_room_too_few_walls(
     test_building: Building,
-    empty_doors: list[SpatialDoor],
+    empty_doors: list[Door],
     empty_contents: list[Content],
 ) -> None:
     """Test creating a room with too few walls."""
@@ -179,7 +180,7 @@ def test_invalid_room_too_few_walls(
     ]
 
     with pytest.raises(InvalidRoomError) as exc_info:
-        SpatialRoom(
+        Room(
             room_id=2,
             building=test_building,
             floor=1,
@@ -194,7 +195,7 @@ def test_invalid_room_too_few_walls(
 
 def test_invalid_room_non_closed_walls(
     test_building: Building,
-    empty_doors: list[SpatialDoor],
+    empty_doors: list[Door],
     empty_contents: list[Content],
 ) -> None:
     """Test creating a room with walls that do not form a closed region."""
@@ -206,7 +207,7 @@ def test_invalid_room_non_closed_walls(
     ]
 
     with pytest.raises(InvalidRoomError) as exc_info:
-        SpatialRoom(
+        Room(
             room_id=3,
             building=test_building,
             floor=1,
@@ -217,7 +218,7 @@ def test_invalid_room_non_closed_walls(
     assert "The walls do not form a valid closed region." in str(exc_info.value)
 
 
-def test_plot_room(simple_room: SpatialRoom) -> None:
+def test_plot_room(simple_room: Room) -> None:
     """Test plotting a room."""
     fig, ax = plt.subplots()
     simple_room.plot(ax=ax)
@@ -237,7 +238,7 @@ def test_room_with_doors(
             Wall(start=(5, 0), end=(0, 0)),
         ],
         [
-            SpatialDoor(
+            Door(
                 door_id=1,
                 start=(0, 2),
                 end=(0, 3),
@@ -248,7 +249,7 @@ def test_room_with_doors(
         ],
     )
 
-    room = SpatialRoom(
+    room = Room(
         room_id=5,
         building=test_building,
         floor=1,
@@ -260,10 +261,10 @@ def test_room_with_doors(
     assert len(room.doors) == 1
 
 
-def test_room_region_area_calculation(room_4x4: SpatialRoom) -> None:
+def test_room_region_area_calculation(room_4x4: Room) -> None:
     """Test the region calculation of a room."""
     expected_area = 16.0  # 4x4 square
-    assert room_4x4.get_area() == expected_area
+    assert room_4x4.area == expected_area
 
 
 def test_room_plotting_with_doors(
@@ -279,7 +280,7 @@ def test_room_plotting_with_doors(
     ]
 
     doors = [
-        SpatialDoor(
+        Door(
             door_id=1,
             start=(0, 3),
             end=(0, 4),
@@ -289,7 +290,7 @@ def test_room_plotting_with_doors(
         )
     ]
 
-    room = SpatialRoom(
+    room = Room(
         room_id=7,
         building=test_building,
         floor=1,
