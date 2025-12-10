@@ -17,6 +17,7 @@ class Room:
     """Representation of a room in the AMR Hub ABM simulation."""
 
     room_id: int
+    name: str
     building: str
     floor: int
     contents: list[Content]
