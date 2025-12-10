@@ -106,7 +106,7 @@ def simple_room(
     """Fixture for a simple valid room."""
     return Room(
         room_id=1,
-        building=test_building,
+        building=test_building.name,
         floor=1,
         walls=simple_walls,
         doors=empty_doors,
@@ -124,7 +124,7 @@ def room_4x4(
     """Fixture for a 4x4 square room."""
     return Room(
         room_id=6,
-        building=test_building,
+        building=test_building.name,
         floor=1,
         walls=square_4x4_walls,
         doors=empty_doors,
@@ -153,7 +153,7 @@ def test_complex_room_with_internal_walls(
     """Test creating a room with internal walls."""
     room = Room(
         room_id=1,
-        building=test_building,
+        building=test_building.name,
         floor=1,
         walls=room_with_internal_walls,
         doors=empty_doors,
@@ -182,7 +182,7 @@ def test_invalid_room_too_few_walls(
     with pytest.raises(InvalidRoomError) as exc_info:
         Room(
             room_id=2,
-            building=test_building,
+            building=test_building.name,
             floor=1,
             walls=walls,
             doors=empty_doors,
@@ -209,7 +209,7 @@ def test_invalid_room_non_closed_walls(
     with pytest.raises(InvalidRoomError) as exc_info:
         Room(
             room_id=3,
-            building=test_building,
+            building=test_building.name,
             floor=1,
             walls=walls,
             doors=empty_doors,
@@ -251,7 +251,7 @@ def test_room_with_doors(
 
     room = Room(
         room_id=5,
-        building=test_building,
+        building=test_building.name,
         floor=1,
         walls=walls,
         doors=doors,
@@ -292,7 +292,7 @@ def test_room_plotting_with_doors(
 
     room = Room(
         room_id=7,
-        building=test_building,
+        building=test_building.name,
         floor=1,
         walls=walls,
         doors=doors,

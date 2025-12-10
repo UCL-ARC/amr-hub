@@ -7,7 +7,6 @@ import shapely.ops
 from matplotlib.axes import Axes
 
 from amr_hub_abm.exceptions import InvalidRoomError, SimulationModeError
-from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.content import Content
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.wall import Wall
@@ -18,7 +17,7 @@ class Room:
     """Representation of a room in the AMR Hub ABM simulation."""
 
     room_id: int
-    building: Building
+    building: str
     floor: int
     contents: list[Content]
     doors: list[Door]
@@ -32,6 +31,10 @@ class Room:
             msg = "Either walls or area must be provided to define a room."
             raise SimulationModeError(msg)
 
+        if self.walls and len(self.walls) < 3:  # noqa: PLR2004
+            msg = "A room must have at least 3 walls to form a closed region."
+            raise InvalidRoomError(msg)
+
         if self.walls and self.area:
             msg = "Provide either walls or area, not both, to define a room."
             raise SimulationModeError(msg)
@@ -41,10 +44,6 @@ class Room:
 
         if self.area <= 0:
             msg = f"Room area must be positive. Got {self.area}."
-            raise InvalidRoomError(msg)
-
-        if self.walls and len(self.walls) < 3:  # noqa: PLR2004
-            msg = "A room must have at least 3 walls to form a closed region."
             raise InvalidRoomError(msg)
 
         self.region = self.form_region()

@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 
 from amr_hub_abm.exceptions import InvalidDistanceError
-from amr_hub_abm.space.building import Building
 
 
 @dataclass
@@ -13,7 +12,7 @@ class Location:
     x: float
     y: float
     floor: int
-    building: Building | None = None
+    building: str | None = None
 
     def move(self, new_x: float, new_y: float, new_floor: int) -> None:
         """Move the location to new coordinates."""
