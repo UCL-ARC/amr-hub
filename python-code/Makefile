@@ -62,6 +62,12 @@ type-check:
 pre-commit:
 	$(CD) uv run pre-commit run --all-files
 
+pre-commit-install: ## Install pre-commit hooks
+	@echo "🔧 Installing pre-commit hooks..."
+	@$(CD) uv run pre-commit install
+	@$(CD) uv run pre-commit install --hook-type pre-push
+	@echo "✅ Pre-commit hooks installed!"
+
 docs:
 	$(CD) uv run mkdocs build
 
