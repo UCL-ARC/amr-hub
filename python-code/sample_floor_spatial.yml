@@ -1,0 +1,37 @@
+building:
+  name: Sample Hospital
+  address: 123 Health St, Wellness City
+  floors:
+    - level: 0
+      rooms:
+        - name: Staff Room
+          walls:
+            - [0, 0, 0, 3]
+            - [0, 3, 3, 3]
+            - [4, 3, 5, 3]
+            - [5, 3, 5, 0]
+            - [5, 0, 0, 0]
+          doors:
+            - [3, 3, 4, 3]
+
+        - name: Ward
+          walls:
+            - [0, 4, 0, 7]
+            - [0, 7, 5, 7]
+            - [5, 7, 5, 4]
+            - [5, 4, 3, 4]
+            - [2, 4, 0, 4]
+          doors:
+            - [2, 4, 3, 4]
+
+        - name: Corridor
+          walls:
+            - [0, 3, 0, 4]
+            - [0, 4, 2, 4]
+            - [3, 4, 5, 4]
+            - [5, 4, 5, 3]
+            - [5, 3, 4, 3]
+            - [3, 3, 0, 3]
+          doors:
+            - [0, 3, 0, 4]
+            - [5, 3, 5, 4]
