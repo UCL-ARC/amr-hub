@@ -6,7 +6,7 @@ from amr_hub_abm.space.location import Location
 def create_sample_agent() -> Agent:
     """Create a sample agent for demonstration purposes."""
     building = Building(name="Sample Building", floors=[])
-    location = Location(x=10.0, y=20.0, building=building, floor=1)
+    location = Location(x=10.0, y=20.0, building=building.name, floor=1)
 
     agent = Agent(
         idx=1,
