@@ -273,4 +273,9 @@ class SpaceInputReader:
 
 if __name__ == "__main__":
     # Example usage
-    reader = SpaceInputReader(input_path=Path("sample_floor_spatial.yml"))
+    data = SpaceInputReader(input_path=Path("sample_floor_spatial.yml"))
+    floor = data.buildings[0].floors[0]
+    logger.info(floor.room_ids)
+    logger.info(floor.edge_set)
+    logger.info(floor.adjacency_matrix)
+    logger.info(floor.room_names)
