@@ -1,5 +1,6 @@
 """Module defining room-related classes for the AMR Hub ABM simulation."""
 
+import hashlib
 from dataclasses import dataclass, field
 
 import shapely.geometry
@@ -25,6 +26,7 @@ class Room:
     walls: list[Wall] | None = field(default=None)
     area: float | None = field(default=None)
     region: shapely.geometry.Polygon = field(init=False)
+    room_hash: str = field(init=False)
 
     def __post_init__(self) -> None:
         """Post-initialization to validate room attributes."""
@@ -48,6 +50,31 @@ class Room:
             raise InvalidRoomError(msg)
 
         self.region = self.form_region()
+        self.room_hash = (
+            self.create_polygon_hash() if self.walls else self.create_name_hash()
+        )
+
+    def __hash__(self) -> int:
+        """Generate a hash for the room based on its unique hash string."""
+        return hash(self.room_hash)
+
+    def __eq__(self, other: object) -> bool:
+        """Check equality of two rooms based on their unique hash strings."""
+        if not isinstance(other, Room):
+            return NotImplemented
+        return self.room_hash == other.room_hash
+
+    def create_polygon_hash(self) -> str:
+        """Create a unique hash for the room based on its polygonal region."""
+        if not self.walls:
+            msg = "Cannot create polygon hash without walls."
+            raise SimulationModeError(msg)
+
+        return hashlib.sha256(shapely.ops.orient(self.region).wkb).hexdigest()
+
+    def create_name_hash(self) -> str:
+        """Create a unique hash for the room based on its name."""
+        return hashlib.sha256(self.name.encode("utf-8")).hexdigest()
 
     def form_region(self) -> shapely.geometry.Polygon:
         """Get the polygonal region of the room based on its walls."""
