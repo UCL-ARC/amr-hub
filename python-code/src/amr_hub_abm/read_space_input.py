@@ -12,7 +12,7 @@ from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
 
-logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.INFO)
+logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -27,13 +27,71 @@ class SpaceInputReader:
     wall_list: list[Wall] = field(init=False, default_factory=list)
 
     rooms: list[Room] = field(init=False, default_factory=list)
-    floors: list[Floor] = field(init=False, default_factory=list)
     buildings: list[Building] = field(init=False, default_factory=list)
 
     def __post_init__(self) -> None:
         """Post-initialization to read and validate the YAML file."""
         self.validation()
         self.create_rooms_from_data()
+        self.assign_doors_to_rooms()
+
+        for room in self.rooms:
+            msg = f"Room '{room.name} (id {room.room_id})' created."
+            logger.info(msg)
+
+        self.buildings = self.organise_rooms_into_floors_and_buildings(self.rooms)
+
+    @staticmethod
+    def organise_rooms_into_floors_and_buildings(rooms: list[Room]) -> list[Building]:
+        """Organize rooms into floors and buildings."""
+        all_buildings = {room.building for room in rooms}
+        buildings: list[Building] = []
+        for building_name in all_buildings:
+            building_rooms = [room for room in rooms if room.building == building_name]
+            all_floors = {room.floor for room in building_rooms}
+            floors: list[Floor] = []
+            for floor_number in all_floors:
+                floor_rooms = [
+                    room for room in building_rooms if room.floor == floor_number
+                ]
+                floor = Floor(floor_number=floor_number, rooms=floor_rooms)
+                msg = (
+                    f"Floor {floor.floor_number} created with {len(floor.rooms)} rooms."
+                )
+                logger.info(msg)
+                floors.append(floor)
+            building = Building(name=building_name, floors=floors)
+            msg = f"Building '{building.name}' created with {len(floors)} floors."
+            logger.info(msg)
+            buildings.append(building)
+
+        return buildings
+
+    def assign_doors_to_rooms(self) -> None:
+        """Assign doors to rooms based on their coordinates."""
+        for counter, door in enumerate(set(self.door_list)):
+            connected_rooms = [
+                room.room_id for room in self.rooms if door in room.doors
+            ]
+
+            if len(connected_rooms) != 2:  # noqa: PLR2004
+                msg = (
+                    f"Door at {door.start}-{door.end} must connect exactly two rooms. "
+                    f"Found {len(connected_rooms)}."
+                )
+                logger.error(msg)
+                raise ValueError(msg)
+
+            door.door_id = counter
+            door.connecting_rooms = (connected_rooms[0], connected_rooms[1])
+
+        for room in self.rooms:
+            for door in room.doors:
+                if door.connecting_rooms == (-1, -1):
+                    for assigned_door in set(self.door_list):
+                        if door == assigned_door:
+                            door.door_id = assigned_door.door_id
+                            door.connecting_rooms = assigned_door.connecting_rooms
 
     def create_rooms_from_data(self) -> None:
         """Create Room instances from the validated data."""
@@ -216,4 +274,3 @@ class SpaceInputReader:
 if __name__ == "__main__":
     # Example usage
     reader = SpaceInputReader(input_path=Path("sample_floor_spatial.yml"))
-    logger.info(reader.data)
