@@ -42,3 +42,11 @@ class InvalidRoomError(Exception):
     def __init__(self, message: str) -> None:
         """Initialize the InvalidRoomError."""
         super().__init__(f"Invalid room definition: {message}.")
+
+
+class InvalidDoorError(Exception):
+    """Exception raised when a door is defined with invalid parameters."""
+
+    def __init__(self, message: str) -> None:
+        """Initialize the InvalidDoorError."""
+        super().__init__(f"Invalid door definition: {message}.")
