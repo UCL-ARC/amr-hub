@@ -45,7 +45,7 @@ install-docs:
 	$(CD) uv sync --extra docs
 
 test:
-	$(CD) uv run pytest tests
+	$(CD) uv run pytest tests --cov=src/amr_hub_abm --cov-report=term-missing
 
 test-cov:
 	$(CD) uv run pytest tests --cov=src/amr_hub_abm --cov-report=xml --cov-report=html
