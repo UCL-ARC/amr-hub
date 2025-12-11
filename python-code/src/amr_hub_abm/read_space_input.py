@@ -33,6 +33,10 @@ class SpaceInputReader:
     def __post_init__(self) -> None:
         """Post-initialization to read and validate the YAML file."""
         self.validation()
+        self.create_rooms_from_data()
+
+    def create_rooms_from_data(self) -> None:
+        """Create Room instances from the validated data."""
         room_counter = 0
 
         for building_data in [self.data["building"]]:
@@ -76,8 +80,6 @@ class SpaceInputReader:
         self, room_data: dict, room_id: int, building_name: str, floor_level: int
     ) -> Room:
         """Create a Room instance from room data."""
-        # Implementation to create Room instances goes here
-
         room_doors: list[Door] = []
         for door_data in room_data.get("doors", []):
             door = Door(
