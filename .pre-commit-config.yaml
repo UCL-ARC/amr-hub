@@ -22,6 +22,8 @@ repos:
     rev: v1.16.1
     hooks:
       - id: mypy
+        additional_dependencies:
+          - types-PyYAML
   - repo: https://github.com/rbubley/mirrors-prettier
     rev: v3.6.2
     hooks:
