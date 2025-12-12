@@ -50,3 +50,11 @@ class InvalidDoorError(Exception):
     def __init__(self, message: str) -> None:
         """Initialize the InvalidDoorError."""
         super().__init__(f"Invalid door definition: {message}.")
+
+
+class InvalidDefinitionError(Exception):
+    """Exception raised when a general invalid definition is encountered."""
+
+    def __init__(self, message: str) -> None:
+        """Initialize the InvalidDefinitionError."""
+        super().__init__(f"Invalid definition: {message}.")

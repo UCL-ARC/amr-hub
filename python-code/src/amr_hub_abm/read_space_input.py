@@ -6,6 +6,11 @@ from pathlib import Path
 
 import yaml  # type: ignore[import]
 
+from amr_hub_abm.exceptions import (
+    InvalidDefinitionError,
+    InvalidDoorError,
+    InvalidRoomError,
+)
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.floor import Floor
@@ -80,7 +85,7 @@ class SpaceInputReader:
                     f"Found {len(connected_rooms)}."
                 )
                 logger.error(msg)
-                raise ValueError(msg)
+                raise InvalidDoorError(msg)
 
             door.door_id = counter
             door.connecting_rooms = (connected_rooms[0], connected_rooms[1])
@@ -224,23 +229,13 @@ class SpaceInputReader:
         if topological and "walls" in room_data:
             msg = "A topological room cannot have walls defined."
             logger.error(msg)
-            raise ValueError(msg)
-
-        if not topological and "walls" not in room_data:
-            msg = "A non-topological room must have walls defined."
-            logger.error(msg)
             raise KeyError(msg)
 
         if not topological:
             walls: list[Wall] = []
             walls_data: list[list[float]] = room_data["walls"]
             for wall in walls_data:
-                if len(wall) != 4:  # noqa: PLR2004
-                    msg = (
-                        "Each wall must be defined by 4 coordinates: [x1, y1, x2, y2]."
-                    )
-                    logger.error(msg)
-                    raise ValueError(msg)
+                SpaceInputReader.check_tuple_length(wall, 4, "wall")
                 walls.append(Wall(start=(wall[0], wall[1]), end=(wall[2], wall[3])))
 
             msg = f"Room '{room_data['name']}' walls validated successfully."
@@ -249,12 +244,7 @@ class SpaceInputReader:
             doors: list[Door] = []
             doors_data: list[list[float]] = room_data["doors"]
             for door in doors_data:
-                if len(door) != 4:  # noqa: PLR2004
-                    msg = (
-                        "Each door must be defined by 4 coordinates: [x1, y1, x2, y2]."
-                    )
-                    logger.error(msg)
-                    raise ValueError(msg)
+                SpaceInputReader.check_tuple_length(door, 4, "door")
                 doors.append(
                     Door(
                         door_id=-1,
@@ -270,12 +260,18 @@ class SpaceInputReader:
             msg = "Topological room validation is not yet implemented."
             raise NotImplementedError(msg)
 
+    @staticmethod
+    def check_tuple_length(
+        data_tuple: list[float], expected_length: int, data_type: str
+    ) -> None:
+        """Check if a data tuple has the expected length."""
+        if data_type not in {"wall", "door"}:
+            msg = f"data_type must be either 'wall' or 'door'. Got '{data_type}'."
+            raise InvalidDefinitionError(msg)
 
-if __name__ == "__main__":
-    # Example usage
-    data = SpaceInputReader(input_path=Path("sample_floor_spatial.yml"))
-    floor = data.buildings[0].floors[0]
-    logger.info(floor.room_ids)
-    logger.info(floor.edge_set)
-    logger.info(floor.adjacency_matrix)
-    logger.info(floor.room_names)
+        if len(data_tuple) != expected_length:
+            msg = f"Each {data_type} must be defined by {expected_length} values."
+            logger.error(msg)
+            if data_type == "wall":
+                raise InvalidRoomError(msg)
+            raise InvalidDoorError(msg)
