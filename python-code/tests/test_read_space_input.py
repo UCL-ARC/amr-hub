@@ -10,7 +10,7 @@ from amr_hub_abm.read_space_input import SpaceInputReader
 @pytest.fixture
 def space_input_reader() -> SpaceInputReader:
     """Fixture for SpaceInputReader instance."""
-    return SpaceInputReader(input_path=Path("sample_floor_spatial.yml"))
+    return SpaceInputReader(input_path=Path("tests/inputs/sample_floor_spatial.yml"))
 
 
 def test_successful_reading(space_input_reader: SpaceInputReader) -> None:
