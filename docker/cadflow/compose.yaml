@@ -1,0 +1,31 @@
+services:
+  convert:
+    build:
+      context: ./converter
+    image: cadflow-convert:oda-amd64
+    platform: linux/amd64
+    environment:
+      IN_DIR: /in
+      DXF_DIR: /work
+    volumes:
+      - ./in:/in:ro
+      - ./work:/work
+
+  process:
+    build:
+      context: ./processor
+    image: cadflow-processor:latest
+    user: "${UID}:${GID}"
+    environment:
+      DXF_DIR: /work
+      OUT_DIR: /out
+      CONFIG_DIR: /config
+      FORMAT: geopackage # or "shp"
+      LOG_LEVEL: INFO
+    volumes:
+      - ./work:/work:ro
+      - ./out:/out
+      - ./config:/config
+    depends_on:
+      convert:
+        condition: service_completed_successfully
