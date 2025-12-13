@@ -128,11 +128,6 @@ def test_missing_keys_from_room() -> None:
         SpaceInputReader.validate_room_data(sample_dict)
     assert "A topological room cannot have walls defined" in str(exc_info.value)
 
-    sample_dict.pop("walls")
-    with pytest.raises(NotImplementedError) as exc_info:
-        SpaceInputReader.validate_room_data(sample_dict)
-    assert "Topological room validation is not yet implemented." in str(exc_info.value)
-
 
 def test_invalid_wall_data() -> None:
     """Test that invalid wall data raises an error."""

@@ -16,6 +16,7 @@ class Door:
     open: bool
     connecting_rooms: tuple[int, int]
     access_control: tuple[bool, bool]
+    name: str | None = field(default=None)
     start: tuple[float, float] | None = field(default=None)
     end: tuple[float, float] | None = field(default=None)
     door_hash: str = field(init=False)
@@ -26,7 +27,12 @@ class Door:
             msg = "Both start and end points must be None or both must be defined."
             raise InvalidDoorError(msg)
 
+        if (self.start is None or self.end is None) and (self.name is None):
+            msg = "Door must have a name if start and end points are not defined."
+            raise InvalidDoorError(msg)
+
         if self.start is None or self.end is None:
+            self.door_hash = self.create_name_hash()
             return
 
         if self.start == self.end:
@@ -47,6 +53,14 @@ class Door:
         if not isinstance(other, Door):
             return NotImplemented
         return self.door_hash == other.door_hash
+
+    def create_name_hash(self) -> str:
+        """Generate a hash for the door based on its name."""
+        if self.name is None:
+            msg = "Door name must be defined to create name-based hash."
+            raise InvalidDoorError(msg)
+        hash_input = f"{self.name}-{self.connecting_rooms}"
+        return hashlib.sha256(hash_input.encode()).hexdigest()
 
     def create_coordinate_hash(self) -> str:
         """Generate a hash for the door based on its unique attributes."""
