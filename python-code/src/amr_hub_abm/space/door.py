@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 import shapely.geometry
 
-from amr_hub_abm.exceptions import InvalidDoorError, SimulationModeError
+from amr_hub_abm.exceptions import InvalidDoorError
 
 
 @dataclass
@@ -16,12 +16,19 @@ class Door:
     open: bool
     connecting_rooms: tuple[int, int]
     access_control: tuple[bool, bool]
-    start: tuple[float, float] = field(default=(0.0, 0.0))
-    end: tuple[float, float] = field(default=(0.0, 0.0))
+    start: tuple[float, float] | None = field(default=None)
+    end: tuple[float, float] | None = field(default=None)
     door_hash: str = field(init=False)
 
     def __post_init__(self) -> None:
         """Post-initialization to validate door coordinates."""
+        if (self.start is None or self.end is None) and (self.start != self.end):
+            msg = "Both start and end points must be None or both must be defined."
+            raise InvalidDoorError(msg)
+
+        if self.start is None or self.end is None:
+            return
+
         if self.start == self.end:
             msg = "Door start and end points cannot be the same."
             raise InvalidDoorError(msg)
@@ -49,10 +56,7 @@ class Door:
     @property
     def line(self) -> shapely.geometry.LineString:
         """Get the line representation of the door."""
-        if self.start == self.end == (0.0, 0.0):
-            msg = """
-            Dummy start and end points for door line.
-            Probably simulation in topological mode.
-            """
-            raise SimulationModeError(msg)
+        if self.start is None or self.end is None:
+            msg = "Door start and end must be defined when not in topological mode."
+            raise InvalidDoorError(msg)
         return shapely.geometry.LineString([self.start, self.end])
