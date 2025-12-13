@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 import numpy as np
+from matplotlib.axes import Axes
 
 from amr_hub_abm.exceptions import InvalidRoomError
 from amr_hub_abm.space.room import Room
@@ -59,3 +60,8 @@ class Floor:
             adjacency_matrix[index1, index2] = 1
 
         return adjacency_matrix
+
+    def plot(self, ax: Axes) -> None:
+        """Plot the floor layout including rooms and doors."""
+        for room in self.rooms:
+            room.plot(ax=ax)

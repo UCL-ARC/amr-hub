@@ -1,5 +1,7 @@
 """Tests for the Room class in the AMR Hub ABM simulation."""
 
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import pytest
 import shapely
@@ -308,4 +310,7 @@ def test_room_plotting_with_doors(
 
     fig, ax = plt.subplots()
     room.plot(ax=ax)
+    if not Path("tests/output/").exists():
+        Path("tests/output/").mkdir(parents=True, exist_ok=True)
+    plt.savefig("tests/output/room_with_door_plot.png")
     plt.close(fig)  # Close the plot to avoid displaying during tests
