@@ -6,6 +6,7 @@ import pytest
 
 from amr_hub_abm.exceptions import InvalidDoorError
 from amr_hub_abm.read_space_input import SpaceInputReader
+from amr_hub_abm.space.floor import Floor
 
 
 @pytest.fixture
@@ -66,3 +67,14 @@ def test_invalid_topological_room_data() -> None:
     assert "In topological mode, doors must be defined by their names." in str(
         exc_info.value
     )
+
+
+def test_topological_to_spatial_conversion(
+    space_input_reader: SpaceInputReader,
+) -> None:
+    """Test conversion from topological to spatial representation."""
+    floor = space_input_reader.buildings[0].floors[0]
+    room = floor.rooms[0]  # Staff Room
+    room.area = 100.0  # Set area for pseudo-room conversion
+
+    Floor.create_spatial_room_from_pseudo_room(room)
