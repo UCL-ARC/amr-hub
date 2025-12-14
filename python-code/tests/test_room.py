@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pytest
 import shapely
 
-from amr_hub_abm.exceptions import InvalidRoomError
+from amr_hub_abm.exceptions import InvalidRoomError, SimulationModeError
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.content import Content
 from amr_hub_abm.space.door import Door
@@ -173,6 +173,133 @@ def test_complex_room_with_internal_walls(
     assert not room.region.contains(point2)
 
 
+def test_invalid_room_no_walls_or_area(
+    test_building: Building,
+    empty_doors: list[Door],
+    empty_contents: list[Content],
+) -> None:
+    """Test creating a room with neither walls nor area defined."""
+    with pytest.raises(SimulationModeError) as exc_info:
+        Room(
+            room_id=1,
+            name="Invalid Room",
+            building=test_building.name,
+            floor=1,
+            walls=None,
+            doors=empty_doors,
+            contents=empty_contents,
+        )
+    assert "Either walls or area must be provided to define a room." in str(
+        exc_info.value
+    )
+
+
+def test_invalid_room_both_walls_and_area(
+    test_building: Building,
+    simple_walls: list[Wall],
+    empty_doors: list[Door],
+    empty_contents: list[Content],
+) -> None:
+    """Test creating a room with both walls and area defined."""
+    with pytest.raises(SimulationModeError) as exc_info:
+        Room(
+            room_id=1,
+            name="Invalid Room",
+            building=test_building.name,
+            floor=1,
+            walls=simple_walls,
+            area=25.0,
+            doors=empty_doors,
+            contents=empty_contents,
+        )
+    assert "Provide either walls or area, not both, to define a room." in str(
+        exc_info.value
+    )
+
+
+def test_invalid_room_negative_area(
+    test_building: Building,
+    empty_doors: list[Door],
+    empty_contents: list[Content],
+) -> None:
+    """Test creating a room with negative area."""
+    with pytest.raises(InvalidRoomError) as exc_info:
+        Room(
+            room_id=1,
+            name="Invalid Room",
+            building=test_building.name,
+            floor=1,
+            area=-10.0,
+            doors=empty_doors,
+            contents=empty_contents,
+        )
+    assert "Room area must be positive." in str(exc_info.value)
+
+
+def test_invalid_region_creation(
+    test_building: Building,
+    empty_doors: list[Door],
+    empty_contents: list[Content],
+) -> None:
+    """Test creating a room with topological map that does not form a valid polygon."""
+    room = Room(
+        room_id=1,
+        name="Topological Room",
+        building=test_building.name,
+        floor=1,
+        area=10.0,
+        doors=empty_doors,
+        contents=empty_contents,
+    )
+    with pytest.raises(InvalidRoomError) as exc_info:
+        room.form_region()
+    assert "Cannot form region without walls." in str(exc_info.value)
+
+
+def test_invalid_plot_creation(
+    test_building: Building,
+    empty_doors: list[Door],
+    empty_contents: list[Content],
+) -> None:
+    """Test creating a room with topological map that does not form a valid polygon."""
+    room = Room(
+        room_id=1,
+        name="Topological Room",
+        building=test_building.name,
+        floor=1,
+        area=10.0,
+        doors=empty_doors,
+        contents=empty_contents,
+    )
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    with pytest.raises(SimulationModeError) as exc_info:
+        room.plot(ax=ax)
+    assert "Cannot plot room without walls." in str(exc_info.value)
+
+
+def test_invalid_polygon_hash_creation(
+    test_building: Building,
+    empty_doors: list[Door],
+    empty_contents: list[Content],
+) -> None:
+    """Test creating a room with topological map that does not form a valid polygon."""
+    room = Room(
+        room_id=1,
+        name="Topological Room",
+        building=test_building.name,
+        floor=1,
+        area=10.0,
+        doors=empty_doors,
+        contents=empty_contents,
+    )
+
+    with pytest.raises(SimulationModeError) as exc_info:
+        room.create_polygon_hash()
+    assert "Cannot create polygon hash without walls." in str(exc_info.value)
+
+
 def test_invalid_room_too_few_walls(
     test_building: Building,
     empty_doors: list[Door],
@@ -314,3 +441,78 @@ def test_room_plotting_with_doors(
         Path("tests/output/").mkdir(parents=True, exist_ok=True)
     plt.savefig("tests/output/room_with_door_plot.png")
     plt.close(fig)  # Close the plot to avoid displaying during tests
+
+
+def test_room_hash_equality(simple_room: Room, room_4x4: Room) -> None:
+    """Test the hash and equality methods of the Room class."""
+    another_simple_room = Room(
+        room_id=simple_room.room_id,
+        name=simple_room.name,
+        building=simple_room.building,
+        floor=simple_room.floor,
+        walls=simple_room.walls,
+        doors=simple_room.doors,
+        contents=simple_room.contents,
+    )
+
+    assert hash(simple_room) == hash(another_simple_room)
+    assert simple_room == another_simple_room
+    assert simple_room != room_4x4
+
+
+def test_room_name_hash(
+    test_building: Building,
+    empty_doors: list[Door],
+    empty_contents: list[Content],
+) -> None:
+    """Test creating a room defined by name and area."""
+    room = Room(
+        room_id=8,
+        name="Named Room",
+        building=test_building.name,
+        floor=1,
+        area=30.0,
+        doors=empty_doors,
+        contents=empty_contents,
+    )
+
+    assert room.room_hash is not None
+
+
+def test_room_polygon_hash(
+    test_building: Building,
+    simple_walls: list[Wall],
+    empty_doors: list[Door],
+    empty_contents: list[Content],
+) -> None:
+    """Test creating a room defined by walls."""
+    room = Room(
+        room_id=9,
+        name="Polygon Room",
+        building=test_building.name,
+        floor=1,
+        walls=simple_walls,
+        doors=empty_doors,
+        contents=empty_contents,
+    )
+
+    assert room.room_hash is not None
+
+
+def test_room_hash_type_error(
+    test_building: Building,
+    empty_doors: list[Door],
+    empty_contents: list[Content],
+) -> None:
+    """Test equality comparison with a non-Room object."""
+    room = Room(
+        room_id=10,
+        name="Test Room",
+        building=test_building.name,
+        floor=1,
+        area=20.0,
+        doors=empty_doors,
+        contents=empty_contents,
+    )
+
+    assert room != "Not a Room Object"
