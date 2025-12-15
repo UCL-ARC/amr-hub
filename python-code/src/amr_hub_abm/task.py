@@ -1,6 +1,6 @@
 """Module for AMR Hub ABM tasks."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 from amr_hub_abm.exceptions import TimeError
@@ -17,6 +17,7 @@ class TaskProgress(Enum):
 class TaskType(Enum):
     """Enumeration of possible task types."""
 
+    GENERIC = "generic"
     OFFICE_WORK = "office_work"
     NURSE_ROUND = "nurse_round"
     PATIENT_CARE = "patient_care"
@@ -40,13 +41,14 @@ class TaskPriority(Enum):
 class Task:
     """Representation of a task assigned to an agent."""
 
-    task_type: TaskType
+    task_type: TaskType = field(init=False)
     progress: TaskProgress
     priority: TaskPriority
     time_needed: int
 
     def __post_init__(self) -> None:
         """Post-initialization to validate task attributes."""
+        self.task_type = TaskType.GENERIC
         if self.time_needed < 0:
             msg = "Time needed for a task cannot be negative."
             raise TimeError(msg)
