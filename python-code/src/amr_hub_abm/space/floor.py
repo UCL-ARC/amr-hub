@@ -111,3 +111,10 @@ class Floor:
             doors=pseudo_doors,
             contents=room.contents,
         )
+
+    def find_room_by_location(self, location: tuple[float, float]) -> Room | None:
+        """Find the room that contains the given location."""
+        for room in self.rooms:
+            if room.walls and room.contains_point(location):
+                return room
+        return None

@@ -136,3 +136,46 @@ def test_psedo_room_skips_spatial_room() -> None:
     floor.add_pseudo_rooms()
 
     assert len(floor.pseudo_rooms) == 0
+
+
+def test_locate_room_by_position() -> None:
+    """Test locating a room by a given position."""
+    r1 = Room(
+        room_id=1,
+        name="Room1",
+        building="B1",
+        floor=1,
+        contents=[],
+        doors=[],
+        walls=[
+            Wall((0, 0), (0, 2)),
+            Wall((0, 2), (2, 2)),
+            Wall((2, 2), (2, 0)),
+            Wall((2, 0), (0, 0)),
+        ],
+    )
+    r2 = Room(
+        room_id=2,
+        name="Room2",
+        building="B1",
+        floor=1,
+        contents=[],
+        doors=[],
+        walls=[
+            Wall((3, 3), (3, 5)),
+            Wall((3, 5), (5, 5)),
+            Wall((5, 5), (5, 3)),
+            Wall((5, 3), (3, 3)),
+        ],
+    )
+
+    floor = Floor(floor_number=1, rooms=[r1, r2])
+
+    room_found = floor.find_room_by_location((1.0, 1.0))
+    assert room_found is r1
+
+    room_found = floor.find_room_by_location((4.0, 4.0))
+    assert room_found is r2
+
+    room_found = floor.find_room_by_location((6.0, 6.0))
+    assert room_found is None
