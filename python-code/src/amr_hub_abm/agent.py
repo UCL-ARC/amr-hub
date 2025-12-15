@@ -4,7 +4,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from logging import getLogger
 
+from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.location import Location
+from amr_hub_abm.space.room import Room
 from amr_hub_abm.task import Task
 
 logger = getLogger(__name__)
@@ -50,3 +52,16 @@ class Agent:
             self.location,
             self.heading,
         )
+
+    def get_room(self, space: list[Building]) -> Room | None:
+        """Get the room the agent is currently located in, if any."""
+        for building in space:
+            if building.name != self.location.building:
+                continue
+            for floor in building.floors:
+                if floor.floor_number != self.location.floor:
+                    continue
+                room = floor.find_room_by_location((self.location.x, self.location.y))
+                if room:
+                    return room
+        return None

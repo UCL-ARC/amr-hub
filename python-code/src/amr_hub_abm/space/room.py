@@ -1,6 +1,7 @@
 """Module defining room-related classes for the AMR Hub ABM simulation."""
 
 import hashlib
+import logging
 from dataclasses import dataclass, field
 
 import shapely.geometry
@@ -11,6 +12,8 @@ from amr_hub_abm.exceptions import InvalidRoomError, SimulationModeError
 from amr_hub_abm.space.content import Content
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.wall import Wall
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -51,6 +54,11 @@ class Room:
 
         if self.walls:
             self.region = self.form_region()
+        else:
+            self.region = shapely.geometry.Polygon()
+            logger.warning(
+                "Room %s has no walls; region is set to an empty polygon.", self.name
+            )
 
         self.room_hash = (
             self.create_polygon_hash() if self.walls else self.create_name_hash()
