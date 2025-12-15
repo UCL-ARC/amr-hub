@@ -3,7 +3,8 @@
 import pytest
 
 from amr_hub_abm.exceptions import InvalidDistanceError
-from amr_hub_abm.space import Building, Location
+from amr_hub_abm.space.building import Building
+from amr_hub_abm.space.location import Location
 
 
 def test_location_creation() -> None:
@@ -60,15 +61,17 @@ def test_distance_to_different_floors() -> None:
 
 def test_distance_to_different_buildings() -> None:
     """Test that distance calculation raises an error for different buildings."""
-    building_a = Building(name="Building A")
-    building_b = Building(name="Building B")
+    building_a = Building(name="Building A", floors=[])
+    building_b = Building(name="Building B", floors=[])
 
-    loc1 = Location(x=0.0, y=0.0, floor=1, building=building_a)
-    loc2 = Location(x=3.0, y=4.0, floor=1, building=building_b)
+    loc1 = Location(x=0.0, y=0.0, floor=1, building=building_a.name)
+    loc2 = Location(x=3.0, y=4.0, floor=1, building=building_b.name)
 
     with pytest.raises(InvalidDistanceError) as exc_info:
         loc1.distance_to(loc2)
 
     err_string = "Invalid distance calculation between buildings: "
 
-    assert str(exc_info.value) == f"{err_string}{building_a} and {building_b}."
+    assert (
+        str(exc_info.value) == f"{err_string}{building_a.name} and {building_b.name}."
+    )
