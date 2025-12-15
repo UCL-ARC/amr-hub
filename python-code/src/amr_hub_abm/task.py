@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from amr_hub_abm.exceptions import NegativeTimeError
+from amr_hub_abm.exceptions import TimeError
 
 
 class TaskProgress(Enum):
@@ -48,7 +48,8 @@ class Task:
     def __post_init__(self) -> None:
         """Post-initialization to validate task attributes."""
         if self.time_needed < 0:
-            raise NegativeTimeError(self.time_needed)
+            msg = "Time needed for a task cannot be negative."
+            raise TimeError(msg)
 
 
 @dataclass
