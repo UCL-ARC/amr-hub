@@ -84,7 +84,27 @@ class Floor:
 
     @staticmethod
     def create_spatial_room_from_pseudo_room(room: Room) -> Room:
-        """Create a spatial room from a pseudo-room based on area."""
+        """
+        Create a spatial room from a pseudo-room based on area.
+
+        Args:
+            room (Room): The pseudo-room to convert.
+
+        Returns:
+            Room: A spatial room with walls and doors based on the pseudo-room's area.
+
+        Raises:
+            InvalidRoomError: If the pseudo-room does not have a valid positive area.
+
+        Note:
+            This method generates a rectangular room layout based on the area of the
+            pseudo-room. The doors are positioned along one side of the rectangle. This
+            function is not complete. Currently it only creates single simple
+            rectangular rooms. Due to possibly complex topology, rectangular rooms may
+            not always bea valid representation. Currently, no topology connections
+            are considered. This function will be improved in future versions.
+
+        """
         if not room.area or room.area <= 0:
             msg = "Pseudo-room must have a valid positive area."
             raise InvalidRoomError(msg)
