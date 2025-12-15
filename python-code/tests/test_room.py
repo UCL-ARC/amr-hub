@@ -516,3 +516,33 @@ def test_room_hash_type_error(
     )
 
     assert room != "Not a Room Object"
+
+
+def test_room_contains_point(room_4x4: Room) -> None:
+    """Test the contains_point method of the Room class."""
+    inside_point = (2, 2)
+    outside_point = (5.5, 5.5)
+
+    assert room_4x4.contains_point(inside_point) is True
+    assert room_4x4.contains_point(outside_point) is False
+
+
+def test_room_contains_point_topology_error(
+    test_building: Building,
+    empty_doors: list[Door],
+    empty_contents: list[Content],
+) -> None:
+    """Test contains_point method raises error when region is not defined."""
+    room = Room(
+        room_id=11,
+        name="Topology Error Room",
+        building=test_building.name,
+        floor=1,
+        area=15.0,
+        doors=empty_doors,
+        contents=empty_contents,
+    )
+
+    with pytest.raises(SimulationModeError) as exc_info:
+        room.contains_point((1, 1))
+    assert "Cannot check point containment without walls." in str(exc_info.value)

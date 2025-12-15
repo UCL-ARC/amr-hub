@@ -113,3 +113,11 @@ class Room:
                 color=kwargs.get("door_color", "brown"),
                 linewidth=kwargs.get("door_width", 2),
             )
+
+    def contains_point(self, point: tuple[float, float]) -> bool:
+        """Check if a given point is inside the room."""
+        if not self.walls:
+            msg = "Cannot check point containment without walls."
+            raise SimulationModeError(msg)
+
+        return self.region.contains(shapely.geometry.Point(point))
