@@ -7,6 +7,7 @@ from amr_hub_abm.exceptions import InvalidRoomError
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.room import Room
+from amr_hub_abm.space.wall import Wall
 
 
 def _make_room(
@@ -85,3 +86,53 @@ def test_edge_set_and_adjacency_matrix() -> None:
     adj = floor.adjacency_matrix
     expected = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]], dtype=int)
     assert np.array_equal(adj, expected)
+
+
+def test_pseudo_room_creation() -> None:
+    """Test that pseudo-rooms are created correctly from area."""
+    r1 = _make_room(1, "PseudoRoom", area=25.0)
+
+    floor = Floor(floor_number=1, rooms=[r1])
+    floor.add_pseudo_rooms()
+
+    assert len(floor.pseudo_rooms) == 1
+    pseudo_room = floor.pseudo_rooms[0]
+    assert pseudo_room.room_id == r1.room_id
+    assert pseudo_room.name == r1.name
+    assert pseudo_room.area == r1.area
+    assert pseudo_room.walls is not None
+
+
+def test_invalid_pseudo_room_raises() -> None:
+    """Test that invalid pseudo-rooms raise an InvalidRoomError."""
+    r1 = _make_room(1, "InvalidPseudoRoom", area=5.0)
+    r1.area = -5.0  # Manually set an invalid negative area
+
+    floor = Floor(floor_number=1, rooms=[r1])
+
+    with pytest.raises(InvalidRoomError) as exc_info:
+        floor.add_pseudo_rooms()
+    assert "Pseudo-room must have a valid positive area" in str(exc_info.value)
+
+
+def test_psedo_room_skips_spatial_room() -> None:
+    """Test that existing spatial rooms are not converted to pseudo-rooms."""
+    r1 = Room(
+        room_id=1,
+        name="SpatialRoom",
+        building="B1",
+        floor=1,
+        contents=[],
+        doors=[],
+        walls=[
+            Wall((0, 0), (0, 1)),
+            Wall((0, 1), (1, 1)),
+            Wall((1, 1), (1, 0)),
+            Wall((1, 0), (0, 0)),
+        ],
+    )
+
+    floor = Floor(floor_number=1, rooms=[r1])
+    floor.add_pseudo_rooms()
+
+    assert len(floor.pseudo_rooms) == 0

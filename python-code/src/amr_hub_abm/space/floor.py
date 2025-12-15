@@ -71,7 +71,7 @@ class Floor:
     def add_pseudo_rooms(self) -> None:
         """Add pseudo-rooms to the floor."""
         for existing_room in self.rooms:
-            if not existing_room.walls and isinstance(existing_room.area, float):
+            if not existing_room.walls:
                 pseudo_room = Floor.create_spatial_room_from_pseudo_room(existing_room)
                 self.pseudo_rooms.append(pseudo_room)
 
