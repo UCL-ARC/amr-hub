@@ -1,0 +1,21 @@
+building:
+  name: Hospital
+  address: 123 Health St, Wellness City
+  floors:
+    - level: 0
+      rooms:
+        - name: Staff Room
+          area: 15
+          doors:
+            - door1
+
+        - name: Corridor
+          area: 5
+          doors:
+            - door1
+            - door2
+
+        - name: Ward
+          area: 15
+          doors:
+            - door2

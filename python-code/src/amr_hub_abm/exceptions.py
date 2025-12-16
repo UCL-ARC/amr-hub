@@ -1,6 +1,14 @@
 """Module defining all custom exceptions for the AMR Hub ABM simulation."""
 
 
+class SimulationModeError(Exception):
+    """Exception raised when an operation is invalid for the current simulation mode."""
+
+    def __init__(self, message: str) -> None:
+        """Initialize the SimulationModeError."""
+        super().__init__(f"Simulation mode error: {message}.")
+
+
 class InvalidDistanceError(Exception):
     """Exception raised when an invalid distance calculation is attempted."""
 
@@ -34,3 +42,19 @@ class InvalidRoomError(Exception):
     def __init__(self, message: str) -> None:
         """Initialize the InvalidRoomError."""
         super().__init__(f"Invalid room definition: {message}.")
+
+
+class InvalidDoorError(Exception):
+    """Exception raised when a door is defined with invalid parameters."""
+
+    def __init__(self, message: str) -> None:
+        """Initialize the InvalidDoorError."""
+        super().__init__(f"Invalid door definition: {message}.")
+
+
+class InvalidDefinitionError(Exception):
+    """Exception raised when a general invalid definition is encountered."""
+
+    def __init__(self, message: str) -> None:
+        """Initialize the InvalidDefinitionError."""
+        super().__init__(f"Invalid definition: {message}.")
