@@ -223,6 +223,28 @@ def test_invalid_room_non_closed_walls(
     assert "The walls do not form a valid closed region." in str(exc_info.value)
 
 
+def test_unconnected_walls() -> None:
+    """Test creating a room with unconnected walls."""
+    walls = [
+        Wall(start=(0, 0), end=(0, 5)),
+        Wall(start=(1, 0), end=(1, 5)),  # Not connected to the first wall
+        Wall(start=(2, 0), end=(2, 5)),
+        Wall(start=(3, 0), end=(3, 5)),
+    ]
+
+    with pytest.raises(InvalidRoomError) as exc_info:
+        Room(
+            room_id=8,
+            name="Room with Unconnected Walls",
+            building="Test Building",
+            floor=1,
+            walls=walls,
+            doors=[],
+            contents=[],
+        )
+    assert "The walls do not form a valid closed region" in str(exc_info.value)
+
+
 def test_plot_room(simple_room: Room) -> None:
     """Test plotting a room."""
     fig, ax = plt.subplots()
