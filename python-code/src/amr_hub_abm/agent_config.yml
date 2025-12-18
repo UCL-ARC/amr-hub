@@ -1,0 +1,11 @@
+num_patients: 100
+num_healthcare_workers: 20
+
+infection_rate: 0.05
+recovery_rate: 0.1
+
+simulation_days: 30
+
+initial:
+  need_attending_probability: 0.2
+  time_needed_for_attending: 3
