@@ -4,6 +4,7 @@ import hashlib
 import logging
 from dataclasses import dataclass, field
 
+import numpy as np
 import shapely.geometry
 import shapely.ops
 from matplotlib.axes import Axes
@@ -129,3 +130,30 @@ class Room:
             raise SimulationModeError(msg)
 
         return self.region.contains(shapely.geometry.Point(point))
+
+    def get_random_point(
+        self, rng: np.random.Generator | None = None, max_attempts: int = 1000
+    ) -> tuple[float, float]:
+        """Get a random point within the room."""
+        if not self.walls:
+            msg = "Cannot get random point without walls."
+            raise SimulationModeError(msg)
+
+        if rng is None:
+            rng = np.random.default_rng()
+
+        minx, miny, maxx, maxy = self.region.bounds
+
+        for _ in range(max_attempts):
+            # If required later... Improve efficiency using batching or spatial indexing
+            random_point = shapely.geometry.Point(
+                rng.uniform(minx, maxx), rng.uniform(miny, maxy)
+            )
+            if self.region.contains(random_point):
+                return (random_point.x, random_point.y)
+
+        msg = f"""
+        Failed to find a random point within the room after {max_attempts} attempts.
+        Consider increasing max_attempts or checking room geometry.
+        """
+        raise SimulationModeError(msg)

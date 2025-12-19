@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pytest
 import shapely
 
@@ -546,3 +547,63 @@ def test_room_contains_point_topology_error(
     with pytest.raises(SimulationModeError) as exc_info:
         room.contains_point((1, 1))
     assert "Cannot check point containment without walls." in str(exc_info.value)
+
+
+def test_room_get_random_point(simple_room: Room) -> None:
+    """Test the get_random_point method of the Room class."""
+    random_point = simple_room.get_random_point()
+    assert simple_room.contains_point(random_point) is True
+    rng = np.random.default_rng()
+    random_point = simple_room.get_random_point(rng=rng)
+
+
+def test_room_get_random_point_topology_error(
+    test_building: Building,
+    empty_doors: list[Door],
+    empty_contents: list[Content],
+) -> None:
+    """Test get_random_point method raises error when region is not defined."""
+    room = Room(
+        room_id=12,
+        name="Topology Error Room",
+        building=test_building.name,
+        floor=1,
+        area=20.0,
+        doors=empty_doors,
+        contents=empty_contents,
+    )
+
+    with pytest.raises(SimulationModeError) as exc_info:
+        room.get_random_point()
+    assert "Cannot get random point without walls." in str(exc_info.value)
+
+
+class AlwaysLowRNG:
+    """Mock RNG that always returns the lower bound."""
+
+    def uniform(self, low: float, _: float) -> float:
+        """Uniformly return the low bound."""
+        return low  # always pick min bound -> boundary point
+
+
+def test_get_random_point_raises_after_max_attempts(
+    square_4x4_walls: list[Wall],
+) -> None:
+    """Test that get_random_point raises an error after max attempts."""
+    room = Room(
+        room_id=13,
+        name="Test Room",
+        building="Test Building",
+        floor=1,
+        walls=square_4x4_walls,
+        doors=[],
+        contents=[],
+    )
+
+    rng = AlwaysLowRNG()
+
+    with pytest.raises(SimulationModeError) as exc_info:
+        room.get_random_point(rng=rng, max_attempts=10)  # type: ignore[arg-type]
+    assert "Failed to find a random point within the room after 10 attempts." in str(
+        exc_info.value
+    )
