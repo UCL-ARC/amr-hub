@@ -3,12 +3,15 @@
 import logging
 from pathlib import Path
 
+import pandas as pd
 import yaml
 
 from amr_hub_abm.agent import Agent
+from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.read_space_input import SpaceInputReader
 from amr_hub_abm.simulation import Simulation, SimulationMode
 from amr_hub_abm.space.location import Location
+from amr_hub_abm.space.room import Room
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -25,6 +28,10 @@ def create_simulation(config_file: Path) -> Simulation:
         Simulation: An instance of the Simulation class.
 
     """
+    if not config_file.exists():
+        msg = f"Configuration file not found: {config_file}"
+        raise FileNotFoundError(msg)
+
     with config_file.open(encoding="utf-8") as file:
         config_data = yaml.safe_load(file)
 
@@ -35,13 +42,18 @@ def create_simulation(config_file: Path) -> Simulation:
     logger.debug("Buildings loaded successfully.")
     logger.debug(space_reader.buildings)
 
-    agents = [
-        Agent(
-            idx=1,
-            location=Location(building="BuildingA", floor=1, x=1.0, y=1.0),
-            heading=0.0,
-        )
-    ]
+    start_time = pd.to_datetime(config_data["start_time"])
+    time_step_minutes = config_data["time_step_minutes"]
+
+    agents = parse_location_timeseries(
+        file_path=Path(config_data["location_timeseries_path"]),
+        rooms=space_reader.rooms,
+        start_time=start_time,
+        time_step_minutes=time_step_minutes,
+    )
+    msg = f"Parsed {len(agents)} agents from location time series."
+    logger.info(msg)
+    logger.info("Simulation creation complete.")
 
     return Simulation(
         name="AMR Hub ABM Simulation",
@@ -69,6 +81,90 @@ def parse_location_string(location_str: str) -> tuple[str, int, str]:
     return building_part, int(floor), room
 
 
-if __name__ == "__main__":
-    config_path = Path("src/amr_hub_abm/simulation_config.yml")
-    simulation = create_simulation(config_path)
+def parse_location_timeseries(
+    file_path: Path,
+    rooms: list[Room],
+    start_time: pd.Timestamp,
+    time_step_minutes: int,
+) -> list[Agent]:
+    """
+    Parse a CSV file containing location time series data for agents.
+
+    Args:
+        file_path (Path): Path to the CSV file.
+
+    Returns:
+        list[Agent]: A list of Agent instances with populated location time series.
+
+    """
+    if not file_path.exists():
+        msg = f"Location time series file not found: {file_path}"
+        raise FileNotFoundError(msg)
+
+    df = pd.read_csv(file_path)
+
+    agents_dict: dict[int, Agent] = {}
+
+    for _, row in df.iterrows():
+        hcw_id = row["hcw_id"]
+        timestamp = row["timestamp"]
+        location_str = row["location"]
+
+        timestep = pd.to_datetime(timestamp)
+        timestep_index = timestamp_to_timestep(timestep, start_time, time_step_minutes)
+        building, floor, room_str = parse_location_string(location_str)
+
+        room = next(
+            (
+                r
+                for r in rooms
+                if r.name == room_str and r.building == building and r.floor == floor
+            ),
+            None,
+        )
+
+        if room is None:
+            msg = f"Room not found: {room_str} in building {building} on floor {floor}"
+            raise SimulationModeError(msg)
+
+        point = room.get_random_point()
+
+        location = Location(
+            building=building,
+            floor=floor,
+            x=point[0],
+            y=point[1],
+        )
+
+        if hcw_id not in agents_dict:
+            agents_dict[hcw_id] = Agent(
+                idx=hcw_id,
+                location=location,
+                heading=0.0,
+            )
+
+        agents_dict[hcw_id].data_location_time_series.append((timestep_index, location))
+
+    return list(agents_dict.values())
+
+
+def timestamp_to_timestep(
+    timestamp: pd.Timestamp,
+    start_time: pd.Timestamp,
+    time_step_minutes: int,
+) -> int:
+    """
+    Convert a timestamp to a simulation time step index.
+
+    Args:
+        timestamp (pd.Timestamp): The timestamp to convert.
+        start_time (pd.Timestamp): The simulation start time.
+        time_step_minutes (int): The duration of each time step in minutes.
+
+    Returns:
+        int: The corresponding time step index.
+
+    """
+    delta = timestamp - start_time
+    total_minutes = delta.total_seconds() / 60
+    return int(total_minutes // time_step_minutes)
