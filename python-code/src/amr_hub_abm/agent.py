@@ -4,9 +4,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 from logging import getLogger
 
+import shapely
+
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
+from amr_hub_abm.space.wall import Wall
 from amr_hub_abm.task import Task
 
 logger = getLogger(__name__)
@@ -36,6 +39,7 @@ class Agent:
     idx: int
     location: Location
     heading: float
+    interaction_radius: float = field(default=0.05)
     tasks: list[Task] = field(default_factory=list)
     agent_type: AgentType = field(default=AgentType.GENERIC)
     infection_status: InfectionStatus = field(default=InfectionStatus.SUSCEPTIBLE)
@@ -69,3 +73,15 @@ class Agent:
                 if room:
                     return room
         return None
+
+    def check_intersection_with_walls(self, walls: list[Wall]) -> bool:
+        """Check if the agent intersects with any walls."""
+        for wall in walls:
+            if (
+                wall.polygon.distance(
+                    shapely.geometry.Point(self.location.x, self.location.y)
+                )
+                < self.interaction_radius
+            ):
+                return True
+        return False

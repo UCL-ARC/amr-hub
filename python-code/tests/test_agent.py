@@ -3,6 +3,7 @@
 from amr_hub_abm.agent import Agent, AgentType, InfectionStatus
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.location import Location
+from amr_hub_abm.space.wall import Wall
 
 
 def test_agent_creation() -> None:
@@ -43,3 +44,32 @@ def test_heading_modulo() -> None:
     expected_heading = 90.0
 
     assert agent.heading == expected_heading
+
+
+def test_agent_intersection_with_walls() -> None:
+    """Test if the agent correctly detects intersection with walls."""
+    walls = [
+        Wall(start=(0, 0), end=(0, 10)),
+        Wall(start=(0, 10), end=(10, 10)),
+        Wall(start=(10, 10), end=(10, 0)),
+        Wall(start=(10, 0), end=(0, 0)),
+    ]
+
+    agent_intersecting = Agent(
+        idx=3,
+        agent_type=AgentType.HEALTHCARE_WORKER,
+        infection_status=InfectionStatus.EXPOSED,
+        location=Location(x=0.1, y=5.0, floor=1, building="Hospital"),
+        heading=180.0,
+    )
+
+    agent_not_intersecting = Agent(
+        idx=4,
+        agent_type=AgentType.GENERIC,
+        infection_status=InfectionStatus.RECOVERED,
+        location=Location(x=15.0, y=5.0, floor=1, building="Hospital"),
+        heading=0.0,
+    )
+
+    assert agent_intersecting.check_intersection_with_walls(walls) is True
+    assert agent_not_intersecting.check_intersection_with_walls(walls) is False
