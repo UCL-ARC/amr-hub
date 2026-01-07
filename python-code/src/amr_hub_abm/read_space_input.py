@@ -79,7 +79,7 @@ class SpaceInputReader:
                 room.room_id for room in self.rooms if door in room.doors
             ]
 
-            if len(connected_rooms) != 2:  # noqa: PLR2004
+            if len(connected_rooms) != 2:
                 msg = (
                     f"Door at {door.start}-{door.end} must connect exactly two rooms. "
                     f"Found {len(connected_rooms)}."

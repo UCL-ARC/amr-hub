@@ -111,7 +111,7 @@ def test_simulation_initialization(
     simulation = sample_simulation
 
     assert simulation.mode == SimulationMode.TOPOLOGICAL
-    assert simulation.total_simulation_time == 10  # noqa: PLR2004
+    assert simulation.total_simulation_time == 10
     assert simulation.time == 0
     assert simulation.name == "TestSimulation"
     assert simulation.description == "A test simulation."

@@ -39,7 +39,7 @@ def test_buildings_and_floors(space_input_reader: SpaceInputReader) -> None:
 def test_floor_rooms(space_input_reader: SpaceInputReader) -> None:
     """Test rooms on the floor are read correctly."""
     floor = space_input_reader.buildings[0].floors[0]
-    assert len(floor.rooms) == 3  # noqa: PLR2004
+    assert len(floor.rooms) == 3
     room_ids = [room.room_id for room in floor.rooms]
     assert room_ids == [0, 1, 2]
     assert floor.adjacency_matrix.shape == (3, 3)

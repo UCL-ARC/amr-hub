@@ -146,7 +146,7 @@ def test_simple_room_creation(simple_room: Room) -> None:
     """Test creating a simple valid room."""
     assert simple_room.room_id == 1
     assert simple_room.walls is not None
-    assert len(simple_room.walls) == 4  # noqa: PLR2004
+    assert len(simple_room.walls) == 4
 
 
 def test_complex_room_with_internal_walls(

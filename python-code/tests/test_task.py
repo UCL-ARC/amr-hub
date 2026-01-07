@@ -29,7 +29,7 @@ def test_task_initialization(sample_task: Task) -> None:
     assert task.task_type == TaskType.GENERIC
     assert task.progress == TaskProgress.NOT_STARTED
     assert task.priority == TaskPriority.MEDIUM
-    assert task.time_needed == 30  # noqa: PLR2004
+    assert task.time_needed == 30
 
 
 def test_task_negative_time_needed_raises() -> None:
@@ -67,4 +67,4 @@ def test_goto_location_task() -> None:
     assert goto_task.task_type == TaskType.GOTO_LOCATION
     assert goto_task.progress == TaskProgress.NOT_STARTED
     assert goto_task.priority == TaskPriority.HIGH
-    assert goto_task.time_needed == 15  # noqa: PLR2004
+    assert goto_task.time_needed == 15
