@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from amr_hub_abm.agent import Agent
+from amr_hub_abm.agent import Agent, AgentType
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.read_space_input import SpaceInputReader
 from amr_hub_abm.simulation import Simulation, SimulationMode
@@ -103,12 +103,14 @@ def parse_location_timeseries(
 
     df = pd.read_csv(file_path)
 
-    agents_dict: dict[int, Agent] = {}
+    hcw_dict: dict[int, Agent] = {}
+    patient_dict: dict[int, Agent] = {}
 
     for _, row in df.iterrows():
         hcw_id = row["hcw_id"]
         timestamp = row["timestamp"]
         location_str = row["location"]
+        patient_id = row["patient_id"] if row["patient_id"] != "-" else None
 
         timestep = pd.to_datetime(timestamp)
         timestep_index = timestamp_to_timestep(timestep, start_time, time_step_minutes)
@@ -136,16 +138,33 @@ def parse_location_timeseries(
             y=point[1],
         )
 
-        if hcw_id not in agents_dict:
-            agents_dict[hcw_id] = Agent(
+        if hcw_id not in hcw_dict:
+            hcw_dict[hcw_id] = Agent(
                 idx=hcw_id,
                 location=location,
                 heading=0.0,
+                agent_type=AgentType.HEALTHCARE_WORKER,
             )
 
-        agents_dict[hcw_id].data_location_time_series.append((timestep_index, location))
+        hcw_dict[hcw_id].data_location_time_series.append((timestep_index, location))
 
-    return list(agents_dict.values())
+        if patient_id is not None and patient_id not in patient_dict:
+            patient_point = room.get_random_point()
+            location = Location(
+                building=building,
+                floor=floor,
+                x=patient_point[0],
+                y=patient_point[1],
+            )
+
+            patient_dict[patient_id] = Agent(
+                idx=patient_id,
+                location=location,
+                heading=0.0,
+                agent_type=AgentType.PATIENT,
+            )
+
+    return list(hcw_dict.values()) + list(patient_dict.values())
 
 
 def timestamp_to_timestep(
