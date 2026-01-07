@@ -93,7 +93,8 @@ lint.ignore = [
   "D212", # multi-line-summary-first-line
   "D407", # removed dashes lines under sections
   "D417", # argument description in docstring (unreliable)
-  "ISC001" # simplify implicit str concatenation (ruff-format recommended)
+  "ISC001", # simplify implicit str concatenation (ruff-format recommended)
+  "PLR2004" # literal-comparison (pylint recommended)
 ]
 lint.per-file-ignores = {"tests*" = [
   "INP001", # File is part of an implicit namespace package.

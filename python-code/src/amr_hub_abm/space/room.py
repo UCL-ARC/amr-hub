@@ -38,7 +38,7 @@ class Room:
             msg = "Either walls or area must be provided to define a room."
             raise SimulationModeError(msg)
 
-        if self.walls and len(self.walls) < 3:  # noqa: PLR2004
+        if self.walls and len(self.walls) < 3:
             msg = "A room must have at least 3 walls to form a closed region."
             raise InvalidRoomError(msg)
 

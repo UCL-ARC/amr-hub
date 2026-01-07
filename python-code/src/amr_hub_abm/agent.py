@@ -85,3 +85,18 @@ class Agent:
             ):
                 return True
         return False
+
+    def move_to_location(self, new_location: Location) -> None:
+        """Move the agent to a new location and log the movement."""
+        msg = f"Moving Agent id {self.idx} from {self.location} to {new_location}"
+        logger.info(msg)
+        self.location = new_location
+
+    def rotate_heading(self, angle: float) -> None:
+        """Rotate the agent's heading by a given angle."""
+        old_heading = self.heading
+        self.heading = (self.heading + angle) % 360
+        msg = (
+            f"Rotated Agent id {self.idx} heading from {old_heading} to {self.heading}"
+        )
+        logger.info(msg)

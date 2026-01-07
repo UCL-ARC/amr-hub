@@ -73,3 +73,39 @@ def test_agent_intersection_with_walls() -> None:
 
     assert agent_intersecting.check_intersection_with_walls(walls) is True
     assert agent_not_intersecting.check_intersection_with_walls(walls) is False
+
+
+def test_move_to_location() -> None:
+    """Test that move_to_location updates the agent's location."""
+    initial_location = Location(x=1.0, y=1.0, floor=1, building="Hospital")
+    new_location = Location(x=2.5, y=3.5, floor=1, building="Hospital")
+
+    agent = Agent(
+        idx=5,
+        agent_type=AgentType.GENERIC,
+        infection_status=InfectionStatus.SUSCEPTIBLE,
+        location=initial_location,
+        heading=45.0,
+    )
+
+    agent.move_to_location(new_location)
+
+    assert agent.location == new_location
+    assert agent.location is new_location
+
+
+def test_rotate_heading() -> None:
+    """Test that rotate_heading rotates and wraps the heading correctly."""
+    agent = Agent(
+        idx=6,
+        agent_type=AgentType.GENERIC,
+        infection_status=InfectionStatus.SUSCEPTIBLE,
+        location=Location(x=0.0, y=0.0, floor=1, building="Hospital"),
+        heading=350.0,
+    )
+
+    agent.rotate_heading(20.0)
+    assert agent.heading == 10.0  # pylint: disable=literal-comparison
+
+    agent.rotate_heading(-30.0)
+    assert agent.heading == 340.0
