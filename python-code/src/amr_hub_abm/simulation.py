@@ -1,11 +1,20 @@
 """The main simulation module for the AMR Hub ABM."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import TYPE_CHECKING
 
-from amr_hub_abm.agent import Agent
+from matplotlib import pyplot as plt
+
 from amr_hub_abm.exceptions import TimeError
-from amr_hub_abm.space.building import Building
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+
+    from amr_hub_abm.agent import Agent
+    from amr_hub_abm.space.building import Building
 
 
 class SimulationMode(Enum):
@@ -37,3 +46,9 @@ class Simulation:
             raise TimeError(msg)
 
         self.time += 1
+
+    def plot_current_state(self) -> None:
+        """Plot the current state of the simulation."""
+        for building in self.space:
+            axes: list[Axes] = plt.subplots(nrows=len(building.floors), ncols=1)[1]
+            building.plot_building(axes=axes)
