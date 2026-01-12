@@ -48,9 +48,23 @@ def square_4x4_walls() -> list[Wall]:
 
 
 @pytest.fixture
-def room_with_internal_walls() -> list[Wall]:
+def empty_contents() -> list[Content]:
+    """Fixture for empty room contents."""
+    return []
+
+
+@pytest.fixture
+def empty_doors() -> list[Door]:
+    """Fixture for an empty door list."""
+    return []
+
+
+@pytest.fixture
+def room_with_internal_walls(
+    test_building: Building, empty_doors: list[Door], empty_contents: list[Content]
+) -> Room:
     """Fixture for a room with internal walls."""
-    return [
+    walls = [
         Wall(start=(0, 0), end=(5, 0)),
         Wall(start=(5, 0), end=(5, 5)),
         Wall(start=(5, 5), end=(0, 5)),
@@ -61,42 +75,15 @@ def room_with_internal_walls() -> list[Wall]:
         Wall(start=(2, 1), end=(1, 1)),
     ]
 
-
-@pytest.fixture
-def room_with_door_on_left_wall() -> tuple[list[Wall], list[Door]]:
-    """Fixture for a room with a door on the left wall."""
-    walls = [
-        Wall(start=(0, 0), end=(0, 2)),
-        Wall(start=(0, 3), end=(0, 5)),
-        Wall(start=(0, 5), end=(5, 5)),
-        Wall(start=(5, 5), end=(5, 0)),
-        Wall(start=(5, 0), end=(0, 0)),
-    ]
-
-    doors = [
-        Door(
-            door_id=1,
-            start=(0, 2),
-            end=(0, 3),
-            open=True,
-            connecting_rooms=(1, 2),
-            access_control=(True, True),
-        )
-    ]
-
-    return walls, doors
-
-
-@pytest.fixture
-def empty_contents() -> list[Content]:
-    """Fixture for empty room contents."""
-    return []
-
-
-@pytest.fixture
-def empty_doors() -> list[Door]:
-    """Fixture for an empty door list."""
-    return []
+    return Room(
+        room_id=1,
+        name="Room with Internal Walls",
+        building=test_building.name,
+        floor=1,
+        walls=walls,
+        doors=empty_doors,
+        contents=empty_contents,
+    )
 
 
 @pytest.fixture
@@ -149,29 +136,14 @@ def test_simple_room_creation(simple_room: Room) -> None:
     assert len(simple_room.walls) == 4
 
 
-def test_complex_room_with_internal_walls(
-    test_building: Building,
-    room_with_internal_walls: list[Wall],
-    empty_doors: list[Door],
-    empty_contents: list[Content],
-) -> None:
+def test_complex_room_with_internal_walls(room_with_internal_walls: Room) -> None:
     """Test creating a room with internal walls."""
-    room = Room(
-        room_id=1,
-        name="Room with Internal Walls",
-        building=test_building.name,
-        floor=1,
-        walls=room_with_internal_walls,
-        doors=empty_doors,
-        contents=empty_contents,
-    )
-
-    # check if a point is inside the room
     point1 = shapely.geometry.Point(3, 3)
     point2 = shapely.geometry.Point(1.5, 1.5)
 
-    assert room.region.contains(point1)
-    assert not room.region.contains(point2)
+    assert room_with_internal_walls is not None
+    assert room_with_internal_walls.region.contains(point1)
+    assert not room_with_internal_walls.region.contains(point2)
 
 
 def test_invalid_room_no_walls_or_area(
@@ -351,6 +323,28 @@ def test_invalid_room_non_closed_walls(
             contents=empty_contents,
         )
     assert "The walls do not form a valid closed region." in str(exc_info.value)
+
+
+def test_unconnected_walls() -> None:
+    """Test creating a room with unconnected walls."""
+    walls = [
+        Wall(start=(0, 0), end=(0, 5)),
+        Wall(start=(1, 0), end=(1, 5)),  # Not connected to the first wall
+        Wall(start=(2, 0), end=(2, 5)),
+        Wall(start=(3, 0), end=(3, 5)),
+    ]
+
+    with pytest.raises(InvalidRoomError) as exc_info:
+        Room(
+            room_id=8,
+            name="Room with Unconnected Walls",
+            building="Test Building",
+            floor=1,
+            walls=walls,
+            doors=[],
+            contents=[],
+        )
+    assert "The walls do not form a valid closed region" in str(exc_info.value)
 
 
 def test_plot_room(simple_room: Room) -> None:

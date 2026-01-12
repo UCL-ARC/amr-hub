@@ -1,5 +1,6 @@
 """Module containing location representation for the AMR Hub ABM simulation."""
 
+import math
 from dataclasses import dataclass
 
 from amr_hub_abm.exceptions import InvalidDistanceError
@@ -27,4 +28,4 @@ class Location:
         if self.floor != other.floor:
             raise InvalidDistanceError((self.floor, other.floor), building=False)
 
-        return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2) ** 0.5
+        return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
