@@ -1,18 +1,25 @@
 """Module defining room-related classes for the AMR Hub ABM simulation."""
 
+from __future__ import annotations
+
 import hashlib
 import logging
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import numpy as np
 import shapely.geometry
 import shapely.ops
-from matplotlib.axes import Axes
 
 from amr_hub_abm.exceptions import InvalidRoomError, SimulationModeError
-from amr_hub_abm.space.content import Content
-from amr_hub_abm.space.door import Door
-from amr_hub_abm.space.wall import Wall
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+
+    from amr_hub_abm.agent import Agent
+    from amr_hub_abm.space.content import Content
+    from amr_hub_abm.space.door import Door
+    from amr_hub_abm.space.wall import Wall
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +112,7 @@ class Room:
 
         return polygon[0]
 
-    def plot(self, ax: Axes, **kwargs: dict) -> None:
+    def plot(self, ax: Axes, agents: list[Agent] | None = None, **kwargs: dict) -> None:
         """Plot the room on a given matplotlib axis."""
         if not self.walls:
             msg = "Cannot plot room without walls."
@@ -122,6 +129,16 @@ class Room:
                 color=kwargs.get("door_color", "brown"),
                 linewidth=kwargs.get("door_width", 2),
             )
+
+        if agents is None:
+            return
+
+        for agent in agents:
+            if (
+                agent.location.building == self.building
+                and agent.location.floor == self.floor
+            ) and self.contains_point((agent.location.x, agent.location.y)):
+                agent.plot_agent(ax)
 
     def contains_point(self, point: tuple[float, float]) -> bool:
         """Check if a given point is inside the room."""

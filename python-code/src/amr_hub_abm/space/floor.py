@@ -1,13 +1,20 @@
 """Module for Floor class."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import numpy as np
-from matplotlib.axes import Axes
 
 from amr_hub_abm.exceptions import InvalidRoomError
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+
+    from amr_hub_abm.agent import Agent
 
 
 @dataclass
@@ -63,10 +70,10 @@ class Floor:
 
         return adjacency_matrix
 
-    def plot(self, ax: Axes) -> None:
+    def plot(self, ax: Axes, agents: list[Agent] | None = None) -> None:
         """Plot the floor layout including rooms and doors."""
         for room in self.rooms:
-            room.plot(ax=ax)
+            room.plot(ax=ax, agents=agents)
 
     def add_pseudo_rooms(self) -> None:
         """Add pseudo-rooms to the floor."""

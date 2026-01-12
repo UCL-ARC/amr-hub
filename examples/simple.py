@@ -1,6 +1,9 @@
+from pathlib import Path
+
 from amr_hub_abm.agent import Agent, AgentType, InfectionStatus
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.location import Location
+from amr_hub_abm.simulation_factory import create_simulation
 
 
 def create_sample_agent() -> Agent:
@@ -17,3 +20,15 @@ def create_sample_agent() -> Agent:
     )
 
     return agent
+
+
+def simulate():
+    config_path = Path("tests/inputs/simulation_config.yml")
+    simulation = create_simulation(config_path)
+    print(simulation)
+    simulation.plot_current_state()
+    print("Simulation created successfully.")
+
+
+if __name__ == "__main__":
+    simulate()

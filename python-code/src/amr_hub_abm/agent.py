@@ -5,6 +5,7 @@ from enum import Enum
 from logging import getLogger
 
 import shapely
+from matplotlib.axes import Axes
 
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.location import Location
@@ -100,3 +101,13 @@ class Agent:
             f"Rotated Agent id {self.idx} heading from {old_heading} to {self.heading}"
         )
         logger.info(msg)
+
+    def plot_agent(self, ax: Axes) -> None:
+        """Plot the agent on the given axes."""
+        ax.plot(
+            self.location.x,
+            self.location.y,
+            marker="o",
+            markersize=5,
+            label=f"Agent {self.idx} ({self.agent_type.value})",
+        )
