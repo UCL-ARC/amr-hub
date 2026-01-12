@@ -1,5 +1,5 @@
 building:
-  name: Hospital
+  name: Sample Hospital
   address: 123 Health St, Wellness City
   floors:
     - level: 0
@@ -9,13 +9,13 @@ building:
           doors:
             - door1
 
+        - name: Ward
+          area: 15
+          doors:
+            - door2
+
         - name: Corridor
           area: 5
           doors:
             - door1
-            - door2
-
-        - name: Ward
-          area: 15
-          doors:
             - door2

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 import shapely.geometry
 
-from amr_hub_abm.exceptions import InvalidDoorError, SimulationModeError
+from amr_hub_abm.exceptions import InvalidDoorError
 
 
 @dataclass
@@ -16,12 +16,25 @@ class Door:
     open: bool
     connecting_rooms: tuple[int, int]
     access_control: tuple[bool, bool]
-    start: tuple[float, float] = field(default=(0.0, 0.0))
-    end: tuple[float, float] = field(default=(0.0, 0.0))
+    name: str | None = field(default=None)
+    start: tuple[float, float] | None = field(default=None)
+    end: tuple[float, float] | None = field(default=None)
     door_hash: str = field(init=False)
 
     def __post_init__(self) -> None:
         """Post-initialization to validate door coordinates."""
+        if (self.start is None or self.end is None) and (self.start != self.end):
+            msg = "Both start and end points must be None or both must be defined."
+            raise InvalidDoorError(msg)
+
+        if (self.start is None or self.end is None) and (self.name is None):
+            msg = "Door must have a name if start and end points are not defined."
+            raise InvalidDoorError(msg)
+
+        if self.start is None or self.end is None:
+            self.door_hash = self.create_name_hash()
+            return
+
         if self.start == self.end:
             msg = "Door start and end points cannot be the same."
             raise InvalidDoorError(msg)
@@ -41,6 +54,14 @@ class Door:
             return NotImplemented
         return self.door_hash == other.door_hash
 
+    def create_name_hash(self) -> str:
+        """Generate a hash for the door based on its name."""
+        if self.name is None:
+            msg = "Door name must be defined to create name-based hash."
+            raise InvalidDoorError(msg)
+        hash_input = f"{self.name}-{self.connecting_rooms}"
+        return hashlib.sha256(hash_input.encode()).hexdigest()
+
     def create_coordinate_hash(self) -> str:
         """Generate a hash for the door based on its unique attributes."""
         hash_input = f"{self.start}-{self.end}-{self.connecting_rooms}"
@@ -49,10 +70,7 @@ class Door:
     @property
     def line(self) -> shapely.geometry.LineString:
         """Get the line representation of the door."""
-        if self.start == self.end == (0.0, 0.0):
-            msg = """
-            Dummy start and end points for door line.
-            Probably simulation in topological mode.
-            """
-            raise SimulationModeError(msg)
+        if self.start is None or self.end is None:
+            msg = "Door start and end must be defined when not in topological mode."
+            raise InvalidDoorError(msg)
         return shapely.geometry.LineString([self.start, self.end])

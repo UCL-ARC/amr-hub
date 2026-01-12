@@ -49,7 +49,9 @@ class Room:
             msg = f"Room area must be positive. Got {self.area}."
             raise InvalidRoomError(msg)
 
-        self.region = self.form_region()
+        if self.walls:
+            self.region = self.form_region()
+
         self.room_hash = (
             self.create_polygon_hash() if self.walls else self.create_name_hash()
         )
