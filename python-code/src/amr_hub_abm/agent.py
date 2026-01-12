@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from logging import getLogger
 
-from amr_hub_abm.space import Location
+from amr_hub_abm.space.location import Location
 from amr_hub_abm.task import Task
 
 logger = getLogger(__name__)
