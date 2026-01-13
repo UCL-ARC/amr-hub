@@ -11,6 +11,8 @@ from matplotlib import pyplot as plt
 from amr_hub_abm.exceptions import TimeError
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from matplotlib.axes import Axes
 
     from amr_hub_abm.agent import Agent
@@ -47,8 +49,13 @@ class Simulation:
 
         self.time += 1
 
-    def plot_current_state(self) -> None:
+    def plot_current_state(self, directory_path: Path) -> None:
         """Plot the current state of the simulation."""
+        if directory_path.suffix != "":
+            msg = f"The path {directory_path} is not a directory."
+            raise NotADirectoryError(msg)
+        directory_path.mkdir(parents=True, exist_ok=True)
+
         for building in self.space:
             axes: list[Axes] = [plt.subplots(nrows=len(building.floors), ncols=1)[1]]
             building.plot_building(axes=axes, agents=self.agents)
@@ -56,6 +63,7 @@ class Simulation:
             time = f"Time: {self.time}/{self.total_simulation_time}"
             plt.suptitle(f"{simulation_name} | {time}")
             plt.savefig(
-                f"simulation_{self.name}_building_{building.name}_time_{self.time}.png"
+                directory_path
+                / f"plot_{self.name}_building_{building.name}_time_{self.time}.png"
             )
             plt.close()

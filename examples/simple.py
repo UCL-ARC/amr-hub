@@ -26,7 +26,7 @@ def simulate():
     config_path = Path("tests/inputs/simulation_config.yml")
     simulation = create_simulation(config_path)
     print(simulation)
-    simulation.plot_current_state()
+    simulation.plot_current_state(Path("../simulation_outputs"))
     print("Simulation created successfully.")
 
 
