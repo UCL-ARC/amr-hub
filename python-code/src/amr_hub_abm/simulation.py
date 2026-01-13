@@ -67,3 +67,17 @@ class Simulation:
                 / f"plot_{self.name}_building_{building.name}_time_{self.time}.png"
             )
             plt.close()
+
+    def __repr__(self) -> str:
+        """Representation of the simulation."""
+        header = f"Simulation: {self.name}\nDescription: {self.description}\n"
+        header += f"Mode: {self.mode.value}\n"
+        header += f"Total Simulation Time: {self.total_simulation_time}\n"
+        header += f"Current Time: {self.time}\n"
+        header += f"Number of Buildings: {len(self.space)}\n"
+        header += f"Number of Agents: {len(self.agents)}\n"
+
+        buildings_repr = "\n".join([repr(building) for building in self.space])
+        agents_repr = "\n".join([repr(agent) for agent in self.agents])
+
+        return f"{header}\nBuildings:\n{buildings_repr}\n\nAgents:\n{agents_repr}"
