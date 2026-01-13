@@ -47,7 +47,7 @@ class Agent:
     infection_details: dict = field(default_factory=dict)
 
     data_location_time_series: list[tuple[int, Location]] = field(
-        default_factory=list, init=False, repr=False
+        default_factory=list, init=False
     )
 
     def __post_init__(self) -> None:

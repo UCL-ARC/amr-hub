@@ -44,6 +44,10 @@ def create_simulation(config_file: Path) -> Simulation:
 
     start_time = pd.to_datetime(config_data["start_time"])
     time_step_minutes = config_data["time_step_minutes"]
+    end_time = pd.to_datetime(config_data["end_time"])
+    total_minutes = (end_time - start_time).total_seconds() / 60
+    total_steps = int(total_minutes // time_step_minutes)
+    logger.info("Total simulation time steps: %d", total_steps)
 
     agents = parse_location_timeseries(
         file_path=Path(config_data["location_timeseries_path"]),
@@ -61,7 +65,7 @@ def create_simulation(config_file: Path) -> Simulation:
         mode=SimulationMode.SPATIAL,
         space=space_reader.buildings,
         agents=agents,
-        total_simulation_time=100,
+        total_simulation_time=total_steps,
     )
 
 
@@ -79,6 +83,50 @@ def parse_location_string(location_str: str) -> tuple[str, int, str]:
     """
     building_part, floor, room = location_str.split(":")
     return building_part, int(floor), room
+
+
+def update_patient(
+    patient_id: int,
+    building: str,
+    floor: int,
+    room: Room,
+    patient_dict: dict[int, Agent],
+) -> None:
+    """Update patient information from data."""
+    if patient_id is not None and patient_id not in patient_dict:
+        patient_point = room.get_random_point()
+        location = Location(
+            building=building,
+            floor=floor,
+            x=patient_point[0],
+            y=patient_point[1],
+        )
+
+        patient_dict[patient_id] = Agent(
+            idx=patient_id,
+            location=location,
+            heading=0.0,
+            agent_type=AgentType.PATIENT,
+        )
+
+
+def update_hcw(
+    hcw_id: int,
+    location: Location,
+    timestep_index: int,
+    hcw_dict: dict[int, Agent],
+) -> None:
+    """Update healthcare worker information from data."""
+    if hcw_id in hcw_dict:
+        hcw_dict[hcw_id].data_location_time_series.append((timestep_index, location))
+    else:
+        hcw_dict[hcw_id] = Agent(
+            idx=hcw_id,
+            location=location,
+            heading=0.0,
+            agent_type=AgentType.HEALTHCARE_WORKER,
+        )
+        hcw_dict[hcw_id].data_location_time_series.append((timestep_index, location))
 
 
 def parse_location_timeseries(
@@ -107,10 +155,10 @@ def parse_location_timeseries(
     patient_dict: dict[int, Agent] = {}
 
     for _, row in df.iterrows():
-        hcw_id = row["hcw_id"]
+        hcw_id = int(row["hcw_id"])
         timestamp = row["timestamp"]
         location_str = row["location"]
-        patient_id = row["patient_id"] if row["patient_id"] != "-" else None
+        patient_id = int(row["patient_id"]) if row["patient_id"] != "-" else None
 
         timestep = pd.to_datetime(timestamp)
         timestep_index = timestamp_to_timestep(timestep, start_time, time_step_minutes)
@@ -138,30 +186,20 @@ def parse_location_timeseries(
             y=point[1],
         )
 
-        if hcw_id not in hcw_dict:
-            hcw_dict[hcw_id] = Agent(
-                idx=hcw_id,
-                location=location,
-                heading=0.0,
-                agent_type=AgentType.HEALTHCARE_WORKER,
-            )
+        update_hcw(
+            hcw_id=hcw_id,
+            location=location,
+            timestep_index=timestep_index,
+            hcw_dict=hcw_dict,
+        )
 
-        hcw_dict[hcw_id].data_location_time_series.append((timestep_index, location))
-
-        if patient_id is not None and patient_id not in patient_dict:
-            patient_point = room.get_random_point()
-            location = Location(
+        if patient_id:
+            update_patient(
+                patient_id=patient_id,
                 building=building,
                 floor=floor,
-                x=patient_point[0],
-                y=patient_point[1],
-            )
-
-            patient_dict[patient_id] = Agent(
-                idx=patient_id,
-                location=location,
-                heading=0.0,
-                agent_type=AgentType.PATIENT,
+                room=room,
+                patient_dict=patient_dict,
             )
 
     return list(hcw_dict.values()) + list(patient_dict.values())
