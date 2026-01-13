@@ -111,3 +111,11 @@ class Agent:
             markersize=5,
             label=f"Agent {self.idx} ({self.agent_type.value})",
         )
+
+    def __repr__(self) -> str:
+        """Return a string representation of the agent."""
+        return (
+            f"Agent(idx={self.idx}, {self.location}, {self.heading}, "
+            f"{self.interaction_radius}, {self.agent_type.value}, "
+            f"{self.infection_status.value})"
+        )

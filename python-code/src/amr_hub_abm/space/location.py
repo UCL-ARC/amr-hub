@@ -29,3 +29,9 @@ class Location:
             raise InvalidDistanceError((self.floor, other.floor), building=False)
 
         return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
+
+    def __repr__(self) -> str:
+        """Return a string representation of the location."""
+        return (
+            f"Location(x={self.x:.2f}, y={self.y:.2f}, {self.floor}, {self.building})"
+        )
