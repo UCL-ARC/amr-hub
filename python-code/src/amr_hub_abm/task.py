@@ -72,3 +72,39 @@ class TaskGotoLocation(Task):
         """Post-initialization to set task type."""
         super().__post_init__()
         self.task_type = TaskType.GOTO_LOCATION
+
+
+@dataclass
+class TaskAttendPatient(Task):
+    """Representation of an 'attend patient' task."""
+
+    patient_id: int
+
+    def __post_init__(self) -> None:
+        """Post-initialization to set task type."""
+        super().__post_init__()
+        self.task_type = TaskType.ATTEND_PATIENT
+
+
+@dataclass
+class TaskDoorAccess(Task):
+    """Representation of a 'door access' task."""
+
+    door_id: int
+
+    def __post_init__(self) -> None:
+        """Post-initialization to set task type."""
+        super().__post_init__()
+        self.task_type = TaskType.DOOR_ACCESS
+
+
+@dataclass
+class TaskWorkstation(Task):
+    """Representation of a 'workstation' task."""
+
+    room_id: int
+
+    def __post_init__(self) -> None:
+        """Post-initialization to set task type."""
+        super().__post_init__()
+        self.task_type = TaskType.WORKSTATION
