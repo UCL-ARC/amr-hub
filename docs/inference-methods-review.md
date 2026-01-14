@@ -17,10 +17,10 @@ This is challenging because:
 
 ### Two Main Inference Goals
 
-| Goal                | Question                                                 | Possible Methods               |
-| ------------------- | -------------------------------------------------------- | ------------------------------ |
-| Parameter Inference | "What epidemiological parameters explain this outbreak?" | ABC, SMC, MCMC, MOEA           |
-| Policy Inference    | "What decision rules do agents follow?"                  | Inverse RL, Imitation Learning |
+| Goal | Question | Possible Methods |
+|------|----------|------------------|
+| Parameter Inference | "What epidemiological parameters explain this outbreak?" | ABC, SMC, MCMC, MOEA |
+| Policy Inference | "What decision rules do agents follow?" | Inverse RL, Imitation Learning |
 
 ---
 
@@ -38,7 +38,7 @@ A likelihood-free inference method that bypasses the need for an explicit likeli
 4. Accept parameters if statistics are "close enough" to observed data
 5. Accepted samples approximate the posterior distribution
 
-**When to use:**
+**When to use:**  
 When you cannot write down P(data|parameters) but can simulate from the model.
 
 **Limitations:**
@@ -82,12 +82,12 @@ Classical Bayesian inference via random walks in parameter space, constructing a
 - **Hamiltonian Monte Carlo (HMC):** Uses gradient information for efficient exploration
 - **NUTS:** No-U-Turn Sampler, adaptive HMC [6]
 
-**Integration with ABMs:**
+**Integration with ABMs:**  
 MCMC sampler calls the simulation as a black-box likelihood evaluator. For likelihood-free models, combine with pseudo-marginal methods or synthetic likelihood.
 
 **Example workflow:**
 
-```python
+```
 for each MCMC iteration:
     propose new parameters θ'
     run simulation with θ'
@@ -143,17 +143,17 @@ Optimization framework that evolves a population of candidate solutions to find 
 
 ### 3.1 sbi (Simulation-Based Inference Library)
 
-**Repository:** <https://github.com/sbi-dev/sbi>
+**Repository:** https://github.com/sbi-dev/sbi
 
 PyTorch-based library implementing neural network-powered likelihood-free inference. Trains neural networks to approximate posterior, likelihood, or likelihood ratio [9, 10].
 
 **Key methods:**
 
-| Method | Approximates     | Approach                 |
-| ------ | ---------------- | ------------------------ |
-| SNPE   | Posterior        | Neural density estimator |
-| SNLE   | Likelihood       | Train network, then MCMC |
-| SNRE   | Likelihood Ratio | Binary classifier        |
+| Method | Approximates | Approach |
+|--------|--------------|----------|
+| SNPE | Posterior | Neural density estimator |
+| SNLE | Likelihood | Train network, then MCMC |
+| SNRE | Likelihood Ratio | Binary classifier |
 
 **Workflow:**
 
@@ -173,7 +173,7 @@ PyTorch-based library implementing neural network-powered likelihood-free infere
 ```python
 from sbi import utils, inference
 
-prior = utils.BoxUniform(low=torch.tensor([0.0, 0.0]),
+prior = utils.BoxUniform(low=torch.tensor([0.0, 0.0]), 
                           high=torch.tensor([1.0, 1.0]))
 
 # Your ABM as a callable
@@ -194,7 +194,7 @@ samples = posterior.sample((10000,), x=observed_data)
 
 ### 3.2 ELFI (Engine for Likelihood-Free Inference)
 
-**Repository:** <https://github.com/elfi-dev/elfi>
+**Repository:** https://github.com/elfi-dev/elfi
 
 Python framework providing a unified interface to multiple likelihood-free inference algorithms with a focus on modularity and visualization [11].
 
@@ -205,7 +205,7 @@ Python framework providing a unified interface to multiple likelihood-free infer
 - BOLFI (Bayesian Optimization for Likelihood-Free Inference)
 - ROMC (Robust Optimization Monte Carlo)
 
-**Key feature — BOLFI:**
+**Key feature — BOLFI:**  
 Uses Gaussian Process surrogate to model the discrepancy function, enabling efficient exploration with far fewer simulations than standard ABC.
 
 **Workflow:**
@@ -230,7 +230,7 @@ result = rej.sample(1000, threshold=0.1)
 
 ### 3.3 pyABC
 
-**Repository:** <https://github.com/ICB-DCM/pyABC>
+**Repository:** https://github.com/ICB-DCM/pyABC
 
 Scalable, distributed ABC-SMC implementation with excellent parallelization support [12].
 
@@ -259,7 +259,7 @@ abc.new("sqlite:///results.db", observed_data)
 history = abc.run(max_nr_populations=10)
 ```
 
-**Model selection example:**
+**Model selection example:**  
 Compare SEIR vs SIR vs SEIRS models for infection dynamics.
 
 **Best for:** Production ABC-SMC with cluster parallelization; Bayesian model comparison.
@@ -272,7 +272,7 @@ Compare SEIR vs SIR vs SEIRS models for infection dynamics.
 
 Given observed agent trajectories, infer the reward function that explains the behavior. Assumes agents are (approximately) optimal with respect to some unknown reward [13].
 
-**Core idea:**
+**Core idea:**  
 Instead of asking "what parameters?" ask "what objectives are agents optimizing?"
 
 **Classic algorithms:**
@@ -294,7 +294,7 @@ Instead of asking "what parameters?" ask "what objectives are agents optimizing?
 class HospitalEnv(gym.Env):
     def step(self, action):
         return gama_simulation.step(action)
-
+    
 # Run IRL
 from imitation.algorithms import GAIL
 trainer = GAIL(env=HospitalEnv(), demonstrations=observed_trajectories)
@@ -315,14 +315,14 @@ Supervised learning approach — directly learn state→action mapping from demo
 - Works when reward structure isn't needed
 - Sufficient expert data available
 
-**Limitations:**
+**Limitations:**  
 Compounding errors (doesn't learn to recover from mistakes).
 
 ---
 
 ## 5. Integration Pattern
 
-```text
+```
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
 │   GAMA      │─────▶│  Export     │─────▶│  sbi/pyABC  │
 │ (simulation)│      │ trajectories│      │ (inference) │
@@ -339,47 +339,47 @@ Compounding errors (doesn't learn to recover from mistakes).
 
 ### Foundational Papers
 
-[1] Beaumont, M.A., Zhang, W., & Balding, D.J. (2002). Approximate Bayesian computation in population genetics. _Genetics_, 162(4), 2025-2035.
+[1] Beaumont, M.A., Zhang, W., & Balding, D.J. (2002). Approximate Bayesian computation in population genetics. *Genetics*, 162(4), 2025-2035.
 
-[2] Sunnåker, M., et al. (2013). Approximate Bayesian Computation. _PLOS Computational Biology_, 9(1), e1002803.
+[2] Sunnåker, M., et al. (2013). Approximate Bayesian Computation. *PLOS Computational Biology*, 9(1), e1002803.
 
-[3] Toni, T., Welch, D., Strelkowa, N., Ipsen, A., & Stumpf, M.P.H. (2009). Approximate Bayesian computation scheme for parameter inference and model selection in dynamical systems. _Journal of the Royal Society Interface_, 6(31), 187-202.
+[3] Toni, T., Welch, D., Strelkowa, N., Ipsen, A., & Stumpf, M.P.H. (2009). Approximate Bayesian computation scheme for parameter inference and model selection in dynamical systems. *Journal of the Royal Society Interface*, 6(31), 187-202.
 
-[4] Del Moral, P., Doucet, A., & Jasra, A. (2012). An adaptive sequential Monte Carlo method for approximate Bayesian computation. _Statistics and Computing_, 22(5), 1009-1020.
+[4] Del Moral, P., Doucet, A., & Jasra, A. (2012). An adaptive sequential Monte Carlo method for approximate Bayesian computation. *Statistics and Computing*, 22(5), 1009-1020.
 
-[5] Metropolis, N., Rosenbluth, A.W., Rosenbluth, M.N., Teller, A.H., & Teller, E. (1953). Equation of state calculations by fast computing machines. _The Journal of Chemical Physics_, 21(6), 1087-1092.
+[5] Metropolis, N., Rosenbluth, A.W., Rosenbluth, M.N., Teller, A.H., & Teller, E. (1953). Equation of state calculations by fast computing machines. *The Journal of Chemical Physics*, 21(6), 1087-1092.
 
-[6] Hoffman, M.D. & Gelman, A. (2014). The No-U-Turn Sampler: Adaptively setting path lengths in Hamiltonian Monte Carlo. _Journal of Machine Learning Research_, 15(1), 1593-1623.
+[6] Hoffman, M.D. & Gelman, A. (2014). The No-U-Turn Sampler: Adaptively setting path lengths in Hamiltonian Monte Carlo. *Journal of Machine Learning Research*, 15(1), 1593-1623.
 
-[7] Deb, K., Pratap, A., Agarwal, S., & Meyarivan, T. (2002). A fast and elitist multiobjective genetic algorithm: NSGA-II. _IEEE Transactions on Evolutionary Computation_, 6(2), 182-197.
+[7] Deb, K., Pratap, A., Agarwal, S., & Meyarivan, T. (2002). A fast and elitist multiobjective genetic algorithm: NSGA-II. *IEEE Transactions on Evolutionary Computation*, 6(2), 182-197.
 
-[8] Deb, K. & Jain, H. (2014). An evolutionary many-objective optimization algorithm using reference-point-based nondominated sorting approach, part I. _IEEE Transactions on Evolutionary Computation_, 18(4), 577-601.
+[8] Deb, K. & Jain, H. (2014). An evolutionary many-objective optimization algorithm using reference-point-based nondominated sorting approach, part I. *IEEE Transactions on Evolutionary Computation*, 18(4), 577-601.
 
-[9] Cranmer, K., Brehmer, J., & Louppe, G. (2020). The frontier of simulation-based inference. _Proceedings of the National Academy of Sciences_, 117(48), 30055-30062.
+[9] Cranmer, K., Brehmer, J., & Louppe, G. (2020). The frontier of simulation-based inference. *Proceedings of the National Academy of Sciences*, 117(48), 30055-30062.
 
-[10] Tejero-Cantero, A., et al. (2020). sbi: A toolkit for simulation-based inference. _Journal of Open Source Software_, 5(52), 2505.
+[10] Tejero-Cantero, A., et al. (2020). sbi: A toolkit for simulation-based inference. *Journal of Open Source Software*, 5(52), 2505.
 
-[11] Lintusaari, J., et al. (2018). ELFI: Engine for likelihood-free inference. _Journal of Machine Learning Research_, 19(1), 742-747.
+[11] Lintusaari, J., et al. (2018). ELFI: Engine for likelihood-free inference. *Journal of Machine Learning Research*, 19(1), 742-747.
 
-[12] Klinger, E., Rickert, D., & Hasenauer, J. (2018). pyABC: distributed, likelihood-free inference. _Bioinformatics_, 34(20), 3591-3593.
+[12] Klinger, E., Rickert, D., & Hasenauer, J. (2018). pyABC: distributed, likelihood-free inference. *Bioinformatics*, 34(20), 3591-3593.
 
-[13] Ng, A.Y. & Russell, S.J. (2000). Algorithms for inverse reinforcement learning. _Proceedings of the 17th International Conference on Machine Learning (ICML)_, 663-670.
+[13] Ng, A.Y. & Russell, S.J. (2000). Algorithms for inverse reinforcement learning. *Proceedings of the 17th International Conference on Machine Learning (ICML)*, 663-670.
 
-[14] Ziebart, B.D., Maas, A.L., Bagnell, J.A., & Dey, A.K. (2008). Maximum entropy inverse reinforcement learning. _Proceedings of the 23rd AAAI Conference on Artificial Intelligence_, 1433-1438.
+[14] Ziebart, B.D., Maas, A.L., Bagnell, J.A., & Dey, A.K. (2008). Maximum entropy inverse reinforcement learning. *Proceedings of the 23rd AAAI Conference on Artificial Intelligence*, 1433-1438.
 
-[15] Ramachandran, D. & Amir, E. (2007). Bayesian inverse reinforcement learning. _Proceedings of the 20th International Joint Conference on Artificial Intelligence (IJCAI)_, 2586-2591.
+[15] Ramachandran, D. & Amir, E. (2007). Bayesian inverse reinforcement learning. *Proceedings of the 20th International Joint Conference on Artificial Intelligence (IJCAI)*, 2586-2591.
 
-[16] Ho, J. & Ermon, S. (2016). Generative adversarial imitation learning. _Advances in Neural Information Processing Systems_, 29, 4565-4573.
+[16] Ho, J. & Ermon, S. (2016). Generative adversarial imitation learning. *Advances in Neural Information Processing Systems*, 29, 4565-4573.
 
 ### Software Documentation
 
-- sbi: <https://sbi-dev.github.io/sbi/>
-- ELFI: <https://elfi.readthedocs.io/>
-- pyABC: <https://pyabc.readthedocs.io/>
-- pymoo: <https://pymoo.org/>
-- imitation: <https://imitation.readthedocs.io/>
+- sbi: https://sbi-dev.github.io/sbi/
+- ELFI: https://elfi.readthedocs.io/
+- pyABC: https://pyabc.readthedocs.io/
+- pymoo: https://pymoo.org/
+- imitation: https://imitation.readthedocs.io/
 
 ---
 
-_Last updated: January 2025_
-_Project: AMR-HUB Hospital Movement & Infection Dynamics Simulation_
+*Last updated: January 2025*  
+*Project: AMR-HUB Hospital Movement & Infection Dynamics Simulation*
