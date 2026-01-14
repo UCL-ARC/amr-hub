@@ -24,6 +24,13 @@ class AgentType(Enum):
     HEALTHCARE_WORKER = "healthcare_worker"
 
 
+ROLE_COLOUR_MAP = {
+    AgentType.GENERIC: "blue",
+    AgentType.PATIENT: "red",
+    AgentType.HEALTHCARE_WORKER: "green",
+}
+
+
 class InfectionStatus(Enum):
     """Enumeration of possible infection statuses."""
 
@@ -102,15 +109,25 @@ class Agent:
         )
         logger.info(msg)
 
-    def plot_agent(self, ax: Axes) -> None:
+    def plot_agent(self, ax: Axes, *, show_tags: bool = False) -> None:
         """Plot the agent on the given axes."""
         ax.plot(
             self.location.x,
             self.location.y,
             marker="o",
             markersize=5,
-            label=f"Agent {self.idx} ({self.agent_type.value})",
+            color=ROLE_COLOUR_MAP[self.agent_type],
         )
+
+        if show_tags:
+            ax.text(
+                self.location.x + 0.05,
+                self.location.y + 0.05,
+                f"{self.agent_type.value} {self.idx}",
+                fontsize=8,
+                ha="left",
+                va="bottom",
+            )
 
     def __repr__(self) -> str:
         """Return a string representation of the agent."""
