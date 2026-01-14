@@ -87,12 +87,12 @@ def parse_location_string(location_str: str) -> tuple[str, int, str]:
 
 def update_patient(
     patient_id: int,
-    building: str,
-    floor: int,
-    room: Room,
+    space_tuple: tuple[str, int, Room],
     patient_dict: dict[int, Agent],
 ) -> None:
     """Update patient information from data."""
+    building, floor, room = space_tuple
+
     if patient_id is not None and patient_id not in patient_dict:
         patient_point = room.get_random_point()
         location = Location(
@@ -112,21 +112,30 @@ def update_patient(
 
 def update_hcw(
     hcw_id: int,
+    space_tuple: tuple[str, int, Room],
     location: Location,
     timestep_index: int,
     hcw_dict: dict[int, Agent],
 ) -> None:
     """Update healthcare worker information from data."""
-    if hcw_id in hcw_dict:
-        hcw_dict[hcw_id].data_location_time_series.append((timestep_index, location))
-    else:
+    building, floor, room = space_tuple
+
+    if hcw_id not in hcw_dict:
+        hcw_point = room.get_random_point()
+        hcw_location = Location(
+            building=building,
+            floor=floor,
+            x=hcw_point[0],
+            y=hcw_point[1],
+        )
         hcw_dict[hcw_id] = Agent(
             idx=hcw_id,
-            location=location,
+            location=hcw_location,
             heading=0.0,
             agent_type=AgentType.HEALTHCARE_WORKER,
         )
-        hcw_dict[hcw_id].data_location_time_series.append((timestep_index, location))
+
+    hcw_dict[hcw_id].data_location_time_series.append((timestep_index, location))
 
 
 def parse_location_timeseries(
@@ -159,6 +168,7 @@ def parse_location_timeseries(
         timestamp = row["timestamp"]
         location_str = row["location"]
         patient_id = int(row["patient_id"]) if row["patient_id"] != "-" else None
+        event_type = row["event_type"]
 
         timestep = pd.to_datetime(timestamp)
         timestep_index = timestamp_to_timestep(timestep, start_time, time_step_minutes)
@@ -177,30 +187,45 @@ def parse_location_timeseries(
             msg = f"Room not found: {room_str} in building {building} on floor {floor}"
             raise SimulationModeError(msg)
 
-        point = room.get_random_point()
-
-        location = Location(
-            building=building,
-            floor=floor,
-            x=point[0],
-            y=point[1],
-        )
-
-        update_hcw(
-            hcw_id=hcw_id,
-            location=location,
-            timestep_index=timestep_index,
-            hcw_dict=hcw_dict,
-        )
+        if event_type == "attend" and patient_id is None:
+            msg = f"Patient ID must be provided for 'attend' events. Row: {row}"
+            raise SimulationModeError(msg)
 
         if patient_id:
             update_patient(
                 patient_id=patient_id,
-                building=building,
-                floor=floor,
-                room=room,
+                space_tuple=(building, floor, room),
                 patient_dict=patient_dict,
             )
+
+        if event_type == "attend" and patient_id is not None:
+            location = patient_dict[patient_id].location
+        if event_type == "door_access":
+            point = room.get_door_access_point()
+
+            location = Location(
+                building=building,
+                floor=floor,
+                x=point[0],
+                y=point[1],
+            )
+        else:
+            point = room.get_random_point()
+
+            location = Location(
+                building=building,
+                floor=floor,
+                x=point[0],
+                y=point[1],
+            )
+
+        update_hcw(
+            hcw_id=hcw_id,
+            space_tuple=(building, floor, room),
+            location=location,
+            timestep_index=timestep_index,
+            hcw_dict=hcw_dict,
+        )
 
     return list(hcw_dict.values()) + list(patient_dict.values())
 

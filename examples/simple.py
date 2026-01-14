@@ -29,6 +29,8 @@ def simulate():
     simulation.plot_current_state(Path("../simulation_outputs"))
     print("Simulation created successfully.")
 
+    print(simulation.agents[0].data_location_time_series)
+
 
 if __name__ == "__main__":
     simulate()

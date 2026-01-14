@@ -174,3 +174,18 @@ class Room:
         Consider increasing max_attempts or checking room geometry.
         """
         raise SimulationModeError(msg)
+
+    def get_door_access_point(self) -> tuple[float, float]:
+        """Get a point near one of the room's doors for access."""
+        if not self.doors:
+            msg = f"Room {self.name} has no doors for access."
+            raise InvalidRoomError(msg)
+
+        if len(self.doors) > 1:
+            msg = f"Room {self.name} has multiple doors; \
+            This functionality is not supported for now."
+            raise InvalidRoomError(msg)
+
+        door = self.doors[0]
+        midpoint = door.line.interpolate(0.5, normalized=True)
+        return (midpoint.x, midpoint.y)
