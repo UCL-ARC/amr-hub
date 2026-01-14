@@ -118,12 +118,12 @@ def update_patient(
 def update_hcw(
     hcw_id: int,
     space_tuple: tuple[str, int, Room],
-    location: Location,
-    timestep_index: int,
+    event_tuple: tuple[Location, int, str],
     hcw_dict: dict[int, Agent],
 ) -> None:
     """Update healthcare worker information from data."""
     building, floor, room = space_tuple
+    location, timestep_index, event_type = event_tuple
 
     if hcw_id not in hcw_dict:
         hcw_location = get_random_location(room, building, floor)
@@ -134,7 +134,7 @@ def update_hcw(
             agent_type=AgentType.HEALTHCARE_WORKER,
         )
 
-    hcw_dict[hcw_id].data_location_time_series.append((timestep_index, location))
+    hcw_dict[hcw_id].add_task(timestep_index, location, event_type)
 
 
 def parse_location_timeseries(
@@ -199,7 +199,8 @@ def parse_location_timeseries(
 
         if event_type == "attend" and patient_id is not None:
             location = patient_dict[patient_id].location
-        if event_type == "door_access":
+
+        elif event_type == "door_access":
             point = room.get_door_access_point()
 
             location = Location(
@@ -214,8 +215,7 @@ def parse_location_timeseries(
         update_hcw(
             hcw_id=hcw_id,
             space_tuple=(building, floor, room),
-            location=location,
-            timestep_index=timestep_index,
+            event_tuple=(location, timestep_index, event_type),
             hcw_dict=hcw_dict,
         )
 

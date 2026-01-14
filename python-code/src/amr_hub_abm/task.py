@@ -20,13 +20,15 @@ class TaskType(Enum):
     GENERIC = "generic"
     OFFICE_WORK = "office_work"
     NURSE_ROUND = "nurse_round"
-    PATIENT_CARE = "patient_care"
+    ATTEND_PATIENT = "attend_patient"
     GOTO_LOCATION = "goto_location"
     GOTO_AGENT = "goto_agent"
     ATTEND_BELL = "attend_bell"
     STAY_IN_BED = "stay_in_bed"
     STAY_IN_ROOM = "stay_in_room"
     INTERACT_WITH_AGENT = "interact_with_agent"
+    DOOR_ACCESS = "door_access"
+    WORKSTATION = "workstation"
 
 
 class TaskPriority(Enum):

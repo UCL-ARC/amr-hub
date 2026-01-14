@@ -11,7 +11,7 @@ from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
-from amr_hub_abm.task import Task
+from amr_hub_abm.task import Task, TaskType
 
 logger = getLogger(__name__)
 
@@ -136,3 +136,12 @@ class Agent:
             f"{self.interaction_radius}, {self.agent_type.value}, "
             f"{self.infection_status.value})"
         )
+
+    def add_task(self, time: int, location: Location, event_type: str) -> None:
+        """Add a task to the agent's task list and log the addition."""
+        task_types = [task_type.value for task_type in TaskType]
+        if event_type not in task_types:
+            msg = f"Invalid task type: {event_type}. Must be one of {task_types}."
+            raise ValueError(msg)
+
+        self.data_location_time_series.append((time, location))

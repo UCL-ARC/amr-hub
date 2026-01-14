@@ -1,20 +1,20 @@
 hcw_id,timestamp,location,event_type,patient_id
 1,2024-01-01 05:00:00,Sample Hospital:0:Staff Room,door_access,-
 1,2024-01-01 06:00:00,Sample Hospital:0:Ward,door_access,-
-1,2024-01-01 07:00:00,Sample Hospital:0:Ward,attend,1
+1,2024-01-01 07:00:00,Sample Hospital:0:Ward,attend_patient,1
 1,2024-01-01 08:30:00,Sample Hospital:0:Ward,door_access,-
 1,2024-01-01 09:30:00,Sample Hospital:0:Staff Room,door_access,-
 1,2024-01-01 10:00:00,Sample Hospital:0:Staff Room,door_access,-
 1,2024-01-01 11:30:00,Sample Hospital:0:Ward,door_access,-
-1,2024-01-01 12:00:00,Sample Hospital:0:Ward,attend,2
-1,2024-01-01 13:00:00,Sample Hospital:0:Ward,attend,2
-1,2024-01-01 14:00:00,Sample Hospital:0:Ward,attend,1
+1,2024-01-01 12:00:00,Sample Hospital:0:Ward,attend_patient,2
+1,2024-01-01 13:00:00,Sample Hospital:0:Ward,attend_patient,2
+1,2024-01-01 14:00:00,Sample Hospital:0:Ward,attend_patient,1
 1,2024-01-01 14:30:00,Sample Hospital:0:Ward,door_access,-
 1,2024-01-01 15:30:00,Sample Hospital:0:Staff Room,door_access,-
 1,2024-01-01 16:00:00,Sample Hospital:0:Staff Room,workstation,-
 1,2024-01-01 16:30:00,Sample Hospital:0:Staff Room,door_access,-
 1,2024-01-01 17:00:00,Sample Hospital:0:Ward,door_access,-
-1,2024-01-01 18:00:00,Sample Hospital:0:Ward,attend,1
-1,2024-01-01 19:00:00,Sample Hospital:0:Ward,attend,3
+1,2024-01-01 18:00:00,Sample Hospital:0:Ward,attend_patient,1
+1,2024-01-01 19:00:00,Sample Hospital:0:Ward,attend_patient,3
 1,2024-01-01 19:30:00,Sample Hospital:0:Ward,door_access,-
 1,2024-01-01 20:00:00,Sample Hospital:0:Staff Room,door_access,-
