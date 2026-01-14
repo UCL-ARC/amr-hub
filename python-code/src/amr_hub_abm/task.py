@@ -45,12 +45,18 @@ class Task:
     progress: TaskProgress
     priority: TaskPriority
     time_needed: int
+    time_due: int
 
     def __post_init__(self) -> None:
         """Post-initialization to validate task attributes."""
         self.task_type = TaskType.GENERIC
+
         if self.time_needed < 0:
             msg = "Time needed for a task cannot be negative."
+            raise TimeError(msg)
+
+        if self.time_due < 0:
+            msg = "Time due for a task cannot be negative."
             raise TimeError(msg)
 
 

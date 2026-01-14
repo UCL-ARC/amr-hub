@@ -19,6 +19,7 @@ def sample_task() -> Task:
         progress=TaskProgress.NOT_STARTED,
         priority=TaskPriority.MEDIUM,
         time_needed=30,
+        time_due=60,
     )
 
 
@@ -39,6 +40,7 @@ def test_task_negative_time_needed_raises() -> None:
             progress=TaskProgress.NOT_STARTED,
             priority=TaskPriority.HIGH,
             time_needed=-10,
+            time_due=50,
         )
 
     assert "Time needed for a task cannot be negative." in str(excinfo.value)
@@ -62,9 +64,23 @@ def test_goto_location_task() -> None:
         priority=TaskPriority.HIGH,
         time_needed=15,
         location_id=42,
+        time_due=30,
     )
 
     assert goto_task.task_type == TaskType.GOTO_LOCATION
     assert goto_task.progress == TaskProgress.NOT_STARTED
     assert goto_task.priority == TaskPriority.HIGH
     assert goto_task.time_needed == 15
+
+
+def test_task_negative_time_due_raises() -> None:
+    """Test that negative time_due raises a TimeError."""
+    with pytest.raises(TimeError) as excinfo:
+        Task(
+            progress=TaskProgress.NOT_STARTED,
+            priority=TaskPriority.LOW,
+            time_needed=20,
+            time_due=-5,
+        )
+
+    assert "Time due for a task cannot be negative." in str(excinfo.value)
