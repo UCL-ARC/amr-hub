@@ -1,9 +1,17 @@
 """Module containing location representation for the AMR Hub ABM simulation."""
 
+from __future__ import annotations
+
 import math
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+import shapely
 
 from amr_hub_abm.exceptions import InvalidDistanceError
+
+if TYPE_CHECKING:
+    from amr_hub_abm.space.room import Room
 
 
 @dataclass
@@ -21,7 +29,7 @@ class Location:
         self.y = new_y
         self.floor = new_floor
 
-    def distance_to(self, other: "Location") -> float:
+    def distance_to(self, other: Location) -> float:
         """Calculate the Euclidean distance to another location."""
         if self.building != other.building:
             raise InvalidDistanceError((self.building, other.building), building=True)
@@ -35,3 +43,12 @@ class Location:
         return (
             f"Location(x={self.x:.2f}, y={self.y:.2f}, {self.floor}, {self.building})"
         )
+
+    def which_room(self, rooms: list[Room]) -> Room | None:
+        """Determine which room the location is in, if any."""
+        for room in rooms:
+            if room.building != self.building or room.floor != self.floor:
+                continue
+            if room.region.contains(shapely.geometry.Point(self.x, self.y)):
+                return room
+        return None
