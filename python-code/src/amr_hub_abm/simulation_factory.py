@@ -120,6 +120,7 @@ def update_hcw(
     space_tuple: tuple[str, int, Room],
     event_tuple: tuple[Location, int, str],
     hcw_dict: dict[int, Agent],
+    additional_info: dict | None = None,
 ) -> None:
     """Update healthcare worker information from data."""
     building, floor, room = space_tuple
@@ -134,7 +135,7 @@ def update_hcw(
             agent_type=AgentType.HEALTHCARE_WORKER,
         )
 
-    hcw_dict[hcw_id].add_task(timestep_index, location, event_type)
+    hcw_dict[hcw_id].add_task(timestep_index, location, event_type, additional_info)
 
 
 def parse_location_timeseries(
@@ -172,6 +173,7 @@ def parse_location_timeseries(
         timestep = pd.to_datetime(timestamp)
         timestep_index = timestamp_to_timestep(timestep, start_time, time_step_minutes)
         building, floor, room_str = parse_location_string(location_str)
+        additional_info = {}
 
         room = next(
             (
@@ -197,11 +199,13 @@ def parse_location_timeseries(
                 patient_dict=patient_dict,
             )
 
-        if event_type == "attend" and patient_id is not None:
+        if event_type == "attend_patient" and patient_id is not None:
+            additional_info["patient_id"] = patient_id
             location = patient_dict[patient_id].location
 
         elif event_type == "door_access":
-            point = room.get_door_access_point()
+            door, point = room.get_door_access_point()
+            additional_info["door_id"] = door.door_id
 
             location = Location(
                 building=building,
@@ -209,14 +213,19 @@ def parse_location_timeseries(
                 x=point[0],
                 y=point[1],
             )
-        else:
+        elif event_type == "workstation":
             location = get_random_location(room, building, floor)
+
+        else:
+            msg = f"Unknown event type: {event_type} in row: {row}"
+            raise SimulationModeError(msg)
 
         update_hcw(
             hcw_id=hcw_id,
             space_tuple=(building, floor, room),
             event_tuple=(location, timestep_index, event_type),
             hcw_dict=hcw_dict,
+            additional_info=additional_info if additional_info else None,
         )
 
     return list(hcw_dict.values()) + list(patient_dict.values())

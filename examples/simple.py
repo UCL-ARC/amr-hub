@@ -29,7 +29,10 @@ def simulate():
     simulation.plot_current_state(Path("../simulation_outputs"))
     print("Simulation created successfully.")
 
-    print(simulation.agents[0].data_location_time_series)
+    tasks = simulation.agents[0].tasks
+
+    for task in tasks:
+        print(task)
 
 
 if __name__ == "__main__":

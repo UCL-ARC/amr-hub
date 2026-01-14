@@ -11,7 +11,13 @@ from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
-from amr_hub_abm.task import Task, TaskType
+from amr_hub_abm.task import (
+    Task,
+    TaskAttendPatient,
+    TaskDoorAccess,
+    TaskType,
+    TaskWorkstation,
+)
 
 logger = getLogger(__name__)
 
@@ -137,11 +143,54 @@ class Agent:
             f"{self.infection_status.value})"
         )
 
-    def add_task(self, time: int, location: Location, event_type: str) -> None:
+    def add_task(
+        self,
+        time: int,
+        location: Location,
+        event_type: str,
+        additional_info: dict | None = None,
+    ) -> None:
         """Add a task to the agent's task list and log the addition."""
         task_types = [task_type.value for task_type in TaskType]
         if event_type not in task_types:
             msg = f"Invalid task type: {event_type}. Must be one of {task_types}."
             raise ValueError(msg)
+        task_type = TaskType(event_type)
 
-        self.data_location_time_series.append((time, location))
+        task: Task
+
+        if task_type == TaskType.ATTEND_PATIENT:
+            if additional_info is None or "patient_id" not in additional_info:
+                msg = "Patient ID must be provided for attend_patient tasks."
+                raise ValueError(msg)
+
+            patient_id = additional_info["patient_id"]
+            if not isinstance(patient_id, int):
+                msg = "Patient ID must be an integer."
+                raise ValueError(msg)
+
+            task = TaskAttendPatient(
+                time_needed=15,
+                time_due=time,
+                patient_id=patient_id,  # Placeholder, should be set appropriately
+            )
+
+        elif task_type == TaskType.DOOR_ACCESS:
+            task = TaskDoorAccess(
+                door_id=0,  # Placeholder, should be set appropriately
+                time_needed=0,
+                time_due=time,
+            )
+
+        elif task_type == TaskType.WORKSTATION:
+            task = TaskWorkstation(
+                location=location,
+                time_needed=30,
+                time_due=time,
+            )
+
+        else:
+            msg = f"Task type {task_type} not implemented yet."
+            raise NotImplementedError(msg)
+
+        self.tasks.append(task)

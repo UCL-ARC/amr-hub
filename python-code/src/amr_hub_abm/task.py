@@ -2,8 +2,10 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import ClassVar
 
 from amr_hub_abm.exceptions import TimeError
+from amr_hub_abm.space.location import Location
 
 
 class TaskProgress(Enum):
@@ -43,16 +45,16 @@ class TaskPriority(Enum):
 class Task:
     """Representation of a task assigned to an agent."""
 
-    task_type: TaskType = field(init=False)
-    progress: TaskProgress
-    priority: TaskPriority
+    task_type: ClassVar[TaskType] = TaskType.GENERIC
+
     time_needed: int
     time_due: int
 
+    progress: TaskProgress = field(default=TaskProgress.NOT_STARTED, kw_only=True)
+    priority: TaskPriority = field(default=TaskPriority.MEDIUM, kw_only=True)
+
     def __post_init__(self) -> None:
         """Post-initialization to validate task attributes."""
-        self.task_type = TaskType.GENERIC
-
         if self.time_needed < 0:
             msg = "Time needed for a task cannot be negative."
             raise TimeError(msg)
@@ -66,45 +68,29 @@ class Task:
 class TaskGotoLocation(Task):
     """Representation of a 'goto location' task."""
 
+    task_type: ClassVar[TaskType] = TaskType.GOTO_LOCATION
     location_id: int
-
-    def __post_init__(self) -> None:
-        """Post-initialization to set task type."""
-        super().__post_init__()
-        self.task_type = TaskType.GOTO_LOCATION
 
 
 @dataclass
 class TaskAttendPatient(Task):
     """Representation of an 'attend patient' task."""
 
+    task_type: ClassVar[TaskType] = TaskType.ATTEND_PATIENT
     patient_id: int
-
-    def __post_init__(self) -> None:
-        """Post-initialization to set task type."""
-        super().__post_init__()
-        self.task_type = TaskType.ATTEND_PATIENT
 
 
 @dataclass
 class TaskDoorAccess(Task):
     """Representation of a 'door access' task."""
 
+    task_type: ClassVar[TaskType] = TaskType.DOOR_ACCESS
     door_id: int
-
-    def __post_init__(self) -> None:
-        """Post-initialization to set task type."""
-        super().__post_init__()
-        self.task_type = TaskType.DOOR_ACCESS
 
 
 @dataclass
 class TaskWorkstation(Task):
     """Representation of a 'workstation' task."""
 
-    room_id: int
-
-    def __post_init__(self) -> None:
-        """Post-initialization to set task type."""
-        super().__post_init__()
-        self.task_type = TaskType.WORKSTATION
+    task_type: ClassVar[TaskType] = TaskType.WORKSTATION
+    location: Location

@@ -175,7 +175,7 @@ class Room:
         """
         raise SimulationModeError(msg)
 
-    def get_door_access_point(self) -> tuple[float, float]:
+    def get_door_access_point(self) -> tuple[Door, tuple[float, float]]:
         """Get a point near one of the room's doors for access."""
         if not self.doors:
             msg = f"Room {self.name} has no doors for access."
@@ -188,4 +188,4 @@ class Room:
 
         door = self.doors[0]
         midpoint = door.line.interpolate(0.5, normalized=True)
-        return (midpoint.x, midpoint.y)
+        return (door, (midpoint.x, midpoint.y))
