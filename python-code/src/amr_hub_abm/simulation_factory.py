@@ -85,6 +85,17 @@ def parse_location_string(location_str: str) -> tuple[str, int, str]:
     return building_part, int(floor), room
 
 
+def get_random_location(room: Room, building: str, floor: int) -> Location:
+    """Get a random location within a room."""
+    point = room.get_random_point()
+    return Location(
+        building=building,
+        floor=floor,
+        x=point[0],
+        y=point[1],
+    )
+
+
 def update_patient(
     patient_id: int,
     space_tuple: tuple[str, int, Room],
@@ -94,13 +105,7 @@ def update_patient(
     building, floor, room = space_tuple
 
     if patient_id is not None and patient_id not in patient_dict:
-        patient_point = room.get_random_point()
-        location = Location(
-            building=building,
-            floor=floor,
-            x=patient_point[0],
-            y=patient_point[1],
-        )
+        location = get_random_location(room, building, floor)
 
         patient_dict[patient_id] = Agent(
             idx=patient_id,
@@ -121,13 +126,7 @@ def update_hcw(
     building, floor, room = space_tuple
 
     if hcw_id not in hcw_dict:
-        hcw_point = room.get_random_point()
-        hcw_location = Location(
-            building=building,
-            floor=floor,
-            x=hcw_point[0],
-            y=hcw_point[1],
-        )
+        hcw_location = get_random_location(room, building, floor)
         hcw_dict[hcw_id] = Agent(
             idx=hcw_id,
             location=hcw_location,
@@ -210,14 +209,7 @@ def parse_location_timeseries(
                 y=point[1],
             )
         else:
-            point = room.get_random_point()
-
-            location = Location(
-                building=building,
-                floor=floor,
-                x=point[0],
-                y=point[1],
-            )
+            location = get_random_location(room, building, floor)
 
         update_hcw(
             hcw_id=hcw_id,
