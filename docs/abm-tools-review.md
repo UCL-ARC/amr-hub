@@ -20,9 +20,9 @@ I have evaluated agent-based modeling (ABM) platforms for simulating patient and
 
 ### 1.1 GAMA Platform
 
-**Website:** https://gama-platform.org/wiki/Home
+**Website:** <https://gama-platform.org/wiki/Home>
 
-**Overview:**  
+**Overview:**
 Production-ready, extensive, feature-rich platform specifically designed for spatially-explicit agent-based modeling. Seems like there is strong adoption in epidemiological and urban simulation research.
 
 **Strengths/Important points to consider:**
@@ -31,11 +31,11 @@ Production-ready, extensive, feature-rich platform specifically designed for spa
 - Native GIS support: directly imports shapefiles, CAD files, GeoTIFFs
 - Continuous space modeling with multi-floor building support
 - Flexible geometry management (rooms, doors, corridors as polygons)
-- Built-in A* pathfinding with collision avoidance (less manual specification than alternatives)
+- Built-in A\* pathfinding with collision avoidance (less manual specification than alternatives)
 - GPU acceleration available
 - Python and R interoperability
 
-**Domain-Specific Language (GAML):**  
+**Domain-Specific Language (GAML):**
 Uses an intuitive high-level DSL for behavior specification. Spatial rules and movement patterns can be implemented declaratively.
 
 **Limitations of GAMA:**
@@ -46,13 +46,13 @@ Uses an intuitive high-level DSL for behavior specification. Spatial rules and m
 
 #### Relevant Examples in GAMA/papers for our Case Study
 
-**[Luneray Flu Tutorial](https://gama-platform.org/wiki/LuneraysFlu):**  
+**[Luneray Flu Tutorial](https://gama-platform.org/wiki/LuneraysFlu):**
 Disease spread in urban environment with polygon-based buildings and polyline roads.
 
-**[Healthcare Associated Infection Simulator](https://healthdatainsight.org.uk/project/healthcare-associated-infection-simulator/):**  
+**[Healthcare Associated Infection Simulator](https://healthdatainsight.org.uk/project/healthcare-associated-infection-simulator/):**
 Direct precedent for our use case.
 
-*Model development stages:*
+_Model development stages:_
 
 1. 3D hospital model creation from shapefiles (QGIS for floorplan preprocessing)
 2. Agent behavior modeling done with data on staff shifts, patient routines, toilet visits, waiting rooms, lift usage
@@ -60,7 +60,7 @@ Direct precedent for our use case.
 4. Integration into unified simulator
 5. Intervention strategy evaluation
 
-*Modeling details:*
+_Modeling details:_
 
 - **Pathogens:** MRSA, C. difficile
 - **Transmission modes:** close contact, aerosol, surface contamination
@@ -68,19 +68,19 @@ Direct precedent for our use case.
 - **Navigation:** Agents navigate realistically without wall collision
 - **Outputs:** infection heatmaps, spread trajectories
 
-**[Festival of Lights Pedestrian Simulation (Lyon)](https://www.mdpi.com/1424-8220/24/5/1639):**  
+**[Festival of Lights Pedestrian Simulation (Lyon)](https://www.mdpi.com/1424-8220/24/5/1639):**
 Agent-based modeling for festival pedestrian movement with collision avoidance to model strategic destination planning. Agents could do model switching based on zone intensity (Continuum Crowds ↔ Social Force). They calibrated the parameters in their model with real trajectory data captured from cameras.
 
-*Relevance:*  
+_Relevance:_
 Demonstrates methodology for calibrating movement models against observed data — directly applicable to hospital trajectory data. Authors explicitly noted NetLogo could not capture required spatial behaviors for hospital environments.
 
 ---
 
 ### 1.2 NetLogo
 
-**Website:** https://ccl.northwestern.edu/netlogo/
+**Website:** <https://ccl.northwestern.edu/netlogo/>
 
-**Overview:**  
+**Overview:**
 Widely-used platform optimized for simpler "KISS" (Keep It Simple, Stupid) models. Extensive educational resources but limited for complex spatial environments.
 
 **Strengths:**
@@ -99,26 +99,26 @@ Widely-used platform optimized for simpler "KISS" (Keep It Simple, Stupid) model
 - Simplified environment representation
 - Less suitable for realistic hospital floor navigation
 
-**Relevant work:**  
+**Relevant work:**
 "Should I Turn or Should I Go?" — pedestrian simulation using NetLogo GIS extension with normative pedestrian theory (Hoogendoorn & Bovy, 2002, 2004). Evaluated inconvenience, coverage, completion, and pace metrics.
 
 ---
 
 ### 1.3 Repast HPC / Repast4Py
 
-**Website:** https://repast.github.io/repast_hpc.html
+**Website:** <https://repast.github.io/repast_hpc.html>
 
-**Overview:**  
+**Overview:**
 High-performance computing focused framework designed for massive-scale simulations and mass operations like brute force parameter sweep.
 
 **Variants:**
 
-| Variant | Language | Use Case |
-|---------|----------|----------|
-| Repast HPC | C++ with MPI | Massive distributed simulations |
-| Repast Symphony | Java | Standard desktop simulations |
-| Repast4Py | Python | Python-native implementation |
-| ReLogo | Logo-like DSL | Simplified model development |
+| Variant         | Language      | Use Case                        |
+| --------------- | ------------- | ------------------------------- |
+| Repast HPC      | C++ with MPI  | Massive distributed simulations |
+| Repast Symphony | Java          | Standard desktop simulations    |
+| Repast4Py       | Python        | Python-native implementation    |
+| ReLogo          | Logo-like DSL | Simplified model development    |
 
 **Strengths:**
 
@@ -128,7 +128,7 @@ High-performance computing focused framework designed for massive-scale simulati
 - Python ecosystem integration (scikit-optimize for inference)
 - Brute-force parameter sweeps
 
-**Repast4Py examples:** https://repast.github.io/repast4py.site/examples/examples.html
+**Repast4Py examples:** <https://repast.github.io/repast4py.site/examples/examples.html>
 
 **Considerations:**
 
@@ -140,7 +140,7 @@ High-performance computing focused framework designed for massive-scale simulati
 
 ### 1.4 Cormas
 
-**Overview:**  
+**Overview:**
 Open source platform with strong support for distributed simulation control and multi-stakeholder interaction.
 
 **Key features:**
@@ -150,17 +150,17 @@ Open source platform with strong support for distributed simulation control and 
 - Multiple clients can view and interact with same simulation
 - Useful for participatory modeling and serious games
 
-**Applicability:**  
+**Applicability:**
 Potentially useful for stakeholder engagement (clinicians interacting with simulation), but less feature-rich for pure spatial modeling than GAMA.
 
 ---
 
 ### 1.5 Mesa
 
-**Website:** https://mesa.readthedocs.io/  
-**Repository:** https://github.com/projectmesa/mesa
+**Website:** <https://mesa.readthedocs.io/>
+**Repository:** <https://github.com/projectmesa/mesa>
 
-**Overview:**  
+**Overview:**
 Pure Python ABM framework designed to be the Python alternative to NetLogo, Repast, and MASON. Prioritizes accessibility and integration with the scientific Python ecosystem.
 
 **Strengths:**
@@ -175,16 +175,16 @@ Pure Python ABM framework designed to be the Python alternative to NetLogo, Repa
 
 **Space types available:**
 
-| Type | Description |
-|------|-------------|
-| OrthogonalMooreGrid | 8-neighbor grid |
-| OrthogonalVonNeumannGrid | 4-neighbor grid |
-| HexGrid | Hexagonal tessellation |
-| Network | Graph-based topologies |
-| VoronoiMesh | Irregular tessellations |
-| ContinuousSpace | Continuous 2D space |
+| Type                     | Description             |
+| ------------------------ | ----------------------- |
+| OrthogonalMooreGrid      | 8-neighbor grid         |
+| OrthogonalVonNeumannGrid | 4-neighbor grid         |
+| HexGrid                  | Hexagonal tessellation  |
+| Network                  | Graph-based topologies  |
+| VoronoiMesh              | Irregular tessellations |
+| ContinuousSpace          | Continuous 2D space     |
 
-**Mesa-Geo Extension:**  
+**Mesa-Geo Extension:**
 GIS support via `mesa-geo` package:
 
 - `GeoSpace` hosts `GeoAgents` with Shapely geometry attributes
@@ -193,12 +193,12 @@ GIS support via `mesa-geo` package:
 - Raster and vector layer support
 - Export to GIS formats via Rasterio/GeoPandas
 
-**Key advantage for this project:**  
+**Key advantage for this project:**
 Excellent for model integration specifically for RL and inference — because everything is Python, it's straightforward to wrap Mesa models as gym environments for RL and call inference libraries (sbi, pyABC) directly or scikit-optimize.
 
 **Limitations:**
 
-- **Manual movement specification:** Unlike GAMA's built-in A* pathfinding and collision avoidance, Mesa requires explicit implementation of:
+- **Manual movement specification:** Unlike GAMA's built-in A\* pathfinding and collision avoidance, Mesa requires explicit implementation of:
   - Pathfinding algorithms
   - Collision detection
   - Wall/obstacle avoidance
@@ -212,9 +212,9 @@ Excellent for model integration specifically for RL and inference — because ev
 
 ### 2.1 OpenMOLE
 
-**Website:** https://openmole.org/
+**Website:** <https://openmole.org/>
 
-**Overview:**  
+**Overview:**
 Platform specifically designed for model exploration, calibration, and sensitivity analysis. Integrates with multiple simulation platforms.
 
 **Core capabilities:**
@@ -234,10 +234,10 @@ Platform specifically designed for model exploration, calibration, and sensitivi
 - Profile method for stochastic models
 - PSE (Pattern Space Exploration) for behavioral diversity
 
-**Integration:**  
+**Integration:**
 Native support for GAMA, NetLogo, R, Python models.
 
-**GAMA + OpenMOLE workflow:** https://openmole.org/GAMA.html
+**GAMA + OpenMOLE workflow:** <https://openmole.org/GAMA.html>
 
 1. Export GAMA project with `.gaml` file
 2. Configure in OpenMOLE: seed, steps, stop conditions
@@ -250,10 +250,10 @@ Native support for GAMA, NetLogo, R, Python models.
 
 ### 3.1 Menge
 
-**Website:** http://gamma.cs.unc.edu/Menge/  
-**Repository:** https://github.com/MengeCrowdSim/Menge
+**Website:** <http://gamma.cs.unc.edu/Menge/>
+**Repository:** <https://github.com/MengeCrowdSim/Menge>
 
-**Overview:**  
+**Overview:**
 Open-source modular framework specifically for crowd simulation. Implements multiple pedestrian dynamics models.
 
 **Models available:**
@@ -262,19 +262,19 @@ Open-source modular framework specifically for crowd simulation. Implements mult
 - Social Force Model
 - Model switching based on density/zone
 
-**Relevance:**  
+**Relevance:**
 Useful for understanding high-traffic areas (ED waiting rooms, cafeterias) but may require integration work for hospital-specific behaviors.
 
 ---
 
 ### 3.2 CrowdNav
 
-**Repository:** https://github.com/vita-epfl/CrowdNav
+**Repository:** <https://github.com/vita-epfl/CrowdNav>
 
-**Overview:**  
+**Overview:**
 Reinforcement learning approach to crowd navigation. Single repository implementation.
 
-**Relevance:**  
+**Relevance:**
 Aligns with inverse RL objectives for learning navigation policies from observed data. Potential for:
 
 - Learning staff movement patterns from trajectory data
@@ -284,19 +284,19 @@ Aligns with inverse RL objectives for learning navigation policies from observed
 
 ### 3.3 SimWalk PRO
 
-**Overview:**  
+**Overview:**
 Commercial tool focused on traffic and urban pedestrian planning.
 
-**Applicability:**  
+**Applicability:**
 More suited for urban/transit contexts than healthcare environments.
 
 ---
 
 ### 3.4 Unity ML-Agents
 
-**Repository:** https://github.com/Unity-Technologies/ml-agents
+**Repository:** <https://github.com/Unity-Technologies/ml-agents>
 
-**Overview:**  
+**Overview:**
 ML toolkit for Unity game engine. Supports RL agent training in 3D environments.
 
 **Applicability:**
@@ -310,13 +310,13 @@ ML toolkit for Unity game engine. Supports RL agent training in 3D environments.
 
 ## 4. Comparison of Main Options
 
-| Platform | Spatial Model Fidelity | GIS Support | Inference | Scalability |
-|----------|------------------------|-------------|-----------|-------------|
-| GAMA | +++ | +++ | Via OpenMOLE | ++ |
-| NetLogo | + | ++ | Via OpenMOLE | + |
-| Repast4Py/HPC | ++ | ++ | Via Python libs | +++ |
-| CrowdNav | ++ | + | Native RL | ++ |
-| Unity ML-Agents | ++ | + | Native RL | ++ |
+| Platform        | Spatial Model Fidelity | GIS Support | Inference       | Scalability |
+| --------------- | ---------------------- | ----------- | --------------- | ----------- |
+| GAMA            | +++                    | +++         | Via OpenMOLE    | ++          |
+| NetLogo         | +                      | ++          | Via OpenMOLE    | +           |
+| Repast4Py/HPC   | ++                     | ++          | Via Python libs | +++         |
+| CrowdNav        | ++                     | +           | Native RL       | ++          |
+| Unity ML-Agents | ++                     | +           | Native RL       | ++          |
 
 ---
 
@@ -353,15 +353,15 @@ ML toolkit for Unity game engine. Supports RL agent training in 3D environments.
 
 ## References
 
-- GAMA Platform Documentation: https://gama-platform.org/wiki/Home
-- OpenMOLE Documentation: https://openmole.org/
-- HAI Simulator: https://healthdatainsight.org.uk/project/healthcare-associated-infection-simulator/
-- Repast4Py: https://repast.github.io/repast4py.site/
-- Festival of Lights Study: https://www.mdpi.com/1424-8220/24/5/1639
-- Menge Crowd Simulation: http://gamma.cs.unc.edu/Menge/
-- CrowdNav: https://github.com/vita-epfl/CrowdNav
+- GAMA Platform Documentation: <https://gama-platform.org/wiki/Home>
+- OpenMOLE Documentation: <https://openmole.org/>
+- HAI Simulator: <https://healthdatainsight.org.uk/project/healthcare-associated-infection-simulator/>
+- Repast4Py: <https://repast.github.io/repast4py.site/>
+- Festival of Lights Study: <https://www.mdpi.com/1424-8220/24/5/1639>
+- Menge Crowd Simulation: <http://gamma.cs.unc.edu/Menge/>
+- CrowdNav: <https://github.com/vita-epfl/CrowdNav>
 
 ---
 
-*Last updated: January 2025*  
-*Project: AMR-HUB Hospital Movement & Infection Dynamics Simulation*
+_Last updated: January 2025_
+_Project: AMR-HUB Hospital Movement & Infection Dynamics Simulation_
