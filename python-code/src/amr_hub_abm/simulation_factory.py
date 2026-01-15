@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import yaml
@@ -173,7 +174,7 @@ def parse_location_timeseries(
         timestep = pd.to_datetime(timestamp)
         timestep_index = timestamp_to_timestep(timestep, start_time, time_step_minutes)
         building, floor, room_str = parse_location_string(location_str)
-        additional_info = {}
+        additional_info: dict[Any, Any] = {}
 
         room = next(
             (
@@ -198,14 +199,15 @@ def parse_location_timeseries(
                 space_tuple=(building, floor, room),
                 patient_dict=patient_dict,
             )
+            patient = patient_dict[patient_id]
 
         if event_type == "attend_patient" and patient_id is not None:
-            additional_info["patient_id"] = patient_id
-            location = patient_dict[patient_id].location
+            additional_info["patient"] = patient
+            location = patient.location
 
         elif event_type == "door_access":
             door, point = room.get_door_access_point()
-            additional_info["door_id"] = door.door_id
+            additional_info["door"] = door
 
             location = Location(
                 building=building,

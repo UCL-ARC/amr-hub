@@ -3,6 +3,7 @@
 import pytest
 
 from amr_hub_abm.exceptions import TimeError
+from amr_hub_abm.space.location import Location
 from amr_hub_abm.task import (
     Task,
     TaskGotoLocation,
@@ -63,8 +64,8 @@ def test_goto_location_task() -> None:
         progress=TaskProgress.NOT_STARTED,
         priority=TaskPriority.HIGH,
         time_needed=15,
-        location_id=42,
         time_due=30,
+        destination_location=Location(building="A", floor=1, x=10.0, y=20.0),
     )
 
     assert goto_task.task_type == TaskType.GOTO_LOCATION

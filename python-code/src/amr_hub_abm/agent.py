@@ -8,6 +8,7 @@ import shapely
 from matplotlib.axes import Axes
 
 from amr_hub_abm.space.building import Building
+from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
@@ -160,31 +161,45 @@ class Agent:
         task: Task
 
         if task_type == TaskType.ATTEND_PATIENT:
-            if additional_info is None or "patient_id" not in additional_info:
+            if additional_info is None or "patient" not in additional_info:
                 msg = "Patient ID must be provided for attend_patient tasks."
                 raise ValueError(msg)
 
-            patient_id = additional_info["patient_id"]
-            if not isinstance(patient_id, int):
-                msg = "Patient ID must be an integer."
+            patient = additional_info["patient"]
+            if not isinstance(patient, Agent):
+                msg = "Patient must be an instance of Agent."
                 raise ValueError(msg)
 
             task = TaskAttendPatient(
                 time_needed=15,
                 time_due=time,
-                patient_id=patient_id,  # Placeholder, should be set appropriately
+                patient=patient,
             )
 
         elif task_type == TaskType.DOOR_ACCESS:
+            if location.building is None or location.floor is None:
+                msg = "Building and floor must be provided for door access tasks."
+                raise ValueError(msg)
+
+            if (
+                additional_info is None
+                or "door" not in additional_info
+                or not isinstance(additional_info["door"], Door)
+            ):
+                msg = "Door must be provided in additional_info for door access tasks."
+                raise ValueError(msg)
+
             task = TaskDoorAccess(
-                door_id=0,  # Placeholder, should be set appropriately
+                door=additional_info["door"],
                 time_needed=0,
                 time_due=time,
+                building=location.building,
+                floor=location.floor,
             )
 
         elif task_type == TaskType.WORKSTATION:
             task = TaskWorkstation(
-                location=location,
+                workstation_location=location,
                 time_needed=30,
                 time_due=time,
             )
