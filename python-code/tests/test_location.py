@@ -139,3 +139,59 @@ def test_which_room_different_floor(sample_room: Room) -> None:
     result = location.which_room(rooms)
 
     assert result is None
+
+
+def test_line_of_sight_no_walls() -> None:
+    """Test line of sight when there are no walls."""
+    loc1 = Location(x=0.0, y=0.0, floor=1, building="Test Building")
+    loc2 = Location(x=10.0, y=10.0, floor=1, building="Test Building")
+
+    result = loc1.check_line_of_sight(loc2, walls=[])
+
+    assert result is True
+
+
+def test_line_of_sight_with_walls_blocking() -> None:
+    """Test line of sight when walls are blocking the view."""
+    loc1 = Location(x=0.0, y=0.0, floor=1, building="Test Building")
+    loc2 = Location(x=10.0, y=10.0, floor=1, building="Test Building")
+    walls = [
+        Wall(start=(5.0, 0.0), end=(5.0, 10.0)),  # Vertical wall blocking the line
+    ]
+
+    result = loc1.check_line_of_sight(loc2, walls=walls)
+
+    assert result is False
+
+
+def test_line_of_sight_with_walls_not_blocking() -> None:
+    """Test line of sight when walls are not blocking the view."""
+    loc1 = Location(x=0.0, y=0.0, floor=1, building="Test Building")
+    loc2 = Location(x=10.0, y=10.0, floor=1, building="Test Building")
+    walls = [
+        Wall(start=(0.0, 5.0), end=(4.0, 5.0)),  # Horizontal wall not blocking the line
+    ]
+
+    result = loc1.check_line_of_sight(loc2, walls=walls)
+
+    assert result is True
+
+
+def test_line_of_sight_different_buildings() -> None:
+    """Test line of sight when locations are in different buildings."""
+    loc1 = Location(x=0.0, y=0.0, floor=1, building="Building A")
+    loc2 = Location(x=10.0, y=10.0, floor=1, building="Building B")
+
+    result = loc1.check_line_of_sight(loc2, walls=[])
+
+    assert result is False
+
+
+def test_line_of_sight_different_floors() -> None:
+    """Test line of sight when locations are on different floors."""
+    loc1 = Location(x=0.0, y=0.0, floor=1, building="Test Building")
+    loc2 = Location(x=10.0, y=10.0, floor=2, building="Test Building")
+
+    result = loc1.check_line_of_sight(loc2, walls=[])
+
+    assert result is False

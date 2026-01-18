@@ -12,6 +12,7 @@ from amr_hub_abm.exceptions import InvalidDistanceError
 
 if TYPE_CHECKING:
     from amr_hub_abm.space.room import Room
+    from amr_hub_abm.space.wall import Wall
 
 
 @dataclass
@@ -52,3 +53,17 @@ class Location:
             if room.region.contains(shapely.geometry.Point(self.x, self.y)):
                 return room
         return None
+
+    def check_line_of_sight(self, other: Location, walls: list[Wall]) -> bool:
+        """Check if there is a line of sight to another location, considering walls."""
+        if self.building != other.building:
+            return False
+
+        if self.floor != other.floor:
+            return False
+
+        line_of_sight = shapely.geometry.LineString(
+            [(self.x, self.y), (other.x, other.y)]
+        )
+
+        return not any(line_of_sight.crosses(wall.line) for wall in walls)
