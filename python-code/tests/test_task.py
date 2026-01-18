@@ -2,10 +2,12 @@
 
 import pytest
 
-from amr_hub_abm.exceptions import TimeError
+from amr_hub_abm.exceptions import SimulationModeError, TimeError
+from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.task import (
     Task,
+    TaskDoorAccess,
     TaskGotoLocation,
     TaskPriority,
     TaskProgress,
@@ -85,3 +87,58 @@ def test_task_negative_time_due_raises() -> None:
         )
 
     assert "Time due for a task cannot be negative." in str(excinfo.value)
+
+
+def test_door_access_task_location_setting() -> None:
+    """Test that the location is set correctly for a DoorAccess task."""
+    door = Door(
+        door_id=1,
+        name="Main Entrance",
+        start=(0, 0),
+        end=(0, 5),
+        open=True,
+        connecting_rooms=(1, 2),
+        access_control=(True, True),
+    )
+
+    door_task = TaskDoorAccess(
+        progress=TaskProgress.NOT_STARTED,
+        priority=TaskPriority.MEDIUM,
+        time_needed=10,
+        time_due=20,
+        door=door,
+        building="Building A",
+        floor=0,
+    )
+
+    assert door_task.task_type == TaskType.DOOR_ACCESS
+    assert door_task.location.building == "Building A"
+    assert door_task.location.floor == 0
+
+
+def test_door_access_task_with_invalid_door_raises() -> None:
+    """Test that a DoorAccess task with an invalid door raises an error."""
+    door = Door(
+        door_id=2,
+        name="Back Door",
+        start=None,
+        end=None,
+        open=False,
+        connecting_rooms=(3, 4),
+        access_control=(False, False),
+    )
+
+    with pytest.raises(SimulationModeError) as excinfo:
+        TaskDoorAccess(
+            progress=TaskProgress.NOT_STARTED,
+            priority=TaskPriority.LOW,
+            time_needed=5,
+            time_due=15,
+            door=door,
+            building="Building B",
+            floor=1,
+        )
+
+    assert "Door must have defined start and end points to set task location." in str(
+        excinfo.value
+    )

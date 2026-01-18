@@ -50,8 +50,12 @@ def create_simulation(config_file: Path) -> Simulation:
     total_steps = int(total_minutes // time_step_minutes)
     logger.info("Total simulation time steps: %d", total_steps)
 
+    timeseries_data = read_location_timeseries(
+        file_path=Path(config_data["location_timeseries_path"])
+    )
+
     agents = parse_location_timeseries(
-        file_path=Path(config_data["location_timeseries_path"]),
+        timeseries_data=timeseries_data,
         rooms=space_reader.rooms,
         start_time=start_time,
         time_step_minutes=time_step_minutes,
@@ -139,8 +143,28 @@ def update_hcw(
     hcw_dict[hcw_id].add_task(timestep_index, location, event_type, additional_info)
 
 
-def parse_location_timeseries(
+def read_location_timeseries(
     file_path: Path,
+) -> pd.DataFrame:
+    """
+    Read a CSV file containing location time series data for agents.
+
+    Args:
+        file_path (Path): Path to the CSV file.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the location time series data.
+
+    """
+    if not file_path.exists():
+        msg = f"Location time series file not found: {file_path}"
+        raise FileNotFoundError(msg)
+
+    return pd.read_csv(file_path)
+
+
+def parse_location_timeseries(
+    timeseries_data: pd.DataFrame,
     rooms: list[Room],
     start_time: pd.Timestamp,
     time_step_minutes: int,
@@ -149,22 +173,16 @@ def parse_location_timeseries(
     Parse a CSV file containing location time series data for agents.
 
     Args:
-        file_path (Path): Path to the CSV file.
+        timeseries_data (pd.DataFrame): DataFrame containing the location time series.
 
     Returns:
         list[Agent]: A list of Agent instances with populated location time series.
 
     """
-    if not file_path.exists():
-        msg = f"Location time series file not found: {file_path}"
-        raise FileNotFoundError(msg)
-
-    df = pd.read_csv(file_path)
-
     hcw_dict: dict[int, Agent] = {}
     patient_dict: dict[int, Agent] = {}
 
-    for _, row in df.iterrows():
+    for _, row in timeseries_data.iterrows():
         hcw_id = int(row["hcw_id"])
         timestamp = row["timestamp"]
         location_str = row["location"]
@@ -189,7 +207,7 @@ def parse_location_timeseries(
             msg = f"Room not found: {room_str} in building {building} on floor {floor}"
             raise SimulationModeError(msg)
 
-        if event_type == "attend" and patient_id is None:
+        if event_type == "attend_patient" and patient_id is None:
             msg = f"Patient ID must be provided for 'attend' events. Row: {row}"
             raise SimulationModeError(msg)
 

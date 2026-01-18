@@ -7,6 +7,7 @@ from logging import getLogger
 import shapely
 from matplotlib.axes import Axes
 
+from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
@@ -155,7 +156,7 @@ class Agent:
         task_types = [task_type.value for task_type in TaskType]
         if event_type not in task_types:
             msg = f"Invalid task type: {event_type}. Must be one of {task_types}."
-            raise ValueError(msg)
+            raise SimulationModeError(msg)
         task_type = TaskType(event_type)
 
         task: Task
@@ -163,12 +164,12 @@ class Agent:
         if task_type == TaskType.ATTEND_PATIENT:
             if additional_info is None or "patient" not in additional_info:
                 msg = "Patient ID must be provided for attend_patient tasks."
-                raise ValueError(msg)
+                raise SimulationModeError(msg)
 
             patient = additional_info["patient"]
             if not isinstance(patient, Agent):
                 msg = "Patient must be an instance of Agent."
-                raise ValueError(msg)
+                raise SimulationModeError(msg)
 
             task = TaskAttendPatient(
                 time_needed=15,
@@ -179,7 +180,7 @@ class Agent:
         elif task_type == TaskType.DOOR_ACCESS:
             if location.building is None or location.floor is None:
                 msg = "Building and floor must be provided for door access tasks."
-                raise ValueError(msg)
+                raise SimulationModeError(msg)
 
             if (
                 additional_info is None
@@ -187,7 +188,7 @@ class Agent:
                 or not isinstance(additional_info["door"], Door)
             ):
                 msg = "Door must be provided in additional_info for door access tasks."
-                raise ValueError(msg)
+                raise SimulationModeError(msg)
 
             task = TaskDoorAccess(
                 door=additional_info["door"],

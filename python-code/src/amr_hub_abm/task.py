@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, ClassVar
 
-from amr_hub_abm.exceptions import TimeError
+from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.location import Location
 
 if TYPE_CHECKING:
@@ -113,7 +113,7 @@ class TaskDoorAccess(Task):
 
         if self.door.start is None or self.door.end is None:
             msg = "Door must have defined start and end points to set task location."
-            raise ValueError(msg)
+            raise SimulationModeError(msg)
 
         self.location = Location(
             building=self.building,
@@ -129,3 +129,8 @@ class TaskWorkstation(Task):
 
     task_type: ClassVar[TaskType] = TaskType.WORKSTATION
     workstation_location: Location
+
+    def __post_init__(self) -> None:
+        """Post-initialization to set the task location."""
+        super().__post_init__()
+        self.location = self.workstation_location

@@ -5,6 +5,28 @@ import pytest
 from amr_hub_abm.exceptions import InvalidDistanceError
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.location import Location
+from amr_hub_abm.space.room import Room
+from amr_hub_abm.space.wall import Wall
+
+
+@pytest.fixture
+def sample_room() -> Room:
+    """Create a sample room for testing."""
+    walls = [
+        Wall(start=(0, 0), end=(0, 10)),
+        Wall(start=(0, 10), end=(10, 10)),
+        Wall(start=(10, 10), end=(10, 0)),
+        Wall(start=(10, 0), end=(0, 0)),
+    ]
+    return Room(
+        room_id=1,
+        name="Sample Room",
+        building="Test Building",
+        floor=1,
+        walls=walls,
+        doors=[],
+        contents=[],
+    )
 
 
 def test_location_creation() -> None:
@@ -75,3 +97,45 @@ def test_distance_to_different_buildings() -> None:
     assert (
         str(exc_info.value) == f"{err_string}{building_a.name} and {building_b.name}."
     )
+
+
+def test_which_room_no_rooms() -> None:
+    """Test which_room method when there are no rooms."""
+    location = Location(x=5.0, y=5.0, floor=1, building="Test Building")
+    rooms: list[Room] = []
+
+    result = location.which_room(rooms)
+
+    assert result is None
+
+
+def test_which_room_not_in_any_room(sample_room: Room) -> None:
+    """Test which_room method when location is not in any room."""
+    location = Location(x=50.0, y=50.0, floor=1, building="Test Building")
+    rooms = [sample_room]
+
+    result = location.which_room(rooms)
+
+    assert result is None
+
+
+def test_which_room_in_room(sample_room: Room) -> None:
+    """Test which_room method when location is inside a room."""
+    location = Location(x=5.0, y=5.0, floor=1, building="Test Building")
+    rooms = [sample_room]
+
+    result = location.which_room(rooms)
+
+    assert result is not None
+    assert result.room_id == 1
+    assert result.name == "Sample Room"
+
+
+def test_which_room_different_floor(sample_room: Room) -> None:
+    """Test which_room method when location is on a different floor than rooms."""
+    location = Location(x=5.0, y=5.0, floor=2, building="Test Building")
+    rooms = [sample_room]
+
+    result = location.which_room(rooms)
+
+    assert result is None

@@ -1,5 +1,7 @@
 """Test for the Simulation class in amr_hub_abm.simulation module."""
 
+from pathlib import Path
+
 import pytest
 
 from amr_hub_abm.agent import Agent, AgentType, InfectionStatus
@@ -263,3 +265,46 @@ def test_agent_get_room_not_found(
     room = sample_agent.get_room(simulation_space)
 
     assert room is None
+
+
+def test_simulation_repr(
+    sample_simulation: Simulation,
+) -> None:
+    """Test that the simulation __repr__ method returns correct string."""
+    simulation = sample_simulation
+
+    repr_str = repr(simulation)
+
+    assert "Simulation: TestSimulation" in repr_str
+    assert "Description: A test simulation." in repr_str
+    assert "Mode: topological" in repr_str
+    assert "Total Simulation Time: 10" in repr_str
+    assert "Current Time: 0" in repr_str
+    assert "Number of Buildings: 1" in repr_str
+    assert "Number of Agents: 1" in repr_str
+
+
+def test_plot_current_state(
+    sample_simulation: Simulation,
+    tmp_path: Path,
+) -> None:
+    """Test that the plot_current_state method creates output files."""
+    simulation = sample_simulation
+
+    simulation.plot_current_state(tmp_path)
+
+    expected_file = tmp_path / "plot_TestSimulation_building_TestBuilding_time_0.png"
+    assert expected_file.exists()
+
+
+def test_plot_current_state_raises_on_file_path(
+    sample_simulation: Simulation,
+    tmp_path: Path,
+) -> None:
+    """Test that plot_current_state raises error when given a file path."""
+    simulation = sample_simulation
+    file_path = tmp_path / "test.txt"
+
+    with pytest.raises(NotADirectoryError) as excinfo:
+        simulation.plot_current_state(file_path)
+    assert "is not a directory" in str(excinfo.value)
