@@ -1,6 +1,7 @@
 """Module to represent an agent in the AMR Hub ABM simulation."""
 
-from dataclasses import dataclass, field
+import math
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from logging import getLogger
 
@@ -210,3 +211,31 @@ class Agent:
             raise NotImplementedError(msg)
 
         self.tasks.append(task)
+
+    def head_to_point(self, point: tuple[float, float]) -> None:
+        """Set the agent's heading to face a specific point."""
+        delta_x = point[0] - self.location.x
+        delta_y = point[1] - self.location.y
+
+        angle_radians = math.atan2(delta_y, delta_x)
+        angle_degrees = math.degrees(angle_radians)
+
+        self.heading = angle_degrees % 360
+
+    def move_one_step(self, step_size: float) -> None:
+        """Move the agent one step in the direction of its heading."""
+        angle_radians = math.radians(self.heading)
+
+        delta_x = step_size * math.cos(angle_radians)
+        delta_y = step_size * math.sin(angle_radians)
+
+        new_x = self.location.x + delta_x
+        new_y = self.location.y + delta_y
+
+        new_location = replace(
+            self.location,
+            x=new_x,
+            y=new_y,
+        )
+
+        self.move_to_location(new_location)
