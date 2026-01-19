@@ -63,6 +63,8 @@ class Agent:
     infection_status: InfectionStatus = field(default=InfectionStatus.SUSCEPTIBLE)
     infection_details: dict = field(default_factory=dict)
 
+    movement_speed: float = field(default=0.1)  # units per time step
+
     def __post_init__(self) -> None:
         """Post-initialization to log agent creation."""
         self.heading = self.heading % 360
@@ -232,12 +234,12 @@ class Agent:
 
         self.heading = angle_degrees % 360
 
-    def move_one_step(self, step_size: float) -> None:
+    def move_one_step(self) -> None:
         """Move the agent one step in the direction of its heading."""
         angle_radians = math.radians(self.heading)
 
-        delta_x = step_size * math.cos(angle_radians)
-        delta_y = step_size * math.sin(angle_radians)
+        delta_x = self.movement_speed * math.cos(angle_radians)
+        delta_y = self.movement_speed * math.sin(angle_radians)
 
         new_x = self.location.x + delta_x
         new_y = self.location.y + delta_y

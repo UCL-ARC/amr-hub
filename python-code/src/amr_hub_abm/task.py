@@ -108,7 +108,7 @@ class Task:
 
         else:
             agent.head_to_point((self.location.x, self.location.y))
-            agent.move_one_step(step_size=0.1)
+            agent.move_one_step()
 
     def __repr__(self) -> str:
         """Representation of the task."""

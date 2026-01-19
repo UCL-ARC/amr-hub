@@ -33,7 +33,8 @@ def simulate():
     # for task in tasks:
     #     print(task.progress)
 
-    while simulation.time < simulation.total_simulation_time:
+    while simulation.time < 10:
+        # while simulation.time < simulation.total_simulation_time:
         simulation.step()
         print(f"Simulation time: {simulation.time}")
         # agent = simulation.agents[0]
