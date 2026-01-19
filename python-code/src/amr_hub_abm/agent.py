@@ -63,10 +63,6 @@ class Agent:
     infection_status: InfectionStatus = field(default=InfectionStatus.SUSCEPTIBLE)
     infection_details: dict = field(default_factory=dict)
 
-    data_location_time_series: list[tuple[int, Location]] = field(
-        default_factory=list, init=False
-    )
-
     def __post_init__(self) -> None:
         """Post-initialization to log agent creation."""
         self.heading = self.heading % 360
