@@ -18,6 +18,7 @@ from amr_hub_abm.task import (
     Task,
     TaskAttendPatient,
     TaskDoorAccess,
+    TaskProgress,
     TaskType,
     TaskWorkstation,
 )
@@ -102,6 +103,19 @@ class Agent:
             ):
                 return True
         return False
+
+    def check_if_location_reached(self, target_location: Location) -> bool:
+        """Check if the agent has reached the target location."""
+        if self.location.building != target_location.building:
+            return False
+        if self.location.floor != target_location.floor:
+            return False
+
+        distance = math.sqrt(
+            (self.location.x - target_location.x) ** 2
+            + (self.location.y - target_location.y) ** 2
+        )
+        return distance <= self.interaction_radius
 
     def move_to_location(self, new_location: Location) -> None:
         """Move the agent to a new location and log the movement."""
@@ -239,3 +253,28 @@ class Agent:
         )
 
         self.move_to_location(new_location)
+
+    def perform_task(self, current_time: int, rooms: list[Room]) -> None:
+        """Perform the agent's current task if it's due."""
+        if not self.tasks:
+            return
+
+        ongoing_tasks = [
+            task for task in self.tasks if task.progress == TaskProgress.IN_PROGRESS
+        ]
+
+        if len(ongoing_tasks) > 1:
+            msg = f"Agent id {self.idx} has multiple ongoing tasks."
+            logger.error(msg)
+            raise RuntimeError(msg)
+
+        if ongoing_tasks:
+            task = ongoing_tasks[0]
+            task.update_progress(current_time=current_time, agent=self)
+            return
+
+        logger.debug(
+            "Number of rooms available for Agent id %s: %s",
+            self.idx,
+            len(rooms),
+        )

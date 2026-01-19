@@ -25,14 +25,14 @@ def create_sample_agent() -> Agent:
 def simulate():
     config_path = Path("tests/inputs/simulation_config.yml")
     simulation = create_simulation(config_path)
-    print(simulation)
+    # print(simulation)
     simulation.plot_current_state(Path("../simulation_outputs"))
     print("Simulation created successfully.")
 
     tasks = simulation.agents[0].tasks
 
     for task in tasks:
-        print(task)
+        print(task.progress)
 
 
 if __name__ == "__main__":

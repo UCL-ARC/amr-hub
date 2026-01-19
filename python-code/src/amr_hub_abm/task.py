@@ -61,6 +61,19 @@ class Task:
 
     location: Location = field(init=False)
 
+    time_started: int = field(init=False)
+    time_completed: int = field(init=False)
+
+    def time_spent(self, current_time: int) -> int:
+        """Calculate the time spent on the task so far."""
+        if self.progress == TaskProgress.NOT_STARTED:
+            return 0
+
+        if self.progress == TaskProgress.COMPLETED:
+            return self.time_completed - self.time_started
+
+        return current_time - self.time_started
+
     def __post_init__(self) -> None:
         """Post-initialization to validate task attributes."""
         if self.time_needed < 0:
@@ -70,6 +83,40 @@ class Task:
         if self.time_due < 0:
             msg = "Time due for a task cannot be negative."
             raise TimeError(msg)
+
+    def update_progress(self, current_time: int, agent: Agent) -> None:
+        """Update the progress of the task based on time spent."""
+        if self.progress == TaskProgress.COMPLETED:
+            return
+
+        time_spent = self.time_spent(current_time=current_time)
+
+        if time_spent >= self.time_needed:
+            self.progress = TaskProgress.COMPLETED
+
+        if agent.check_if_location_reached(self.location):
+            if self.progress == TaskProgress.NOT_STARTED:
+                self.progress = TaskProgress.IN_PROGRESS
+                self.time_started = current_time
+
+            if (
+                self.progress == TaskProgress.IN_PROGRESS
+                and time_spent >= self.time_needed
+            ):
+                self.progress = TaskProgress.COMPLETED
+                self.time_completed = current_time
+
+        else:
+            agent.head_to_point((self.location.x, self.location.y))
+            agent.move_one_step(step_size=0.1)
+
+    def __repr__(self) -> str:
+        """Representation of the task."""
+        return (
+            f"Task(type={self.task_type}, priority={self.priority}, "
+            f"progress={self.progress}, time_needed={self.time_needed}, "
+            f"time_due={self.time_due})"
+        )
 
 
 @dataclass

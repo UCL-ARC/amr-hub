@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
 
     from amr_hub_abm.agent import Agent
     from amr_hub_abm.space.building import Building
+    from amr_hub_abm.space.room import Room
 
 
 class SimulationMode(Enum):
@@ -46,6 +48,12 @@ class Simulation:
         if self.time >= self.total_simulation_time:
             msg = "Simulation has already reached its total simulation time."
             raise TimeError(msg)
+
+        # randomize agent order each step to avoid bias
+        random.shuffle(self.agents)
+
+        for agent in self.agents:
+            agent.perform_task(current_time=self.time, rooms=self.rooms)
 
         self.time += 1
 
@@ -81,3 +89,12 @@ class Simulation:
         agents_repr = "\n".join([repr(agent) for agent in self.agents])
 
         return f"{header}\nBuildings:\n{buildings_repr}\n\nAgents:\n{agents_repr}"
+
+    @property
+    def rooms(self) -> list[Room]:
+        """Get all rooms in the simulation space."""
+        all_rooms: list[Room] = []
+        for building in self.space:
+            for floor in building.floors:
+                all_rooms.extend(floor.rooms)
+        return all_rooms
