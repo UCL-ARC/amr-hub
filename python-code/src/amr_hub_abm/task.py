@@ -18,6 +18,8 @@ class TaskProgress(Enum):
     """Enumeration of possible task progress states."""
 
     NOT_STARTED = "not_started"
+    MOVING_TO_LOCATION = "moving_to_location"
+    SUSPENDED = "suspended"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
 
