@@ -65,6 +65,8 @@ class Agent:
 
     movement_speed: float = field(default=0.1)  # units per time step
 
+    next_task_move_time: int = field(init=False)
+
     def __post_init__(self) -> None:
         """Post-initialization to log agent creation."""
         self.heading = self.heading % 360
@@ -252,24 +254,114 @@ class Agent:
 
         self.move_to_location(new_location)
 
+    def perform_in_progress_task(self, current_time: int) -> bool:
+        """Perform an in-progress task and return True if a task was performed."""
+        in_progress_tasks = [
+            task for task in self.tasks if task.progress == TaskProgress.IN_PROGRESS
+        ]
+
+        if not in_progress_tasks:
+            return False
+
+        if len(in_progress_tasks) > 1:
+            msg = f"Agent id {self.idx} has multiple ongoing tasks."
+            logger.error(msg)
+            raise RuntimeError(msg)
+
+        task = in_progress_tasks[0]
+        task.update_progress(current_time=current_time, agent=self)
+        return True
+
+    def perform_moving_to_task_location(self, current_time: int) -> bool:
+        """Move the agent towards the location of its next task."""
+        moving_to_location_tasks = [
+            task
+            for task in self.tasks
+            if task.progress == TaskProgress.MOVING_TO_LOCATION
+        ]
+
+        if not moving_to_location_tasks:
+            return False
+
+        if len(moving_to_location_tasks) > 1:
+            msg = f"Agent id {self.idx} has multiple tasks to start."
+            logger.error(msg)
+            raise RuntimeError(msg)
+
+        next_task = moving_to_location_tasks[0]
+        next_task.update_progress(current_time=current_time, agent=self)
+        return True
+
+    def perform_suspended_task(self, current_time: int) -> bool:
+        """Perform a suspended task and return True if a task was performed."""
+        suspended_tasks = [
+            task for task in self.tasks if task.progress == TaskProgress.SUSPENDED
+        ]
+
+        if not suspended_tasks:
+            return False
+
+        suspended_tasks.sort(key=lambda t: t.priority.value, reverse=True)
+        task = suspended_tasks[0]
+        task.update_progress(current_time=current_time, agent=self)
+        return True
+
+    def perform_to_be_started_task(self, current_time: int) -> bool:
+        """Perform a to-be-started task and return True if a task was performed."""
+        to_be_started_tasks = [
+            task for task in self.tasks if task.progress == TaskProgress.NOT_STARTED
+        ]
+
+        if not to_be_started_tasks:
+            return False
+
+        to_be_started_tasks.sort(key=lambda t: t.priority.value, reverse=True)
+        task = to_be_started_tasks[0]
+        task.update_progress(current_time=current_time, agent=self)
+        return True
+
     def perform_task(self, current_time: int, rooms: list[Room]) -> None:
         """Perform the agent's current task if it's due."""
         if not self.tasks:
             return
 
-        ongoing_tasks = [
-            task for task in self.tasks if task.progress == TaskProgress.IN_PROGRESS
-        ]
+        logger.debug(
+            "Agent id %s has %s tasks to perform.",
+            self.idx,
+            len(self.tasks),
+        )
 
-        if len(ongoing_tasks) > 1:
-            msg = f"Agent id {self.idx} has multiple ongoing tasks."
-            logger.error(msg)
-            raise RuntimeError(msg)
-
-        if ongoing_tasks:
-            task = ongoing_tasks[0]
-            task.update_progress(current_time=current_time, agent=self)
+        if self.perform_in_progress_task(current_time=current_time):
             return
+
+        logger.debug(
+            "No in-progress tasks for Agent id %s.",
+            self.idx,
+        )
+
+        if self.perform_moving_to_task_location(current_time=current_time):
+            return
+
+        logger.debug(
+            "No tasks to move to for Agent id %s.",
+            self.idx,
+        )
+
+        if self.perform_suspended_task(current_time=current_time):
+            return
+
+        logger.debug(
+            "No suspended tasks for Agent id %s.",
+            self.idx,
+        )
+
+        if self.perform_to_be_started_task(current_time=current_time):
+            return
+
+        logger.debug(
+            "No to-be-started tasks for Agent id %s.",
+            self.idx,
+        )
 
         logger.debug(
             "Number of rooms available for Agent id %s: %s",

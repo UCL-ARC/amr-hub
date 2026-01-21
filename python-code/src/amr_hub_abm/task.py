@@ -97,7 +97,7 @@ class Task:
             self.progress = TaskProgress.COMPLETED
 
         if agent.check_if_location_reached(self.location):
-            if self.progress == TaskProgress.NOT_STARTED:
+            if self.progress == TaskProgress.MOVING_TO_LOCATION:
                 self.progress = TaskProgress.IN_PROGRESS
                 self.time_started = current_time
 
