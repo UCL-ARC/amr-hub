@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, ClassVar
 
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.location import Location
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent import Agent
@@ -68,13 +71,13 @@ class Task:
 
     def time_spent(self, current_time: int) -> int:
         """Calculate the time spent on the task so far."""
-        if self.progress == TaskProgress.NOT_STARTED:
-            return 0
-
         if self.progress == TaskProgress.COMPLETED:
             return self.time_completed - self.time_started
 
-        return current_time - self.time_started
+        if self.progress == TaskProgress.IN_PROGRESS:
+            return current_time - self.time_started
+
+        return 0
 
     def __post_init__(self) -> None:
         """Post-initialization to validate task attributes."""
@@ -93,7 +96,7 @@ class Task:
 
         time_spent = self.time_spent(current_time=current_time)
 
-        if time_spent >= self.time_needed:
+        if self.progress == TaskProgress.IN_PROGRESS and time_spent >= self.time_needed:
             self.progress = TaskProgress.COMPLETED
 
         if agent.check_if_location_reached(self.location):
@@ -108,7 +111,19 @@ class Task:
                 self.progress = TaskProgress.COMPLETED
                 self.time_completed = current_time
 
+            else:
+                logger.info(
+                    "Agent id %s performing task %s at location %s.",
+                    agent.idx,
+                    self.task_type,
+                    self.location,
+                )
+
         else:
+            self.progress = TaskProgress.MOVING_TO_LOCATION
+            logger.info(
+                "Agent id %s moving to task location %s.", agent.idx, self.location
+            )
             agent.head_to_point((self.location.x, self.location.y))
             agent.move_one_step()
 

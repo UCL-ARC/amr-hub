@@ -65,8 +65,6 @@ class Agent:
 
     movement_speed: float = field(default=0.1)  # units per time step
 
-    next_task_move_time: int = field(init=False)
-
     def __post_init__(self) -> None:
         """Post-initialization to log agent creation."""
         self.heading = self.heading % 360
@@ -317,6 +315,22 @@ class Agent:
 
         to_be_started_tasks.sort(key=lambda t: t.priority.value, reverse=True)
         task = to_be_started_tasks[0]
+
+        task_move_time = (
+            task.time_due
+            - task.time_needed
+            - self.estimate_time_to_reach_location(task.location)
+        )
+        logger.info(
+            "Agent id %s next task move time: %s, current time: %s",
+            self.idx,
+            task_move_time,
+            current_time,
+        )
+
+        if current_time < task_move_time:
+            return False
+
         task.update_progress(current_time=current_time, agent=self)
         return True
 
@@ -368,3 +382,8 @@ class Agent:
             self.idx,
             len(rooms),
         )
+
+    def estimate_time_to_reach_location(self, target_location: Location) -> float:
+        """Estimate the time required to reach a target location."""
+        distance = self.location.distance_to(target_location)
+        return distance / self.movement_speed
