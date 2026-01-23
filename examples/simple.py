@@ -7,7 +7,7 @@ from amr_hub_abm.simulation_factory import create_simulation
 def simulate():
     config_path = Path("tests/inputs/simulation_config.yml")
     simulation = create_simulation(config_path)
-    print("Simulation created successfully.")
+    print("Simulation created successfully...")
 
     while simulation.time < simulation.total_simulation_time:
         simulation.step()
