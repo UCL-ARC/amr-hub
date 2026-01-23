@@ -121,15 +121,6 @@ class Agent:
         logger.info(msg)
         self.location = new_location
 
-    def rotate_heading(self, angle: float) -> None:
-        """Rotate the agent's heading by a given angle."""
-        old_heading = self.heading
-        self.heading = (self.heading + angle) % 360
-        msg = (
-            f"Rotated Agent id {self.idx} heading from {old_heading} to {self.heading}"
-        )
-        logger.info(msg)
-
     def plot_agent(self, ax: Axes, *, show_tags: bool = False) -> None:
         """Plot the agent on the given axes."""
         ax.plot(
