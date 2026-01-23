@@ -96,36 +96,32 @@ class Task:
 
         time_spent = self.time_spent(current_time=current_time)
 
-        if self.progress == TaskProgress.IN_PROGRESS and time_spent >= self.time_needed:
+        if time_spent >= self.time_needed:
             self.progress = TaskProgress.COMPLETED
+            self.time_completed = current_time
+            return
 
-        if agent.check_if_location_reached(self.location):
-            if self.progress == TaskProgress.MOVING_TO_LOCATION:
-                self.progress = TaskProgress.IN_PROGRESS
-                self.time_started = current_time
+        if self.progress == TaskProgress.IN_PROGRESS:
+            logger.info(
+                "Agent id %s performing task %s at location %s.",
+                agent.idx,
+                self.task_type,
+                self.location,
+            )
+            return
 
-            if (
-                self.progress == TaskProgress.IN_PROGRESS
-                and time_spent >= self.time_needed
-            ):
-                self.progress = TaskProgress.COMPLETED
-                self.time_completed = current_time
-
-            else:
-                logger.info(
-                    "Agent id %s performing task %s at location %s.",
-                    agent.idx,
-                    self.task_type,
-                    self.location,
-                )
-
-        else:
+        if not agent.check_if_location_reached(self.location):
             self.progress = TaskProgress.MOVING_TO_LOCATION
             logger.info(
                 "Agent id %s moving to task location %s.", agent.idx, self.location
             )
             agent.head_to_point((self.location.x, self.location.y))
             agent.move_one_step()
+            return
+
+        if self.progress == TaskProgress.MOVING_TO_LOCATION:
+            self.progress = TaskProgress.IN_PROGRESS
+            self.time_started = current_time
 
     def __repr__(self) -> str:
         """Representation of the task."""

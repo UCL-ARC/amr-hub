@@ -196,7 +196,7 @@ class Agent:
 
             task = TaskDoorAccess(
                 door=additional_info["door"],
-                time_needed=0,
+                time_needed=1,
                 time_due=time,
                 building=location.building,
                 floor=location.floor,
