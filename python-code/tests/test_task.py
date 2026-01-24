@@ -92,7 +92,6 @@ def test_task_negative_time_due_raises() -> None:
 def test_door_access_task_location_setting() -> None:
     """Test that the location is set correctly for a DoorAccess task."""
     door = Door(
-        door_id=1,
         name="Main Entrance",
         start=(0, 0),
         end=(0, 5),
@@ -119,7 +118,6 @@ def test_door_access_task_location_setting() -> None:
 def test_door_access_task_with_invalid_door_raises() -> None:
     """Test that a DoorAccess task with an invalid door raises an error."""
     door = Door(
-        door_id=2,
         name="Back Door",
         start=None,
         end=None,

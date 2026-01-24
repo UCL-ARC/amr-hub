@@ -19,7 +19,6 @@ from amr_hub_abm.space.wall import Wall
 def sample_door() -> Door:
     """Create a sample Door for testing."""
     return Door(
-        door_id=1,
         open=True,
         connecting_rooms=(0, 1),
         access_control=(True, True),

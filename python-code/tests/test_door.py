@@ -9,7 +9,6 @@ from amr_hub_abm.space.door import Door
 def test_door_creation_with_valid_coordinates() -> None:
     """Test creating a Door with valid start and end coordinates."""
     door = Door(
-        door_id=1,
         open=True,
         connecting_rooms=(101, 102),
         access_control=(True, False),
@@ -24,7 +23,6 @@ def test_door_creation_with_valid_coordinates() -> None:
 def test_door_creation_with_name_only() -> None:
     """Test creating a Door with only a name."""
     door = Door(
-        door_id=2,
         open=False,
         connecting_rooms=(201, 202),
         access_control=(False, True),
@@ -39,7 +37,6 @@ def test_door_creation_same_start_and_end_coordinates_raises() -> None:
     """Test that invalid door coordinates raise an InvalidDoorError."""
     with pytest.raises(InvalidDoorError) as excinfo:
         Door(
-            door_id=3,
             open=True,
             connecting_rooms=(301, 302),
             access_control=(True, True),
@@ -53,7 +50,6 @@ def test_door_creation_missing_coordinates_and_name_raises() -> None:
     """Test that missing coordinates and name raise an InvalidDoorError."""
     with pytest.raises(InvalidDoorError) as excinfo:
         Door(
-            door_id=4,
             open=False,
             connecting_rooms=(401, 402),
             access_control=(False, False),
@@ -67,7 +63,6 @@ def test_invalid_door_one_coordinate_none_raises() -> None:
     """Test that having one coordinate as None raises an InvalidDoorError."""
     with pytest.raises(InvalidDoorError) as excinfo:
         Door(
-            door_id=5,
             open=True,
             connecting_rooms=(501, 502),
             access_control=(True, False),
@@ -82,7 +77,6 @@ def test_invalid_door_one_coordinate_none_raises() -> None:
 def test_door_equality() -> None:
     """Test equality comparison between two Door instances."""
     door1 = Door(
-        door_id=6,
         open=True,
         connecting_rooms=(601, 602),
         access_control=(True, True),
@@ -90,7 +84,6 @@ def test_door_equality() -> None:
         end=(1.0, 0.0),
     )
     door2 = Door(
-        door_id=7,
         open=False,
         connecting_rooms=(601, 602),
         access_control=(False, False),
@@ -103,7 +96,6 @@ def test_door_equality() -> None:
 def test_door_inequality() -> None:
     """Test inequality comparison between two Door instances."""
     door1 = Door(
-        door_id=8,
         open=True,
         connecting_rooms=(801, 802),
         access_control=(True, True),
@@ -111,7 +103,6 @@ def test_door_inequality() -> None:
         end=(1.0, 0.0),
     )
     door2 = Door(
-        door_id=9,
         open=True,
         connecting_rooms=(803, 804),
         access_control=(True, True),
@@ -124,20 +115,18 @@ def test_door_inequality() -> None:
 def test_invalid_door_equality_with_different_type() -> None:
     """Test that comparing Door with a different type returns NotImplemented."""
     door = Door(
-        door_id=10,
         open=True,
         connecting_rooms=(1001, 1002),
         access_control=(True, True),
         start=(0.0, 0.0),
         end=(1.0, 0.0),
     )
-    assert door.__eq__("not a door") is NotImplemented
+    assert door.__eq__("not a door") is False
 
 
 def test_door_hash_consistency() -> None:
     """Test that the hash of a Door instance is consistent."""
     door = Door(
-        door_id=11,
         open=True,
         connecting_rooms=(1101, 1102),
         access_control=(True, False),
@@ -152,7 +141,6 @@ def test_door_hash_consistency() -> None:
 def test_door_invalid_name_hash_raises() -> None:
     """Test that a name-based hash without a name raises an InvalidDoorError."""
     door = Door(
-        door_id=12,
         open=False,
         connecting_rooms=(1201, 1202),
         access_control=(False, True),
@@ -167,7 +155,6 @@ def test_door_invalid_name_hash_raises() -> None:
 def test_invalid_door_line_property_raises() -> None:
     """Test that accessing line property with undefined coordinates raises an error."""
     door = Door(
-        door_id=13,
         open=True,
         connecting_rooms=(1301, 1302),
         access_control=(True, True),

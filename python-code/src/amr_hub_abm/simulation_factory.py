@@ -188,6 +188,7 @@ def parse_location_timeseries(
         location_str = row["location"]
         patient_id = int(row["patient_id"]) if row["patient_id"] != "-" else None
         event_type = row["event_type"]
+        door_id = int(row["door_id"]) if row["door_id"] != "-" else None
 
         timestep = pd.to_datetime(timestamp)
         timestep_index = timestamp_to_timestep(timestep, start_time, time_step_minutes)
@@ -224,7 +225,22 @@ def parse_location_timeseries(
             location = patient.location
 
         elif event_type == "door_access":
-            door, point = room.get_door_access_point()
+            if door_id is None:
+                msg = f"Door ID must be provided for 'door_access' events. Row: {row}"
+                raise SimulationModeError(msg)
+
+            door = next(
+                (d for d in room.doors if d.door_id == door_id),
+                None,
+            )
+
+            if door is None:
+                msg = f"Door ID {door_id} not found in room {room.name}. Row: {row}"
+                msg += f" Available doors: {[d.door_id for d in room.doors]}"
+                raise SimulationModeError(msg)
+
+            midpoint = door.line.interpolate(0.5, normalized=True)
+            point = (midpoint.x, midpoint.y)
             additional_info["door"] = door
 
             location = Location(

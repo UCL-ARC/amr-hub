@@ -12,7 +12,6 @@ from amr_hub_abm.exceptions import InvalidDoorError
 class Door:
     """Representation of a door in the AMR Hub ABM simulation."""
 
-    door_id: int
     open: bool
     connecting_rooms: tuple[int, int]
     access_control: tuple[bool, bool]
@@ -20,6 +19,35 @@ class Door:
     start: tuple[float, float] | None = field(default=None)
     end: tuple[float, float] | None = field(default=None)
     door_hash: str = field(init=False)
+    door_id: int = field(init=False, repr=False)
+
+    def __eq__(self, value: object) -> bool:
+        """Check equality of two Door instances based on their attributes."""
+        if not isinstance(value, Door):
+            return False
+
+        if self.name is not None and value.name is not None:
+            return self.name == value.name
+
+        return (self.start, self.end, self.connecting_rooms) == (
+            value.start,
+            value.end,
+            value.connecting_rooms,
+        )
+
+    def __lt__(self, other: object) -> bool:
+        """Define less-than comparison for sorting Door instances."""
+        if not isinstance(other, Door):
+            return NotImplemented
+
+        if self.name is not None and other.name is not None:
+            return self.name < other.name
+
+        return (self.start, self.end, self.connecting_rooms) < (
+            other.start,
+            other.end,
+            other.connecting_rooms,
+        )
 
     def __post_init__(self) -> None:
         """Post-initialization to validate door coordinates."""
@@ -47,12 +75,6 @@ class Door:
     def __hash__(self) -> int:
         """Generate a hash for the door based on its unique hash string."""
         return hash(self.door_hash)
-
-    def __eq__(self, other: object) -> bool:
-        """Check equality of two Door instances based on their attributes."""
-        if not isinstance(other, Door):
-            return NotImplemented
-        return self.door_hash == other.door_hash
 
     def create_name_hash(self) -> str:
         """Generate a hash for the door based on its name."""

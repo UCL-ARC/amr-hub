@@ -27,14 +27,12 @@ def _make_room(
 
 
 def _make_door(
-    door_id: int,
     a: int,
     b: int,
     start: tuple[float, float] = (0.0, 0.0),
     end: tuple[float, float] = (1.0, 0.0),
 ) -> Door:
     return Door(
-        door_id=door_id,
         open=True,
         connecting_rooms=(a, b),
         access_control=(True, True),
@@ -68,8 +66,8 @@ def test_duplicate_room_ids_raises() -> None:
 def test_edge_set_and_adjacency_matrix() -> None:
     """Test that edge set and adjacency matrix are computed correctly."""
     # Create doors connecting 1-2 and 2-3
-    d12 = _make_door(1, 1, 2, start=(0.0, 0.0), end=(1.0, 0.0))
-    d23 = _make_door(2, 2, 3, start=(1.0, 0.0), end=(2.0, 0.0))
+    d12 = _make_door(1, 2, start=(0.0, 0.0), end=(1.0, 0.0))
+    d23 = _make_door(2, 3, start=(1.0, 0.0), end=(2.0, 0.0))
 
     r1 = _make_room(1, "R1", doors=[d12])
     r2 = _make_room(2, "R2", doors=[d12, d23])

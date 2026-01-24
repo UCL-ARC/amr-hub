@@ -401,7 +401,6 @@ def test_room_with_doors(
         ],
         [
             Door(
-                door_id=1,
                 start=(0, 2),
                 end=(0, 3),
                 open=True,
@@ -444,7 +443,6 @@ def test_room_plotting_with_doors(
 
     doors = [
         Door(
-            door_id=1,
             start=(0, 3),
             end=(0, 4),
             open=True,
@@ -644,7 +642,6 @@ def test_room_get_door_access_point(
     """Test the get_door_access_point method of the Room class."""
     doors = [
         Door(
-            door_id=1,
             start=(0, 2),
             end=(0, 3),
             open=True,
@@ -698,7 +695,6 @@ def test_room_get_door_access_point_multiple_doors(
     """Test get_door_access_point with multiple doors."""
     doors = [
         Door(
-            door_id=1,
             start=(0, 1),
             end=(0, 2),
             open=True,
@@ -706,7 +702,6 @@ def test_room_get_door_access_point_multiple_doors(
             access_control=(True, True),
         ),
         Door(
-            door_id=2,
             start=(0, 3),
             end=(0, 4),
             open=True,

@@ -1,2 +1,2 @@
-hcw_id,timestamp,location,event_type,patient_id
-10,2024-01-01 05:00:00,Sample Hospital:0:Not a Room,door_access,-
+hcw_id,timestamp,location,event_type,patient_id,door_id
+10,2024-01-01 05:00:00,Sample Hospital:0:Not a Room,door_access,-,0

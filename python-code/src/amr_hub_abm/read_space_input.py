@@ -74,7 +74,8 @@ class SpaceInputReader:
 
     def assign_doors_to_rooms(self) -> None:
         """Assign doors to rooms based on their coordinates."""
-        for counter, door in enumerate(set(self.door_list)):
+        for counter, door in enumerate(sorted(set(self.door_list))):
+            door.door_id = counter
             connected_rooms = [
                 room.room_id for room in self.rooms if door in room.doors
             ]
@@ -87,7 +88,6 @@ class SpaceInputReader:
                 logger.error(msg)
                 raise InvalidDoorError(msg)
 
-            door.door_id = counter
             door.connecting_rooms = (connected_rooms[0], connected_rooms[1])
 
         for room in self.rooms:
@@ -95,7 +95,6 @@ class SpaceInputReader:
                 if door.connecting_rooms == (-1, -1):
                     for assigned_door in set(self.door_list):
                         if door == assigned_door:
-                            door.door_id = assigned_door.door_id
                             door.connecting_rooms = assigned_door.connecting_rooms
 
     def create_rooms_from_data(self) -> None:
@@ -158,7 +157,6 @@ class SpaceInputReader:
         room_doors: list[Door] = []
         for door_name in room_data.get("doors", ""):
             door = Door(
-                door_id=-1,
                 open=False,
                 connecting_rooms=(-1, -1),
                 access_control=(False, False),
@@ -185,7 +183,6 @@ class SpaceInputReader:
         room_doors: list[Door] = []
         for door_data in room_data.get("doors", []):
             door = Door(
-                door_id=-1,
                 open=False,
                 connecting_rooms=(-1, -1),
                 access_control=(False, False),

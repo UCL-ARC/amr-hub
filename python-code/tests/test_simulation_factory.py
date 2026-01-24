@@ -75,6 +75,7 @@ def location_timeseries_df() -> pd.DataFrame:
             "location": ["BuildingA:1:Room101"],
             "patient_id": ["-"],
             "event_type": ["attend_patient"],
+            "door_id": ["-"],
         }
     )
 
