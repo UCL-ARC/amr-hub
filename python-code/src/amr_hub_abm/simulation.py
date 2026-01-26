@@ -43,7 +43,7 @@ class Simulation:
 
     time: int = field(default=0, init=False)
 
-    def step(self) -> None:
+    def step(self, plot_path: Path | None = None) -> None:
         """Advance the simulation by one time step."""
         if self.time >= self.total_simulation_time:
             msg = "Simulation has already reached its total simulation time."
@@ -54,6 +54,9 @@ class Simulation:
 
         for agent in self.agents:
             agent.perform_task(current_time=self.time, rooms=self.rooms)
+
+        if plot_path is not None:
+            self.plot_current_state(directory_path=plot_path)
 
         self.time += 1
 
