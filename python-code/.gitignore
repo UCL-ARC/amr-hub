@@ -161,3 +161,7 @@ cython_debug/
 
 # package version
 _version.py
+
+
+simulation_outputs/
+
