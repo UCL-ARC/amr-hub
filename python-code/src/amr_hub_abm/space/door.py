@@ -1,58 +1,87 @@
 """Module defining door representation for the AMR Hub ABM simulation."""
 
-import hashlib
 from dataclasses import dataclass, field
 
 import shapely.geometry
 
-from amr_hub_abm.exceptions import InvalidDoorError, SimulationModeError
+from amr_hub_abm.exceptions import InvalidDoorError
 
 
-@dataclass
-class Door:
-    """Representation of a door in the AMR Hub ABM simulation."""
+@dataclass(kw_only=True, frozen=True)
+class DetachedDoor:
+    """Representation of a detatched door in the AMR Hub ABM simulation."""
 
-    door_id: int
-    open: bool
-    connecting_rooms: tuple[int, int]
+    is_open: bool
     access_control: tuple[bool, bool]
-    start: tuple[float, float] = field(default=(0.0, 0.0))
-    end: tuple[float, float] = field(default=(0.0, 0.0))
-    door_hash: str = field(init=False)
+    name: str | None = field(default=None)
+    start: tuple[float, float] | None = field(default=None)
+    end: tuple[float, float] | None = field(default=None)
+
+    def _identity_key(self) -> tuple[object, ...]:
+        """Key used for equality + hashing. Ignores mutable state."""
+        if self.name is not None:
+            return ("name", self.name)
+        # at this point start/end are both not None due to validation
+
+        if self.start is None or self.end is None:
+            msg = "Cannot create identity key from door without name or coordinates."
+            raise InvalidDoorError(msg)
+        return ("coords", self.start, self.end)
+
+    def __eq__(self, other: object) -> bool:
+        """Define equality comparison for DetachedDoor instances."""
+        if not isinstance(other, DetachedDoor):
+            return NotImplemented
+        return self._identity_key() == other._identity_key()
+
+    def __hash__(self) -> int:
+        """Define hash for DetachedDoor instances."""
+        return hash(self._identity_key())
 
     def __post_init__(self) -> None:
         """Post-initialization to validate door coordinates."""
+        if (self.start is None) != (self.end is None):
+            msg = "Both start and end points must be None or both must be defined."
+            raise InvalidDoorError(msg)
+
+        if (self.start is None or self.end is None) and (self.name is None):
+            msg = "Door must have a name if start and end points are not defined."
+            raise InvalidDoorError(msg)
+
+        if self.start is None or self.end is None:
+            return
+
         if self.start == self.end:
             msg = "Door start and end points cannot be the same."
             raise InvalidDoorError(msg)
 
         if self.start > self.end:
-            self.start, self.end = self.end, self.start
+            temp = self.start
+            object.__setattr__(self, "start", self.end)
+            object.__setattr__(self, "end", temp)
 
-        self.door_hash = self.create_coordinate_hash()
 
-    def __hash__(self) -> int:
-        """Generate a hash for the door based on its unique hash string."""
-        return hash(self.door_hash)
+@dataclass(eq=False, kw_only=True, frozen=True)
+class Door(DetachedDoor):
+    """Representation of a door in the AMR Hub ABM simulation."""
 
-    def __eq__(self, other: object) -> bool:
-        """Check equality of two Door instances based on their attributes."""
+    connecting_rooms: tuple[int, int]
+    door_id: int
+
+    def __lt__(self, other: object) -> bool:
+        """Define less-than comparison for Door instances."""
         if not isinstance(other, Door):
             return NotImplemented
-        return self.door_hash == other.door_hash
+        return self._identity_key() < other._identity_key()
 
-    def create_coordinate_hash(self) -> str:
-        """Generate a hash for the door based on its unique attributes."""
-        hash_input = f"{self.start}-{self.end}-{self.connecting_rooms}"
-        return hashlib.sha256(hash_input.encode()).hexdigest()
+    def __post_init__(self) -> None:
+        """Post-initialization to validate door coordinates and create hash."""
+        super().__post_init__()
 
     @property
     def line(self) -> shapely.geometry.LineString:
         """Get the line representation of the door."""
-        if self.start == self.end == (0.0, 0.0):
-            msg = """
-            Dummy start and end points for door line.
-            Probably simulation in topological mode.
-            """
-            raise SimulationModeError(msg)
+        if self.start is None or self.end is None:
+            msg = "Door start and end must be defined when not in topological mode."
+            raise InvalidDoorError(msg)
         return shapely.geometry.LineString([self.start, self.end])
