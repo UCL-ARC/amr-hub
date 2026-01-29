@@ -24,6 +24,7 @@ def sample_door() -> Door:
         access_control=(True, True),
         start=(5.0, 1.0),
         end=(5.0, 2.0),
+        door_id=0,
     )
 
 

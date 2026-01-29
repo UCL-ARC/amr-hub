@@ -12,7 +12,7 @@ from amr_hub_abm.exceptions import (
     InvalidRoomError,
 )
 from amr_hub_abm.space.building import Building
-from amr_hub_abm.space.door import Door
+from amr_hub_abm.space.door import DetatchedDoor, Door
 from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
@@ -31,20 +31,104 @@ class SpaceInputReader:
     door_list: list[Door] = field(init=False, default_factory=list)
     wall_list: list[Wall] = field(init=False, default_factory=list)
 
+    room_door_dict: dict[str, list[DetatchedDoor]] = field(
+        init=False, default_factory=dict
+    )
+
     rooms: list[Room] = field(init=False, default_factory=list)
     buildings: list[Building] = field(init=False, default_factory=list)
+
+    topological: bool = field(init=False, default=False)
 
     def __post_init__(self) -> None:
         """Post-initialization to read and validate the YAML file."""
         self.validation()
+        self.get_room_name_dict()
+        self.create_doors_from_detatched_doors()
         self.create_rooms_from_data()
-        self.assign_doors_to_rooms()
 
         for room in self.rooms:
             msg = f"Room '{room.name} (id {room.room_id})' created."
             logger.info(msg)
 
         self.buildings = self.organise_rooms_into_floors_and_buildings(self.rooms)
+
+    def get_room_name_dict(self) -> None:
+        """Extract room names and their corresponding detatched doors."""
+        for building_data in [self.data["building"]]:
+            for floor_data in building_data["floors"]:
+                for room_data in floor_data["rooms"]:
+                    self.topological = "area" in room_data
+                    room_name = room_data["name"]
+                    doors: list[DetatchedDoor] = []
+
+                    if not self.topological:
+                        for door_data in room_data.get("doors", []):
+                            door = DetatchedDoor(
+                                open=False,
+                                access_control=(False, False),
+                                start=(door_data[0], door_data[1]),
+                                end=(door_data[2], door_data[3]),
+                            )
+                            doors.append(door)
+                        self.room_door_dict[room_name] = doors
+
+                    else:
+                        for door_name in room_data.get("doors", []):
+                            door = DetatchedDoor(
+                                open=False,
+                                access_control=(False, False),
+                                name=door_name,
+                            )
+                            doors.append(door)
+                        self.room_door_dict[room_name] = doors
+
+    def create_doors_from_detatched_doors(self) -> None:
+        """Create Door instances from detatched doors."""
+        detatced_door_list = [
+            door for doors in self.room_door_dict.values() for door in doors
+        ]
+        unique_detatched_doors = set(detatced_door_list)
+        sorted_unique_detatched_doors = sorted(
+            unique_detatched_doors, key=lambda d: (d.start, d.end)
+        )
+
+        sorted_room_names = sorted(room_name for room_name in self.room_door_dict)
+
+        for detatched_door in sorted_unique_detatched_doors:
+            connecting_rooms = [
+                sorted_room_names.index(room_name)
+                for room_name, doors in self.room_door_dict.items()
+                if detatched_door in doors
+            ]
+
+            if len(connecting_rooms) != 2:
+                msg = (
+                    f"Door at {detatched_door.start}-{detatched_door.end} must connect "
+                    f"exactly two rooms. Found {len(connecting_rooms)}."
+                )
+                logger.error(msg)
+                raise InvalidDoorError(msg)
+
+            if self.topological:
+                door = Door(
+                    open=detatched_door.open,
+                    access_control=detatched_door.access_control,
+                    name=detatched_door.name,
+                    connecting_rooms=(connecting_rooms[0], connecting_rooms[1]),
+                    door_id=sorted_unique_detatched_doors.index(detatched_door),
+                )
+            else:
+                door = Door(
+                    open=detatched_door.open,
+                    access_control=detatched_door.access_control,
+                    start=detatched_door.start,
+                    end=detatched_door.end,
+                    connecting_rooms=(connecting_rooms[0], connecting_rooms[1]),
+                    door_id=sorted_unique_detatched_doors.index(detatched_door),
+                )
+
+            self.door_list.append(door)
 
     @staticmethod
     def organise_rooms_into_floors_and_buildings(rooms: list[Room]) -> list[Building]:
@@ -106,21 +190,18 @@ class SpaceInputReader:
 
     def create_rooms_from_data(self) -> None:
         """Create Room instances from the validated data."""
-        room_counter = 0
+        sorted_room_names = sorted(room_name for room_name in self.room_door_dict)
 
-        for building_data in [self.data["building"]]:
-            for floor_data in building_data["floors"]:
-                for room_data in floor_data["rooms"]:
-                    room = self.create_room(
-                        room_data,
-                        room_counter,
-                        building_data["name"],
-                        floor_data["level"],
-                    )
-                    msg = f"Created room: {room.name}"
-                    logger.info(msg)
-                    self.rooms.append(room)
-                    room_counter += 1
+        for index, name in enumerate(sorted_room_names):
+            for building_data in [self.data["building"]]:
+                for floor_data in building_data["floors"]:
+                    floor_level = floor_data["level"]
+                    for room_data in floor_data["rooms"]:
+                        if room_data["name"] == name:
+                            room = self.create_room(
+                                room_data, index, building_data["name"], floor_level
+                            )
+                            self.rooms.append(room)
 
     def validation(self) -> None:
         """Validate the space input data from the YAML file."""
@@ -149,9 +230,7 @@ class SpaceInputReader:
         self, room_data: dict, room_id: int, building_name: str, floor_level: int
     ) -> Room:
         """Create a Room instance from room data."""
-        topological = "area" in room_data
-
-        if topological:
+        if self.topological:
             return self.create_topological_room(
                 room_data, room_id, building_name, floor_level
             )
@@ -161,16 +240,9 @@ class SpaceInputReader:
         self, room_data: dict, room_id: int, building_name: str, floor_level: int
     ) -> Room:
         """Create a topological Room instance from room data."""
-        room_doors: list[Door] = []
-        for door_name in room_data.get("doors", ""):
-            door = Door(
-                open=False,
-                connecting_rooms=(-1, -1),
-                access_control=(False, False),
-                name=door_name,
-            )
-            self.door_list.append(door)
-            room_doors.append(door)
+        room_doors = [
+            door for door in self.door_list if door.name in room_data["doors"]
+        ]
 
         return Room(
             room_id=room_id,
@@ -187,17 +259,9 @@ class SpaceInputReader:
         self, room_data: dict, room_id: int, building_name: str, floor_level: int
     ) -> Room:
         """Create a spatial Room instance from room data."""
-        room_doors: list[Door] = []
-        for door_data in room_data.get("doors", []):
-            door = Door(
-                open=False,
-                connecting_rooms=(-1, -1),
-                access_control=(False, False),
-                start=(door_data[0], door_data[1]),
-                end=(door_data[2], door_data[3]),
-            )
-            self.door_list.append(door)
-            room_doors.append(door)
+        room_doors = [
+            door for door in self.door_list if room_id in door.connecting_rooms
+        ]
 
         room_walls: list[Wall] = []
         for wall_data in room_data.get("walls", []):

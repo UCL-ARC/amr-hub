@@ -98,6 +98,7 @@ def test_door_access_task_location_setting() -> None:
         open=True,
         connecting_rooms=(1, 2),
         access_control=(True, True),
+        door_id=12,
     )
 
     door_task = TaskDoorAccess(
@@ -124,6 +125,7 @@ def test_door_access_task_with_invalid_door_raises() -> None:
         open=False,
         connecting_rooms=(3, 4),
         access_control=(False, False),
+        door_id=14,
     )
 
     with pytest.raises(SimulationModeError) as excinfo:

@@ -38,6 +38,7 @@ def _make_door(
         access_control=(True, True),
         start=start,
         end=end,
+        door_id=0,
     )
 
 

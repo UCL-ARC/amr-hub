@@ -14,6 +14,7 @@ def test_door_creation_with_valid_coordinates() -> None:
         access_control=(True, False),
         start=(0.0, 0.0),
         end=(1.0, 0.0),
+        door_id=1,
     )
     assert door.door_hash is not None
     assert door.start == (0.0, 0.0)
@@ -27,6 +28,7 @@ def test_door_creation_with_name_only() -> None:
         connecting_rooms=(201, 202),
         access_control=(False, True),
         name="Main Entrance",
+        door_id=2,
     )
     assert door.door_hash is not None
     assert door.start is None
@@ -42,6 +44,7 @@ def test_door_creation_same_start_and_end_coordinates_raises() -> None:
             access_control=(True, True),
             start=(1.0, 1.0),
             end=(1.0, 1.0),
+            door_id=3,
         )
     assert "Door start and end points cannot be the same." in str(excinfo.value)
 
@@ -53,6 +56,7 @@ def test_door_creation_missing_coordinates_and_name_raises() -> None:
             open=False,
             connecting_rooms=(401, 402),
             access_control=(False, False),
+            door_id=4,
         )
     assert "Door must have a name if start and end points are not defined." in str(
         excinfo.value
@@ -68,6 +72,7 @@ def test_invalid_door_one_coordinate_none_raises() -> None:
             access_control=(True, False),
             start=(0.0, 0.0),
             end=None,
+            door_id=5,
         )
     assert "Both start and end points must be None or both must be defined." in str(
         excinfo.value
@@ -82,6 +87,7 @@ def test_door_equality() -> None:
         access_control=(True, True),
         start=(0.0, 0.0),
         end=(1.0, 0.0),
+        door_id=6,
     )
     door2 = Door(
         open=False,
@@ -89,6 +95,7 @@ def test_door_equality() -> None:
         access_control=(False, False),
         start=(0.0, 0.0),
         end=(1.0, 0.0),
+        door_id=7,
     )
     assert door1 == door2
 
@@ -101,6 +108,7 @@ def test_door_inequality() -> None:
         access_control=(True, True),
         start=(0.0, 0.0),
         end=(1.0, 0.0),
+        door_id=8,
     )
     door2 = Door(
         open=True,
@@ -108,6 +116,7 @@ def test_door_inequality() -> None:
         access_control=(True, True),
         start=(0.0, 0.0),
         end=(1.0, 0.0),
+        door_id=9,
     )
     assert door1 != door2
 
@@ -120,6 +129,7 @@ def test_invalid_door_equality_with_different_type() -> None:
         access_control=(True, True),
         start=(0.0, 0.0),
         end=(1.0, 0.0),
+        door_id=10,
     )
     assert door.__eq__("not a door") is False
 
@@ -132,6 +142,7 @@ def test_door_hash_consistency() -> None:
         access_control=(True, False),
         start=(0.0, 0.0),
         end=(1.0, 0.0),
+        door_id=11,
     )
     first_hash = hash(door)
     second_hash = hash(door)
@@ -146,6 +157,7 @@ def test_door_invalid_name_hash_raises() -> None:
         access_control=(False, True),
         start=(0, 0),
         end=(1, 0),
+        door_id=12,
     )
     with pytest.raises(InvalidDoorError) as excinfo:
         door.create_name_hash()
@@ -159,6 +171,7 @@ def test_invalid_door_line_property_raises() -> None:
         connecting_rooms=(1301, 1302),
         access_control=(True, True),
         name="Side Door",
+        door_id=13,
     )
     with pytest.raises(InvalidDoorError) as excinfo:
         _ = door.line

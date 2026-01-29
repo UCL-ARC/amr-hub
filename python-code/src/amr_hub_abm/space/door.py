@@ -8,18 +8,49 @@ import shapely.geometry
 from amr_hub_abm.exceptions import InvalidDoorError
 
 
-@dataclass
-class Door:
-    """Representation of a door in the AMR Hub ABM simulation."""
+@dataclass(kw_only=True)
+class DetatchedDoor:
+    """Representation of a detatched door in the AMR Hub ABM simulation."""
 
     open: bool
-    connecting_rooms: tuple[int, int]
     access_control: tuple[bool, bool]
     name: str | None = field(default=None)
     start: tuple[float, float] | None = field(default=None)
     end: tuple[float, float] | None = field(default=None)
-    door_hash: str = field(init=False)
-    door_id: int = field(init=False, repr=False)
+
+    def __hash__(self) -> int:
+        """Generate a hash for the detatched door based on its attributes."""
+        hash_input = self.name if self.name is not None else f"{self.start}-{self.end}"
+
+        return hash(hashlib.sha256(hash_input.encode()).hexdigest())
+
+    def __post_init__(self) -> None:
+        """Post-initialization to validate door coordinates."""
+        if (self.start is None or self.end is None) and (self.start != self.end):
+            msg = "Both start and end points must be None or both must be defined."
+            raise InvalidDoorError(msg)
+
+        if (self.start is None or self.end is None) and (self.name is None):
+            msg = "Door must have a name if start and end points are not defined."
+            raise InvalidDoorError(msg)
+
+        if self.start is None or self.end is None:
+            return
+
+        if self.start == self.end:
+            msg = "Door start and end points cannot be the same."
+            raise InvalidDoorError(msg)
+
+        if self.start > self.end:
+            self.start, self.end = self.end, self.start
+
+
+@dataclass
+class Door(DetatchedDoor):
+    """Representation of a door in the AMR Hub ABM simulation."""
+
+    connecting_rooms: tuple[int, int]
+    door_id: int
 
     def __eq__(self, value: object) -> bool:
         """Check equality of two Door instances based on their attributes."""
@@ -50,27 +81,13 @@ class Door:
         )
 
     def __post_init__(self) -> None:
-        """Post-initialization to validate door coordinates."""
-        if (self.start is None or self.end is None) and (self.start != self.end):
-            msg = "Both start and end points must be None or both must be defined."
-            raise InvalidDoorError(msg)
-
-        if (self.start is None or self.end is None) and (self.name is None):
-            msg = "Door must have a name if start and end points are not defined."
-            raise InvalidDoorError(msg)
+        """Post-initialization to validate door coordinates and create hash."""
+        super().__post_init__()
 
         if self.start is None or self.end is None:
             self.door_hash = self.create_name_hash()
-            return
-
-        if self.start == self.end:
-            msg = "Door start and end points cannot be the same."
-            raise InvalidDoorError(msg)
-
-        if self.start > self.end:
-            self.start, self.end = self.end, self.start
-
-        self.door_hash = self.create_coordinate_hash()
+        else:
+            self.door_hash = self.create_coordinate_hash()
 
     def __hash__(self) -> int:
         """Generate a hash for the door based on its unique hash string."""
