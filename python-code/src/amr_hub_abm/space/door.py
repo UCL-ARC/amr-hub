@@ -7,7 +7,7 @@ import shapely.geometry
 from amr_hub_abm.exceptions import InvalidDoorError
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, frozen=True)
 class DetachedDoor:
     """Representation of a detatched door in the AMR Hub ABM simulation."""
 
@@ -56,10 +56,12 @@ class DetachedDoor:
             raise InvalidDoorError(msg)
 
         if self.start > self.end:
-            self.start, self.end = self.end, self.start
+            temp = self.start
+            object.__setattr__(self, "start", self.end)
+            object.__setattr__(self, "end", temp)
 
 
-@dataclass(eq=False, kw_only=True)
+@dataclass(eq=False, kw_only=True, frozen=True)
 class Door(DetachedDoor):
     """Representation of a door in the AMR Hub ABM simulation."""
 

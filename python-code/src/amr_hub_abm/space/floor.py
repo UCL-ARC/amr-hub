@@ -93,8 +93,8 @@ class Floor:
 
         pseudo_doors = room.doors.copy()
         for count, door in enumerate(pseudo_doors):
-            door.start = (2 * count + 1, width)
-            door.end = (2 * count + 2, width)
+            object.__setattr__(door, "start", (2 * count + 1, width))
+            object.__setattr__(door, "end", (2 * count + 2, width))
 
         pseudo_walls = [
             Wall((0, width), (0, 0)),

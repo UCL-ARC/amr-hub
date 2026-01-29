@@ -156,38 +156,6 @@ class SpaceInputReader:
 
         return buildings
 
-    def assign_doors_to_rooms(self) -> None:
-        """Assign doors to rooms based on their coordinates."""
-        for counter, door in enumerate(sorted(set(self.door_list))):
-            door.door_id = counter
-            connected_rooms = [
-                room.room_id for room in self.rooms if door in room.doors
-            ]
-
-            if len(connected_rooms) != 2:
-                msg = (
-                    f"Door at {door.start}-{door.end} must connect exactly two rooms. "
-                    f"Found {len(connected_rooms)}."
-                )
-                logger.error(msg)
-                raise InvalidDoorError(msg)
-
-            door.connecting_rooms = (connected_rooms[0], connected_rooms[1])
-
-        assigned_doors = [
-            door for door in set(self.door_list) if door.connecting_rooms != (-1, -1)
-        ]
-
-        for room in self.rooms:
-            for door in room.doors:
-                if door.connecting_rooms == (-1, -1):
-                    for assigned_door in set(assigned_doors):
-                        if (
-                            door.start == assigned_door.start
-                            and door.end == assigned_door.end
-                        ):
-                            door.connecting_rooms = assigned_door.connecting_rooms
-
     def create_rooms_from_data(self) -> None:
         """Create Room instances from the validated data."""
         sorted_room_names = sorted(room_name for room_name in self.room_door_dict)
