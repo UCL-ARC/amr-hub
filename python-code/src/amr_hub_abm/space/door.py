@@ -1,6 +1,5 @@
 """Module defining door representation for the AMR Hub ABM simulation."""
 
-import hashlib
 from dataclasses import dataclass, field
 
 import shapely.geometry
@@ -9,24 +8,39 @@ from amr_hub_abm.exceptions import InvalidDoorError
 
 
 @dataclass(kw_only=True)
-class DetatchedDoor:
+class DetachedDoor:
     """Representation of a detatched door in the AMR Hub ABM simulation."""
 
-    open: bool
+    is_open: bool
     access_control: tuple[bool, bool]
     name: str | None = field(default=None)
     start: tuple[float, float] | None = field(default=None)
     end: tuple[float, float] | None = field(default=None)
 
-    def __hash__(self) -> int:
-        """Generate a hash for the detatched door based on its attributes."""
-        hash_input = self.name if self.name is not None else f"{self.start}-{self.end}"
+    def _identity_key(self) -> tuple[object, ...]:
+        """Key used for equality + hashing. Ignores mutable state."""
+        if self.name is not None:
+            return ("name", self.name)
+        # at this point start/end are both not None due to validation
 
-        return hash(hashlib.sha256(hash_input.encode()).hexdigest())
+        if self.start is None or self.end is None:
+            msg = "Cannot create identity key from door without name or coordinates."
+            raise InvalidDoorError(msg)
+        return ("coords", self.start, self.end)
+
+    def __eq__(self, other: object) -> bool:
+        """Define equality comparison for DetachedDoor instances."""
+        if not isinstance(other, DetachedDoor):
+            return NotImplemented
+        return self._identity_key() == other._identity_key()
+
+    def __hash__(self) -> int:
+        """Define hash for DetachedDoor instances."""
+        return hash(self._identity_key())
 
     def __post_init__(self) -> None:
         """Post-initialization to validate door coordinates."""
-        if (self.start is None or self.end is None) and (self.start != self.end):
+        if (self.start is None) != (self.end is None):
             msg = "Both start and end points must be None or both must be defined."
             raise InvalidDoorError(msg)
 
@@ -45,66 +59,22 @@ class DetatchedDoor:
             self.start, self.end = self.end, self.start
 
 
-@dataclass
-class Door(DetatchedDoor):
+@dataclass(eq=False, kw_only=True)
+class Door(DetachedDoor):
     """Representation of a door in the AMR Hub ABM simulation."""
 
     connecting_rooms: tuple[int, int]
     door_id: int
 
-    def __eq__(self, value: object) -> bool:
-        """Check equality of two Door instances based on their attributes."""
-        if not isinstance(value, Door):
-            return False
-
-        if self.name is not None and value.name is not None:
-            return self.name == value.name
-
-        return (self.start, self.end, self.connecting_rooms) == (
-            value.start,
-            value.end,
-            value.connecting_rooms,
-        )
-
     def __lt__(self, other: object) -> bool:
-        """Define less-than comparison for sorting Door instances."""
+        """Define less-than comparison for Door instances."""
         if not isinstance(other, Door):
             return NotImplemented
-
-        if self.name is not None and other.name is not None:
-            return self.name < other.name
-
-        return (self.start, self.end, self.connecting_rooms) < (
-            other.start,
-            other.end,
-            other.connecting_rooms,
-        )
+        return self._identity_key() < other._identity_key()
 
     def __post_init__(self) -> None:
         """Post-initialization to validate door coordinates and create hash."""
         super().__post_init__()
-
-        if self.start is None or self.end is None:
-            self.door_hash = self.create_name_hash()
-        else:
-            self.door_hash = self.create_coordinate_hash()
-
-    def __hash__(self) -> int:
-        """Generate a hash for the door based on its unique hash string."""
-        return hash(self.door_hash)
-
-    def create_name_hash(self) -> str:
-        """Generate a hash for the door based on its name."""
-        if self.name is None:
-            msg = "Door name must be defined to create name-based hash."
-            raise InvalidDoorError(msg)
-        hash_input = f"{self.name}-{self.connecting_rooms}"
-        return hashlib.sha256(hash_input.encode()).hexdigest()
-
-    def create_coordinate_hash(self) -> str:
-        """Generate a hash for the door based on its unique attributes."""
-        hash_input = f"{self.start}-{self.end}-{self.connecting_rooms}"
-        return hashlib.sha256(hash_input.encode()).hexdigest()
 
     @property
     def line(self) -> shapely.geometry.LineString:

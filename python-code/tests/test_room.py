@@ -403,7 +403,7 @@ def test_room_with_doors(
             Door(
                 start=(0, 2),
                 end=(0, 3),
-                open=True,
+                is_open=True,
                 connecting_rooms=(1, 2),
                 access_control=(True, True),
                 door_id=1,
@@ -446,7 +446,7 @@ def test_room_plotting_with_doors(
         Door(
             start=(0, 3),
             end=(0, 4),
-            open=True,
+            is_open=True,
             connecting_rooms=(1, 2),
             access_control=(True, True),
             door_id=1,
@@ -646,7 +646,7 @@ def test_room_get_door_access_point(
         Door(
             start=(0, 2),
             end=(0, 3),
-            open=True,
+            is_open=True,
             connecting_rooms=(1, 2),
             access_control=(True, True),
             door_id=1,
@@ -700,7 +700,7 @@ def test_room_get_door_access_point_multiple_doors(
         Door(
             start=(0, 1),
             end=(0, 2),
-            open=True,
+            is_open=True,
             connecting_rooms=(1, 2),
             access_control=(True, True),
             door_id=1,
@@ -708,7 +708,7 @@ def test_room_get_door_access_point_multiple_doors(
         Door(
             start=(0, 3),
             end=(0, 4),
-            open=True,
+            is_open=True,
             connecting_rooms=(1, 3),
             access_control=(True, True),
             door_id=2,

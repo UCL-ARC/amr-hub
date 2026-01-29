@@ -12,7 +12,7 @@ from amr_hub_abm.exceptions import (
     InvalidRoomError,
 )
 from amr_hub_abm.space.building import Building
-from amr_hub_abm.space.door import DetatchedDoor, Door
+from amr_hub_abm.space.door import DetachedDoor, Door
 from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
@@ -31,7 +31,7 @@ class SpaceInputReader:
     door_list: list[Door] = field(init=False, default_factory=list)
     wall_list: list[Wall] = field(init=False, default_factory=list)
 
-    room_door_dict: dict[str, list[DetatchedDoor]] = field(
+    room_door_dict: dict[str, list[DetachedDoor]] = field(
         init=False, default_factory=dict
     )
 
@@ -60,12 +60,12 @@ class SpaceInputReader:
                 for room_data in floor_data["rooms"]:
                     self.topological = "area" in room_data
                     room_name = room_data["name"]
-                    doors: list[DetatchedDoor] = []
+                    doors: list[DetachedDoor] = []
 
                     if not self.topological:
                         for door_data in room_data.get("doors", []):
-                            door = DetatchedDoor(
-                                open=False,
+                            door = DetachedDoor(
+                                is_open=False,
                                 access_control=(False, False),
                                 start=(door_data[0], door_data[1]),
                                 end=(door_data[2], door_data[3]),
@@ -75,8 +75,8 @@ class SpaceInputReader:
 
                     else:
                         for door_name in room_data.get("doors", []):
-                            door = DetatchedDoor(
-                                open=False,
+                            door = DetachedDoor(
+                                is_open=False,
                                 access_control=(False, False),
                                 name=door_name,
                             )
@@ -112,7 +112,7 @@ class SpaceInputReader:
 
             if self.topological:
                 door = Door(
-                    open=detatched_door.open,
+                    is_open=detatched_door.is_open,
                     access_control=detatched_door.access_control,
                     name=detatched_door.name,
                     connecting_rooms=(connecting_rooms[0], connecting_rooms[1]),
@@ -120,7 +120,7 @@ class SpaceInputReader:
                 )
             else:
                 door = Door(
-                    open=detatched_door.open,
+                    is_open=detatched_door.is_open,
                     access_control=detatched_door.access_control,
                     start=detatched_door.start,
                     end=detatched_door.end,

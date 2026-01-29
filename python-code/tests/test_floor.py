@@ -33,7 +33,7 @@ def _make_door(
     end: tuple[float, float] = (1.0, 0.0),
 ) -> Door:
     return Door(
-        open=True,
+        is_open=True,
         connecting_rooms=(a, b),
         access_control=(True, True),
         start=start,
