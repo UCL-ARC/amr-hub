@@ -89,14 +89,65 @@ The core forward model is structured around a few key classes and functions that
 
 ![Model Structure](static/Overview.svg)
 
-#### Space
+```python
+--8<-- "src/amr_hub_abm/simulation.py:Simulation"
+```
 
-The `Space` class represents the environment in which the agents operate and consists of a list of `Building` objects, which in turn contain `Floor` and `Room` objects. The `Room` is a key component, as it holds information about the room type, its connections to other rooms via `Door` objects, and any `Component` objects (yet to be implemented) present in the room (e.g., beds, desks).
+#### Building
+
+The space in which the agents operate and consists of a list of `Building` objects, which in turn contain `Floor` and `Room` objects. The `Room` is a key component, as it holds information about the room type, its connections to other rooms via `Door` objects, and any `Component` objects (yet to be implemented) present in the room (e.g., beds, desks).
 
 ![Space Structure](static/Space.svg)
+
+```python
+--8<-- "src/amr_hub_abm/space/room.py:Room"
+```
+
+#### Door
+
+The `Door` class represents the connections between rooms within the environment. Each door has attributes such as door ID, connected rooms, and door type (e.g., standard, fire exit). The door management system allows for defining how agents can move between different rooms based on the building layout.
+
+```python
+--8<-- "src/amr_hub_abm/space/door.py:Door"
+```
+
+The `Door` class inherits from the `DetachedDoor` class, which encapsulates the basic properties of a door without any room connections. This separation allows for more flexible door management and easier handling of door attributes.
+
+```python
+--8<-- "src/amr_hub_abm/space/door.py:DetachedDoor"
+```
 
 #### Agent
 
 The `Agent` class represents the individuals moving within the environment. Each agent has attributes such as ID, type (e.g., healthcare worker), current location, and a list of assigned `Task` objects. The agent's behavior is defined by methods defined in the `Task` list that allow it to move between rooms, perform the tasks, and update its state based on the simulation parameters.
 
 ![Agent Structure](static/Agent.svg)
+
+```python
+--8<-- "src/amr_hub_abm/agent.py:Agent"
+```
+
+#### Task
+
+The `Task` class encapsulates the actions that agents need to perform within the environment. Each task has attributes such as task type (e.g., attend patient, take break), associated room, start and end times, and status (e.g., pending, in-progress, completed). The task management system allows for scheduling, execution, and tracking of tasks assigned to agents.
+
+![Task Structure](static/AgentTask.svg)
+
+```python
+--8<-- "src/amr_hub_abm/task.py:Task"
+```
+
+### Simulation Execution
+
+Once the space and agents are set up, the simulation can be executed using the `Simulation` class. The simulation runs for a specified duration, updating the state of agents and tasks at each time step based on the defined parameters and interactions.
+
+For each time step,
+
+1. Each health care worker agent checks their assigned tasks.
+2. The agent estimates the time required to reach the task location based on their movement speed and current position.
+3. If the agent can reach the task location within the current time step, they move to the location and perform the task.
+4. The task status is updated to "in-progress" or "completed" based on the agent's actions.
+
+### Results and Outputs 📊
+
+Currently, the output and visualisation components are under development. As of now, we can plot the floor layout of the building and the positions of the agents at different time steps using Matplotlib.

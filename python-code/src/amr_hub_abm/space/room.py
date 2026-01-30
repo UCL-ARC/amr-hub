@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+# --8<--- [start:Room]
 @dataclass
 class Room:
     """Representation of a room in the AMR Hub ABM simulation."""
@@ -38,6 +39,8 @@ class Room:
     area: float | None = field(default=None)
     region: shapely.geometry.Polygon = field(init=False)
     room_hash: str = field(init=False)
+
+    # --8<--- [end:Room] --->8----
 
     def __post_init__(self) -> None:
         """Post-initialization to validate room attributes."""

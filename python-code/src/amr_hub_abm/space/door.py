@@ -7,6 +7,7 @@ import shapely.geometry
 from amr_hub_abm.exceptions import InvalidDoorError
 
 
+# --8<--- [start:DetachedDoor]
 @dataclass(kw_only=True, frozen=True)
 class DetachedDoor:
     """Representation of a detatched door in the AMR Hub ABM simulation."""
@@ -16,6 +17,8 @@ class DetachedDoor:
     name: str | None = field(default=None)
     start: tuple[float, float] | None = field(default=None)
     end: tuple[float, float] | None = field(default=None)
+
+    # --8<--- [end:DetachedDoor]
 
     def _identity_key(self) -> tuple[object, ...]:
         """Key used for equality + hashing. Ignores mutable state."""
@@ -61,12 +64,15 @@ class DetachedDoor:
             object.__setattr__(self, "end", temp)
 
 
+# --8<--- [start:Door]
 @dataclass(eq=False, kw_only=True, frozen=True)
 class Door(DetachedDoor):
     """Representation of a door in the AMR Hub ABM simulation."""
 
     connecting_rooms: tuple[int, int]
     door_id: int
+
+    # --8<--- [end:Door]
 
     def __lt__(self, other: object) -> bool:
         """Define less-than comparison for Door instances."""

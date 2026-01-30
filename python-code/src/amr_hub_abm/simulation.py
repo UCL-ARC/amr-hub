@@ -28,6 +28,7 @@ class SimulationMode(Enum):
     TOPOLOGICAL = "topological"
 
 
+# --8<--- [start:Simulation]
 @dataclass
 class Simulation:
     """Representation of the AMR Hub ABM simulation."""
@@ -42,6 +43,8 @@ class Simulation:
     total_simulation_time: int
 
     time: int = field(default=0, init=False)
+
+    # --8<--- [end:Simulation]
 
     def step(self, plot_path: Path | None = None) -> None:
         """Advance the simulation by one time step."""
