@@ -35,11 +35,9 @@ theme:
 
 nav:
   - Overview: index.md
+  - The Toy Problem: toy_problem.md
   - API reference: api.md
   - License: LICENSE.md
-
-markdown_extensions:
-  - pymdownx.tasklist
 
 plugins:
   - search
@@ -61,3 +59,17 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: "https://github.com/UCL-ARC"
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.snippets
+  - pymdownx.tasklists
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+
+watch:
+  - docs/
