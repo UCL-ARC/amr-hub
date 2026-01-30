@@ -19,30 +19,34 @@ flowchart LR
 
 In the AMR-Hub framework, we expect each of these compoments to be broken down as follows:
 
-1. **Inputs (📥)**
-   - Architectural Data: Building layouts
-   - Movement Data: Sparse and Continuous time data
-   - Disease Data: Infection characteristics, Resistance profiles
-   - Model Assumptions and Parameters: Transmission rates, Movement patterns, and other relevant parameters
+### Inputs (📥)
 
-2. **Model (🧠)**
-   - Representation of the environment (e.g., building layout, rooms, corridors)
-   - Representation of agents (e.g., individuals, their states, and behaviors)
-   - Representation of tasks (e.g., cleaning, maintenance, patient care)
-   - Simulation engine to model movement, interactions, and disease spread
-   - Possible changes to the environment or agent behaviors over time
+- Architectural Data: Building layouts
+- Movement Data: Sparse and Continuous time data
+- Disease Data: Infection characteristics, Resistance profiles
+- Model Assumptions and Parameters: Transmission rates, Movement patterns, and other relevant parameters
 
-3. **Predictions (📊)**
-   - Agent movement patterns
-   - Task completion rates
-   - Infection spread over time
-   - Environmental contamination levels
+### Model (🧠)
 
-4. **Verification and Prediction Assessment (✅)**
-   - Evaluation of task completion against actual records
-   - Comparison of predicted movement patterns with observed data
-   - Assessment of infection spread predictions against real outbreak data
-   - Analysis of environmental contamination predictions with sensor data
+- Representation of the environment (e.g., building layout, rooms, corridors)
+- Representation of agents (e.g., individuals, their states, and behaviors)
+- Representation of tasks (e.g., cleaning, maintenance, patient care)
+- Simulation engine to model movement, interactions, and disease spread
+- Possible changes to the environment or agent behaviors over time
+
+### Predictions (📊)
+
+- Agent movement patterns
+- Task completion rates
+- Infection spread over time
+- Environmental contamination levels
+
+### Verification and Prediction Assessment (✅)
+
+- Evaluation of task completion against actual records
+- Comparison of predicted movement patterns with observed data
+- Assessment of infection spread predictions against real outbreak data
+- Analysis of environmental contamination predictions with sensor data
 
 ## The Toy Problem Setup (Upto now) 🧩
 
