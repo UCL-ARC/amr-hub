@@ -101,7 +101,7 @@ class Floor:
             pseudo-room. The doors are positioned along one side of the rectangle. This
             function is not complete. Currently it only creates single simple
             rectangular rooms. Due to possibly complex topology, rectangular rooms may
-            not always bea valid representation. Currently, no topology connections
+            not always be a valid representation. Currently, no topology connections
             are considered. This function will be improved in future versions.
 
         """
