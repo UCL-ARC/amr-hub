@@ -43,7 +43,13 @@ class Simulation:
 
     time: int = field(default=0, init=False)
 
-    def step(self, plot_path: Path | None = None) -> None:
+    def step(
+        self,
+        plot_path: Path | None = None,
+        record_filename: Path | None = None,
+        *,
+        record: bool = False,
+    ) -> None:
         """Advance the simulation by one time step."""
         if self.time >= self.total_simulation_time:
             msg = "Simulation has already reached its total simulation time."
@@ -52,8 +58,25 @@ class Simulation:
         # randomize agent order each step to avoid bias
         random.shuffle(self.agents)
 
+        if record:
+            if record_filename is None:
+                msg = "record_filename must be provided when record is True."
+                raise ValueError(msg)
+            if record_filename.suffix != ".csv":
+                msg = f"""
+                record_filename must have .csv extension. Got {record_filename.suffix}.
+                """
+                raise ValueError(msg)
+
         for agent in self.agents:
             agent.perform_task(current_time=self.time, rooms=self.rooms)
+            if record and record_filename is not None:
+                filename = (
+                    record_filename.parent
+                    / f"{record_filename.stem}_{agent.agent_type.value}_{agent.idx}.csv"
+                )
+
+                agent.record_state(current_time=self.time, filename=filename)
 
         if plot_path is not None:
             self.plot_current_state(directory_path=plot_path)

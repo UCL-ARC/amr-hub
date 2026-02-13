@@ -4,6 +4,7 @@ import math
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from logging import getLogger
+from pathlib import Path
 
 import shapely
 from matplotlib.axes import Axes
@@ -76,6 +77,38 @@ class Agent:
             self.location,
             self.heading,
         )
+
+    def record_state(self, current_time: int, filename: Path) -> None:
+        """Record the agent's current state for analysis."""
+        logger.info(
+            "Recording state for Agent id %s at time %s: location=%s, heading=%s, "
+            "interaction_radius=%s, agent_type=%s, infection_status=%s",
+            self.idx,
+            current_time,
+            self.location,
+            self.heading,
+            self.interaction_radius,
+            self.agent_type,
+            self.infection_status,
+        )
+
+        if current_time == 0:
+            with filename.open("w") as file:
+                file.write(
+                    "time,agent_id,x,y,heading,interaction_radius,"
+                    "agent_type,infection_status\n"
+                )
+
+        if not filename.exists():
+            msg = f"File {filename} does not exist."
+            raise FileNotFoundError(msg)
+
+        with filename.open("a") as file:
+            file.write(
+                f"{current_time},{self.idx},{self.location.x},{self.location.y},"
+                f"{self.heading},{self.interaction_radius},"
+                f"{self.agent_type.value},{self.infection_status.value}\n"
+            )
 
     def get_room(self, space: list[Building]) -> Room | None:
         """Get the room the agent is currently located in, if any."""
