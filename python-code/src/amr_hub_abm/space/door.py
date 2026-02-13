@@ -23,24 +23,43 @@ class Door:
 
     def __post_init__(self) -> None:
         """Post-initialization to validate door coordinates."""
-        if (self.start is None or self.end is None) and (self.start != self.end):
+        no_coords = self.start is None and self.end is None
+        if no_coords:
+            self._init_logical()
+            return
+
+        missing_a_coord = self.start is None or self.end is None
+
+        if missing_a_coord:
             msg = "Both start and end points must be None or both must be defined."
             raise InvalidDoorError(msg)
 
-        if (self.start is None or self.end is None) and (self.name is None):
+        self._init_spatial()
+
+    def _init_logical(self) -> None:
+        if self.name is None:
             msg = "Door must have a name if start and end points are not defined."
             raise InvalidDoorError(msg)
 
-        if self.start is None or self.end is None:
-            self.door_hash = self.create_name_hash()
-            return
+        self.door_hash = self.create_name_hash()
 
-        if self.start == self.end:
+    def _init_spatial(self) -> None:
+        if self.start is None or self.end is None:
+            # This code should be unreachable but acts as a guard for mypy
+            # It guarantees to mypy that when we do start-end comparisons they
+            # are of appropriate types
+            msg = "Unreachable"
+            raise InvalidDoorError(msg)
+
+        start: tuple[float, float] = self.start
+        end: tuple[float, float] = self.end
+
+        if start == end:
             msg = "Door start and end points cannot be the same."
             raise InvalidDoorError(msg)
 
-        if self.start > self.end:
-            self.start, self.end = self.end, self.start
+        if start > end:
+            self.start, self.end = end, start
 
         self.door_hash = self.create_coordinate_hash()
 
