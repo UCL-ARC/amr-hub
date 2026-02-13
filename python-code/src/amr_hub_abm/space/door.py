@@ -44,14 +44,6 @@ class DetachedDoor:
             msg = "Both start and end points must be None or both must be defined."
             raise InvalidDoorError(msg)
 
-        if (self.start is None or self.end is None) and (self.name is None):
-            msg = "Door must have a name if start and end points are not defined."
-            raise InvalidDoorError(msg)
-
-        if (self.start is not None and self.end is not None) and self.start == self.end:
-            msg = "Door start and end points cannot be the same."
-            raise InvalidDoorError(msg)
-
     def __post_init__(self) -> None:
         """Post-initialization to validate door coordinates."""
         if self.start is None and self.end is None:
