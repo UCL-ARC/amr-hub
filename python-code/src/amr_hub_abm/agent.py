@@ -99,10 +99,6 @@ class Agent:
                     "agent_type,infection_status\n"
                 )
 
-        if not filename.exists():
-            msg = f"File {filename} does not exist."
-            raise FileNotFoundError(msg)
-
         with filename.open("a") as file:
             file.write(
                 f"{current_time},{self.idx},{self.location.x},{self.location.y},"
