@@ -7,5 +7,5 @@ minimum_hcw_speed: 1.0 # Minimum speed of healthcare workers in m/s
 maximum_hcw_speed: 2.0 # Maximum speed of healthcare workers in m/s
 
 start_time: 2024-01-01 00:00:00
-end_time: 2024-01-02 00:00:00
+end_time: 2025-01-02 00:00:00
 time_step_minutes: 1 # Time step in minutes

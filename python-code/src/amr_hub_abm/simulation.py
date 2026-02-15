@@ -12,6 +12,8 @@ from matplotlib import pyplot as plt
 from amr_hub_abm.exceptions import TimeError
 
 if TYPE_CHECKING:
+
+    import csv
     from pathlib import Path
 
     from matplotlib.axes import Axes
@@ -49,6 +51,7 @@ class Simulation:
         record_filename: Path | None = None,
         *,
         record: bool = False,
+        writer: csv.writer | None = None,
     ) -> None:
         """Advance the simulation by one time step."""
         if self.time >= self.total_simulation_time:
@@ -71,12 +74,9 @@ class Simulation:
         for agent in self.agents:
             agent.perform_task(current_time=self.time, rooms=self.rooms)
             if record and record_filename is not None:
-                filename = (
-                    record_filename.parent
-                    / f"{record_filename.stem}_{agent.agent_type.value}_{agent.idx}.csv"
+                agent.record_state(
+                    current_time=self.time, filename=record_filename, writer=writer
                 )
-
-                agent.record_state(current_time=self.time, filename=filename)
 
         if plot_path is not None:
             self.plot_current_state(directory_path=plot_path)

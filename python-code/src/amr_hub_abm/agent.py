@@ -1,5 +1,6 @@
 """Module to represent an agent in the AMR Hub ABM simulation."""
 
+import csv
 import math
 from dataclasses import dataclass, field, replace
 from enum import Enum
@@ -78,7 +79,7 @@ class Agent:
             self.heading,
         )
 
-    def record_state(self, current_time: int, filename: Path) -> None:
+    def record_state(self, current_time: int, filename: Path, writer) -> None:
         """Record the agent's current state for analysis."""
         logger.info(
             "Recording state for Agent id %s at time %s: location=%s, heading=%s, "
@@ -92,18 +93,18 @@ class Agent:
             self.infection_status,
         )
 
-        if current_time == 0:
-            with filename.open("w") as file:
-                file.write(
-                    "time,agent_id,x,y,heading,interaction_radius,"
-                    "agent_type,infection_status\n"
-                )
-
-        with filename.open("a") as file:
-            file.write(
-                f"{current_time},{self.idx},{self.location.x},{self.location.y},"
-                f"{self.heading},{self.interaction_radius},"
-                f"{self.agent_type.value},{self.infection_status.value}\n"
+        if writer is not None:
+            writer.writerow(
+                [
+                    current_time,
+                    self.idx,
+                    self.location.x,
+                    self.location.y,
+                    self.heading,
+                    self.interaction_radius,
+                    self.agent_type.value,
+                    self.infection_status.value,
+                ]
             )
 
     def get_room(self, space: list[Building]) -> Room | None:
