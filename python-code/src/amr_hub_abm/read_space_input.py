@@ -143,6 +143,45 @@ class SpaceInputReader:
         self, room_data: dict, room_id: int, building_name: str, floor_level: int
     ) -> Room:
         """Create a Room instance from room data."""
+        topological = "area" in room_data
+
+        if topological:
+            return self.create_topological_room(
+                room_data, room_id, building_name, floor_level
+            )
+        return self.create_spatial_room(room_data, room_id, building_name, floor_level)
+
+    def create_topological_room(
+        self, room_data: dict, room_id: int, building_name: str, floor_level: int
+    ) -> Room:
+        """Create a topological Room instance from room data."""
+        room_doors: list[Door] = []
+        for door_name in room_data.get("doors", ""):
+            door = Door(
+                door_id=-1,
+                open=False,
+                connecting_rooms=(-1, -1),
+                access_control=(False, False),
+                name=door_name,
+            )
+            self.door_list.append(door)
+            room_doors.append(door)
+
+        return Room(
+            room_id=room_id,
+            name=room_data["name"],
+            building=building_name,
+            floor=floor_level,
+            walls=None,
+            doors=room_doors,
+            contents=room_data.get("contents", []),
+            area=room_data["area"],
+        )
+
+    def create_spatial_room(
+        self, room_data: dict, room_id: int, building_name: str, floor_level: int
+    ) -> Room:
+        """Create a spatial Room instance from room data."""
         room_doors: list[Door] = []
         for door_data in room_data.get("doors", []):
             door = Door(
@@ -241,24 +280,17 @@ class SpaceInputReader:
             msg = f"Room '{room_data['name']}' walls validated successfully."
             logger.info(msg)
 
-            doors: list[Door] = []
             doors_data: list[list[float]] = room_data["doors"]
             for door in doors_data:
                 SpaceInputReader.check_tuple_length(door, 4, "door")
-                doors.append(
-                    Door(
-                        door_id=-1,
-                        open=False,
-                        connecting_rooms=(-1, -1),
-                        access_control=(False, False),
-                        start=(door[0], door[1]),
-                        end=(door[2], door[3]),
-                    )
-                )
 
         else:
-            msg = "Topological room validation is not yet implemented."
-            raise NotImplementedError(msg)
+            doors_names: list[str] = room_data["doors"]
+            for name in doors_names:
+                if not isinstance(name, str):
+                    msg = "In topological mode, doors must be defined by their names."
+                    logger.error(msg)
+                    raise InvalidDoorError(msg)
 
     @staticmethod
     def check_tuple_length(
