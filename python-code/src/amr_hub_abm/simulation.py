@@ -7,13 +7,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
 
+import numpy as np
 from matplotlib import pyplot as plt
 
 from amr_hub_abm.exceptions import TimeError
 
 if TYPE_CHECKING:
-
-    import csv
     from pathlib import Path
 
     from matplotlib.axes import Axes
@@ -48,10 +47,8 @@ class Simulation:
     def step(
         self,
         plot_path: Path | None = None,
-        record_filename: Path | None = None,
         *,
         record: bool = False,
-        writer: csv.writer | None = None,
     ) -> None:
         """Advance the simulation by one time step."""
         if self.time >= self.total_simulation_time:
@@ -61,22 +58,8 @@ class Simulation:
         # randomize agent order each step to avoid bias
         random.shuffle(self.agents)
 
-        if record:
-            if record_filename is None:
-                msg = "record_filename must be provided when record is True."
-                raise ValueError(msg)
-            if record_filename.suffix != ".csv":
-                msg = f"""
-                record_filename must have .csv extension. Got {record_filename.suffix}.
-                """
-                raise ValueError(msg)
-
         for agent in self.agents:
-            agent.perform_task(current_time=self.time, rooms=self.rooms)
-            if record and record_filename is not None:
-                agent.record_state(
-                    current_time=self.time, filename=record_filename, writer=writer
-                )
+            agent.perform_task(current_time=self.time, rooms=self.rooms, record=record)
 
         if plot_path is not None:
             self.plot_current_state(directory_path=plot_path)
@@ -124,3 +107,18 @@ class Simulation:
             for floor in building.floors:
                 all_rooms.extend(floor.rooms)
         return all_rooms
+
+    def record_agent_states(self, file_path: Path) -> None:
+        """Record the states of all agents at the current time step to a CSV file."""
+        for agent in self.agents:
+            agent_filename = (
+                file_path.parent
+                / f"agent_{agent.agent_type.value}_{agent.idx}_trajectory.csv"
+            )
+            np.savetxt(
+                agent_filename,
+                agent.trajectory,
+                delimiter=",",
+                header="time,building,floor,room,x,y,heading,agent_type",
+                comments="",
+            )

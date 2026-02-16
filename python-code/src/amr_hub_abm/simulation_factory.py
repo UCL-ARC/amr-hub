@@ -59,6 +59,7 @@ def create_simulation(config_file: Path) -> Simulation:
         rooms=space_reader.rooms,
         start_time=start_time,
         time_step_minutes=time_step_minutes,
+        total_time_steps=total_steps,
     )
     msg = f"Parsed {len(agents)} agents from location time series."
     logger.info(msg)
@@ -105,6 +106,7 @@ def update_patient(
     patient_id: int,
     space_tuple: tuple[str, int, Room],
     patient_dict: dict[int, Agent],
+    total_time_steps: int,
 ) -> None:
     """Update patient information from data."""
     building, floor, room = space_tuple
@@ -117,14 +119,16 @@ def update_patient(
             location=location,
             heading=0.0,
             agent_type=AgentType.PATIENT,
+            trajectory_length=total_time_steps,
         )
 
 
-def update_hcw(
+def update_hcw(  # noqa: PLR0913
     hcw_id: int,
     space_tuple: tuple[str, int, Room],
     event_tuple: tuple[Location, int, str],
     hcw_dict: dict[int, Agent],
+    total_time_steps: int,
     additional_info: dict | None = None,
 ) -> None:
     """Update healthcare worker information from data."""
@@ -138,6 +142,7 @@ def update_hcw(
             location=hcw_location,
             heading=0.0,
             agent_type=AgentType.HEALTHCARE_WORKER,
+            trajectory_length=total_time_steps,
         )
 
     hcw_dict[hcw_id].add_task(timestep_index, location, event_type, additional_info)
@@ -168,6 +173,7 @@ def parse_location_timeseries(
     rooms: list[Room],
     start_time: pd.Timestamp,
     time_step_minutes: int,
+    total_time_steps: int,
 ) -> list[Agent]:
     """
     Parse a CSV file containing location time series data for agents.
@@ -217,6 +223,7 @@ def parse_location_timeseries(
                 patient_id=patient_id,
                 space_tuple=(building, floor, room),
                 patient_dict=patient_dict,
+                total_time_steps=total_time_steps,
             )
             patient = patient_dict[patient_id]
 
@@ -262,6 +269,7 @@ def parse_location_timeseries(
             event_tuple=(location, timestep_index, event_type),
             hcw_dict=hcw_dict,
             additional_info=additional_info if additional_info else None,
+            total_time_steps=total_time_steps,
         )
 
     return list(hcw_dict.values()) + list(patient_dict.values())

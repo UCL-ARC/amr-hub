@@ -1,12 +1,12 @@
 """Module to represent an agent in the AMR Hub ABM simulation."""
 
-import csv
 import math
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from logging import getLogger
-from pathlib import Path
 
+import numpy as np
+import numpy.typing as npt
 import shapely
 from matplotlib.axes import Axes
 
@@ -67,6 +67,9 @@ class Agent:
 
     movement_speed: float = field(default=0.1)  # units per time step
 
+    trajectory_length: int = field(default=0)
+    trajectory: npt.NDArray[np.float64] = field(init=False)
+
     def __post_init__(self) -> None:
         """Post-initialization to log agent creation."""
         self.heading = self.heading % 360
@@ -79,33 +82,12 @@ class Agent:
             self.heading,
         )
 
-    def record_state(self, current_time: int, filename: Path, writer) -> None:
-        """Record the agent's current state for analysis."""
-        logger.info(
-            "Recording state for Agent id %s at time %s: location=%s, heading=%s, "
-            "interaction_radius=%s, agent_type=%s, infection_status=%s",
-            self.idx,
-            current_time,
-            self.location,
-            self.heading,
-            self.interaction_radius,
-            self.agent_type,
-            self.infection_status,
-        )
+        if self.trajectory_length < 0:
+            msg = "trajectory_length must be non-negative."
+            raise ValueError(msg)
 
-        if writer is not None:
-            writer.writerow(
-                [
-                    current_time,
-                    self.idx,
-                    self.location.x,
-                    self.location.y,
-                    self.heading,
-                    self.interaction_radius,
-                    self.agent_type.value,
-                    self.infection_status.value,
-                ]
-            )
+        if self.trajectory_length > 0:
+            self.trajectory = np.empty((self.trajectory_length, 2), dtype=np.float64)
 
     def get_room(self, space: list[Building]) -> Room | None:
         """Get the room the agent is currently located in, if any."""
@@ -355,8 +337,28 @@ class Agent:
         task.update_progress(current_time=current_time, agent=self)
         return True
 
-    def perform_task(self, current_time: int, rooms: list[Room]) -> None:
+    def record_state(self, current_time: int) -> None:
+        """Push a record of the agent's current state to the trajectory."""
+        if current_time >= self.trajectory_length:
+            msg = f"Current time {current_time} "
+            msg += f"exceeds trajectory length {self.trajectory_length}."
+            raise ValueError(msg)
+
+        self.trajectory[current_time] = [self.location.x, self.location.y]
+
+    def perform_task(
+        self, current_time: int, rooms: list[Room], *, record: bool = False
+    ) -> None:
         """Perform the agent's current task if it's due."""
+        if record:
+            logger.info(
+                "Recording state for Agent id %s at time %s: location=%s",
+                self.idx,
+                current_time,
+                self.location,
+            )
+            self.record_state(current_time=current_time)
+
         if not self.tasks:
             return
 
