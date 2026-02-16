@@ -115,10 +115,18 @@ class Simulation:
                 file_path.parent
                 / f"agent_{agent.agent_type.value}_{agent.idx}_trajectory.csv"
             )
+
             np.savetxt(
                 agent_filename,
-                agent.trajectory,
+                np.column_stack(
+                    [
+                        np.arange(len(agent.trajectory.position)),
+                        agent.trajectory.position,
+                        agent.trajectory.heading.T.flatten(),
+                        agent.trajectory.infection_status,
+                    ]
+                ),
                 delimiter=",",
-                header="time,building,floor,room,x,y,heading,agent_type",
+                header="time,x,y,heading,infection_status",
                 comments="",
             )

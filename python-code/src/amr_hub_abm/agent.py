@@ -52,6 +52,39 @@ class InfectionStatus(IntEnum):
     RECOVERED = 3
 
 
+@dataclass(slots=True)
+class Record:
+    """Representation of a record of an agent's state at a given time step."""
+
+    total_time: int
+
+    position: npt.NDArray[np.float64] = field(init=False)
+    heading: npt.NDArray[np.float64] = field(init=False)
+    infection_status: npt.NDArray[np.int8] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Post-initialization to set up the record arrays."""
+        self.position = np.empty((self.total_time, 2), dtype=np.float64)
+        self.heading = np.empty((self.total_time, 1), dtype=np.float64)
+        self.infection_status = np.empty(self.total_time, dtype=np.int8)
+
+    def push(
+        self,
+        time: int,
+        location: Location,
+        heading: float,
+        infection_status: InfectionStatus,
+    ) -> None:
+        """Push a new record of the agent's state at a given time step."""
+        if time >= self.total_time:
+            msg = f"Time {time} exceeds total_time {self.total_time} for record."
+            raise ValueError(msg)
+
+        self.heading[time] = heading
+        self.position[time] = [location.x, location.y]
+        self.infection_status[time] = infection_status.value
+
+
 @dataclass
 class Agent:
     """Representation of an agent in the AMR Hub ABM simulation."""
@@ -68,7 +101,7 @@ class Agent:
     movement_speed: float = field(default=0.1)  # units per time step
 
     trajectory_length: int = field(default=0)
-    trajectory: npt.NDArray[np.float64] = field(init=False)
+    trajectory: Record = field(init=False)
 
     def __post_init__(self) -> None:
         """Post-initialization to log agent creation."""
@@ -87,7 +120,7 @@ class Agent:
             raise ValueError(msg)
 
         if self.trajectory_length > 0:
-            self.trajectory = np.empty((self.trajectory_length, 2), dtype=np.float64)
+            self.trajectory = Record(total_time=self.trajectory_length)
 
     def get_room(self, space: list[Building]) -> Room | None:
         """Get the room the agent is currently located in, if any."""
@@ -343,7 +376,12 @@ class Agent:
             msg += f"exceeds trajectory length {self.trajectory_length}."
             raise ValueError(msg)
 
-        self.trajectory[current_time] = [self.location.x, self.location.y]
+        self.trajectory.push(
+            time=current_time,
+            location=self.location,
+            heading=self.heading,
+            infection_status=self.infection_status,
+        )
 
     def perform_task(
         self, current_time: int, rooms: list[Room], *, record: bool = False
