@@ -254,7 +254,7 @@ class Agent:
             )
 
         else:
-            msg = f"Task type {task_type} not implemented yet."
+            msg = f"Task type {task_type.name} not implemented yet."
             raise NotImplementedError(msg)
 
         self.tasks.append(task)

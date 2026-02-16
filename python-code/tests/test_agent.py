@@ -268,4 +268,4 @@ def test_add_task_with_not_implemented_task_type(
             event_type="generic",
         )
 
-    assert "Task type TaskType.GENERIC not implemented yet." in str(exc_info.value)
+    assert "Task type GENERIC not implemented yet." in str(exc_info.value)
