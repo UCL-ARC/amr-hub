@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import pytest
 
 from amr_hub_abm.exceptions import (
@@ -38,18 +39,18 @@ def test_buildings_and_floors(space_input_reader: SpaceInputReader) -> None:
 def test_floor_rooms(space_input_reader: SpaceInputReader) -> None:
     """Test rooms on the floor are read correctly."""
     floor = space_input_reader.buildings[0].floors[0]
-    assert len(floor.rooms) == 3  # noqa: PLR2004
+    assert len(floor.rooms) == 3
     room_ids = [room.room_id for room in floor.rooms]
     assert room_ids == [0, 1, 2]
     assert floor.adjacency_matrix.shape == (3, 3)
-    expected_edges = {(0, 2), (1, 2), (2, 1), (2, 0)}
+    expected_edges = {(0, 2), (1, 0), (0, 1), (2, 0)}
     assert floor.edge_set == expected_edges
-    expected_room_names = ["Staff Room", "Ward", "Corridor"]
+    expected_room_names = ["Corridor", "Staff Room", "Ward"]
     assert floor.room_names == expected_room_names
     expected_adjacency = [
-        [0, 0, 1],
-        [0, 0, 1],
-        [1, 1, 0],
+        [0, 1, 1],
+        [1, 0, 0],
+        [1, 0, 0],
     ]
     assert floor.adjacency_matrix.tolist() == expected_adjacency
 
@@ -128,11 +129,6 @@ def test_missing_keys_from_room() -> None:
         SpaceInputReader.validate_room_data(sample_dict)
     assert "A topological room cannot have walls defined" in str(exc_info.value)
 
-    sample_dict.pop("walls")
-    with pytest.raises(NotImplementedError) as exc_info:
-        SpaceInputReader.validate_room_data(sample_dict)
-    assert "Topological room validation is not yet implemented." in str(exc_info.value)
-
 
 def test_invalid_wall_data() -> None:
     """Test that invalid wall data raises an error."""
@@ -161,3 +157,14 @@ def test_invalid_wall_data() -> None:
             expected_length=4,
         )
     assert "data_type must be either 'wall' or 'door'." in str(exc_info.value)
+
+
+def test_floor_plotting(space_input_reader: SpaceInputReader) -> None:
+    """Test plotting the floor layout."""
+    simple_floor = space_input_reader.buildings[0].floors[0]
+    fig, ax = plt.subplots()
+    simple_floor.plot(ax=ax)
+    if not Path("tests/output/").exists():
+        Path("tests/output/").mkdir(parents=True, exist_ok=True)
+    plt.savefig("tests/output/floor_plot.png")
+    plt.close(fig)  # Close the plot to avoid displaying during tests

@@ -1,9 +1,18 @@
 """Module containing location representation for the AMR Hub ABM simulation."""
 
+from __future__ import annotations
+
 import math
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+import shapely
 
 from amr_hub_abm.exceptions import InvalidDistanceError
+
+if TYPE_CHECKING:
+    from amr_hub_abm.space.room import Room
+    from amr_hub_abm.space.wall import Wall
 
 
 @dataclass
@@ -21,7 +30,7 @@ class Location:
         self.y = new_y
         self.floor = new_floor
 
-    def distance_to(self, other: "Location") -> float:
+    def distance_to(self, other: Location) -> float:
         """Calculate the Euclidean distance to another location."""
         if self.building != other.building:
             raise InvalidDistanceError((self.building, other.building), building=True)
@@ -29,3 +38,32 @@ class Location:
             raise InvalidDistanceError((self.floor, other.floor), building=False)
 
         return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
+
+    def __repr__(self) -> str:
+        """Return a string representation of the location."""
+        return (
+            f"Location(x={self.x:.2f}, y={self.y:.2f}, {self.floor}, {self.building})"
+        )
+
+    def which_room(self, rooms: list[Room]) -> Room | None:
+        """Determine which room the location is in, if any."""
+        for room in rooms:
+            if room.building != self.building or room.floor != self.floor:
+                continue
+            if room.region.contains(shapely.geometry.Point(self.x, self.y)):
+                return room
+        return None
+
+    def check_line_of_sight(self, other: Location, walls: list[Wall]) -> bool:
+        """Check if there is a line of sight to another location, considering walls."""
+        if self.building != other.building:
+            return False
+
+        if self.floor != other.floor:
+            return False
+
+        line_of_sight = shapely.geometry.LineString(
+            [(self.x, self.y), (other.x, other.y)]
+        )
+
+        return not any(line_of_sight.crosses(wall.line) for wall in walls)
