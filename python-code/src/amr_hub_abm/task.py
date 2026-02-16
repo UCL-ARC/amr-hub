@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import IntEnum
 from typing import TYPE_CHECKING, ClassVar
 
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
@@ -17,34 +17,34 @@ if TYPE_CHECKING:
     from amr_hub_abm.space.door import Door
 
 
-class TaskProgress(Enum):
+class TaskProgress(IntEnum):
     """Enumeration of possible task progress states."""
 
-    NOT_STARTED = "not_started"
-    MOVING_TO_LOCATION = "moving_to_location"
-    SUSPENDED = "suspended"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
+    NOT_STARTED = 0
+    MOVING_TO_LOCATION = 1
+    SUSPENDED = 2
+    IN_PROGRESS = 3
+    COMPLETED = 4
 
 
-class TaskType(Enum):
+class TaskType(IntEnum):
     """Enumeration of possible task types."""
 
-    GENERIC = "generic"
-    OFFICE_WORK = "office_work"
-    NURSE_ROUND = "nurse_round"
-    ATTEND_PATIENT = "attend_patient"
-    GOTO_LOCATION = "goto_location"
-    GOTO_AGENT = "goto_agent"
-    ATTEND_BELL = "attend_bell"
-    STAY_IN_BED = "stay_in_bed"
-    STAY_IN_ROOM = "stay_in_room"
-    INTERACT_WITH_AGENT = "interact_with_agent"
-    DOOR_ACCESS = "door_access"
-    WORKSTATION = "workstation"
+    GENERIC = 0
+    OFFICE_WORK = 1
+    NURSE_ROUND = 2
+    ATTEND_PATIENT = 3
+    GOTO_LOCATION = 4
+    GOTO_AGENT = 5
+    ATTEND_BELL = 6
+    STAY_IN_BED = 7
+    STAY_IN_ROOM = 8
+    INTERACT_WITH_AGENT = 9
+    DOOR_ACCESS = 10
+    WORKSTATION = 11
 
 
-class TaskPriority(Enum):
+class TaskPriority(IntEnum):
     """Enumeration of possible task priority levels."""
 
     LOW = 1

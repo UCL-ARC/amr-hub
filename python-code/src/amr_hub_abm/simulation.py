@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import IntEnum
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -22,11 +22,11 @@ if TYPE_CHECKING:
     from amr_hub_abm.space.room import Room
 
 
-class SimulationMode(Enum):
+class SimulationMode(IntEnum):
     """Enumeration of simulation modes."""
 
-    SPATIAL = "spatial"
-    TOPOLOGICAL = "topological"
+    SPATIAL = 0
+    TOPOLOGICAL = 1
 
 
 @dataclass

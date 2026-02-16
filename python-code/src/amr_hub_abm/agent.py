@@ -2,7 +2,7 @@
 
 import math
 from dataclasses import dataclass, field, replace
-from enum import Enum
+from enum import IntEnum
 from logging import getLogger
 
 import numpy as np
@@ -28,12 +28,12 @@ from amr_hub_abm.task import (
 logger = getLogger(__name__)
 
 
-class AgentType(Enum):
+class AgentType(IntEnum):
     """Enumeration of possible agent types."""
 
-    GENERIC = "generic"
-    PATIENT = "patient"
-    HEALTHCARE_WORKER = "healthcare_worker"
+    GENERIC = 0
+    PATIENT = 1
+    HEALTHCARE_WORKER = 2
 
 
 ROLE_COLOUR_MAP = {
@@ -43,13 +43,13 @@ ROLE_COLOUR_MAP = {
 }
 
 
-class InfectionStatus(Enum):
+class InfectionStatus(IntEnum):
     """Enumeration of possible infection statuses."""
 
-    SUSCEPTIBLE = "susceptible"
-    EXPOSED = "exposed"
-    INFECTED = "infected"
-    RECOVERED = "recovered"
+    SUSCEPTIBLE = 0
+    EXPOSED = 1
+    INFECTED = 2
+    RECOVERED = 3
 
 
 @dataclass
@@ -169,12 +169,11 @@ class Agent:
         additional_info: dict | None = None,
     ) -> None:
         """Add a task to the agent's task list and log the addition."""
-        task_types = [task_type.value for task_type in TaskType]
+        task_types = [task_type.name.lower() for task_type in TaskType]
         if event_type not in task_types:
             msg = f"Invalid task type: {event_type}. Must be one of {task_types}."
             raise SimulationModeError(msg)
-        task_type = TaskType(event_type)
-
+        task_type = TaskType[event_type.upper()]
         task: Task
 
         if task_type == TaskType.ATTEND_PATIENT:
