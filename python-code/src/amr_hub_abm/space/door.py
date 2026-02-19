@@ -38,21 +38,33 @@ class DetachedDoor:
         """Define hash for DetachedDoor instances."""
         return hash(self._identity_key())
 
-    def __post_init__(self) -> None:
-        """Post-initialization to validate door coordinates."""
+    def check_for_start_end_consistency(self) -> None:
+        """Check that start and end points are consistent."""
         if (self.start is None) != (self.end is None):
             msg = "Both start and end points must be None or both must be defined."
             raise InvalidDoorError(msg)
 
-        if (self.start is None or self.end is None) and (self.name is None):
-            msg = "Door must have a name if start and end points are not defined."
+        if (self.start is not None and self.end is not None) and self.start == self.end:
+            msg = "Door start and end points cannot be the same."
             raise InvalidDoorError(msg)
 
-        if self.start is None or self.end is None:
+    def __post_init__(self) -> None:
+        """Post-initialization to validate door coordinates."""
+        if self.start is None and self.end is None:
+            # If both start and end are None, we are in topological mode
+            # and don't need to check coordinates. We just need to ensure that the door
+            # has a name for identity purposes.
+            if self.name is None:
+                msg = "Door must have a name if start and end points are not defined."
+                raise InvalidDoorError(msg)
             return
 
-        if self.start == self.end:
-            msg = "Door start and end points cannot be the same."
+        self.check_for_start_end_consistency()
+
+        if self.start is None or self.end is None:
+            # This should never happen due to the consistency check, but we check again
+            # to address mypy's anger issues.
+            msg = "Both start and end points must be defined when in spatial mode."
             raise InvalidDoorError(msg)
 
         if self.start > self.end:
