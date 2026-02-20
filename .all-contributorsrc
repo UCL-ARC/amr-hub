@@ -18,5 +18,6 @@
   "repoType": "github",
   "repoHost": "https://github.com",
   "projectName": "amr-hub",
-  "projectOwner": "UCL-ARC"
+  "projectOwner": "UCL-ARC",
+  "files": ["README.md", "python-code/README.md"]
 }
