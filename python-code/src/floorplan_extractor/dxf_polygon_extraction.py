@@ -32,6 +32,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import geopandas as gpd
+import yaml
 from shapely.geometry import Point
 from shapely.ops import polygonize
 
@@ -66,6 +67,30 @@ class PolygonExtractionConfig:
     polygon_label_column: str
     polygon_label_target: str
     floor_filter: str
+
+
+def config_from_yaml(path: Path) -> PolygonExtractionConfig:
+    """
+    Load polygon extraction configuration from a YAML file.
+
+    The YAML file must define keys corresponding exactly to the fields
+    of `PolygonExtractionConfig`.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Path to the YAML configuration file.
+
+    Returns
+    -------
+    PolygonExtractionConfig
+        An immutable configuration instance populated from the file.
+
+    """
+    with path.open(encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    return PolygonExtractionConfig(**data)
 
 
 def _flatten_z_points(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
