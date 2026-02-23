@@ -81,7 +81,9 @@ def test_flatten_z_points_removes_z_dimension() -> None:
 
     flattened: gpd.GeoDataFrame = _flatten_z_points(gdf)
 
-    assert flattened.geometry.iloc[0].has_z is False
+    geom = flattened.geometry.iloc[0]
+    assert isinstance(geom, Point)
+    assert geom.has_z is False
 
 
 def test_generate_polygons_from_linework() -> None:
