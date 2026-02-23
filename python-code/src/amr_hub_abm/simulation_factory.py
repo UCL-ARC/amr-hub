@@ -11,11 +11,36 @@ from amr_hub_abm.agent import Agent, AgentType
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.read_space_input import SpaceInputReader
 from amr_hub_abm.simulation import Simulation, SimulationMode
+from amr_hub_abm.space.building import Building
+from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
+
+
+def create_space_from_rooms(rooms: list[Room]) -> list[Building]:
+    """Create a list of Building instances from a list of Room instances."""
+    building_dict: dict[str, Building] = {}
+
+    for room in rooms:
+        if room.building not in building_dict:
+            building_dict[room.building] = Building(name=room.building, floors=[])
+
+        if room.floor not in [
+            f.floor_number for f in building_dict[room.building].floors
+        ]:
+            building_dict[room.building].floors.append(
+                Floor(floor_number=room.floor, rooms=[room])
+            )
+        else:
+            for floor in building_dict[room.building].floors:
+                if floor.floor_number == room.floor:
+                    floor.rooms.append(room)
+                    break
+
+    return list(building_dict.values())
 
 
 def create_simulation(config_file: Path) -> Simulation:
@@ -105,6 +130,7 @@ def update_patient(
     patient_id: int,
     space_tuple: tuple[str, int, Room],
     patient_dict: dict[int, Agent],
+    space: list[Building],
 ) -> None:
     """Update patient information from data."""
     building, floor, room = space_tuple
@@ -117,14 +143,16 @@ def update_patient(
             location=location,
             heading=0.0,
             agent_type=AgentType.PATIENT,
+            space=space,
         )
 
 
-def update_hcw(
+def update_hcw(  # noqa: PLR0913
     hcw_id: int,
     space_tuple: tuple[str, int, Room],
     event_tuple: tuple[Location, int, str],
     hcw_dict: dict[int, Agent],
+    space: list[Building],
     additional_info: dict | None = None,
 ) -> None:
     """Update healthcare worker information from data."""
@@ -138,6 +166,7 @@ def update_hcw(
             location=hcw_location,
             heading=0.0,
             agent_type=AgentType.HEALTHCARE_WORKER,
+            space=space,
         )
 
     hcw_dict[hcw_id].add_task(timestep_index, location, event_type, additional_info)
@@ -217,6 +246,7 @@ def parse_location_timeseries(
                 patient_id=patient_id,
                 space_tuple=(building, floor, room),
                 patient_dict=patient_dict,
+                space=create_space_from_rooms(rooms),
             )
             patient = patient_dict[patient_id]
 
@@ -262,6 +292,7 @@ def parse_location_timeseries(
             event_tuple=(location, timestep_index, event_type),
             hcw_dict=hcw_dict,
             additional_info=additional_info if additional_info else None,
+            space=create_space_from_rooms(rooms),
         )
 
     return list(hcw_dict.values()) + list(patient_dict.values())

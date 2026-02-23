@@ -57,6 +57,8 @@ class Agent:
     idx: int
     location: Location
     heading: float
+    space: list[Building]
+
     interaction_radius: float = field(default=0.05)
     tasks: list[Task] = field(default_factory=list)
     agent_type: AgentType = field(default=AgentType.GENERIC)
@@ -77,9 +79,9 @@ class Agent:
             self.heading,
         )
 
-    def get_room(self, space: list[Building]) -> Room | None:
+    def get_room(self) -> Room | None:
         """Get the room the agent is currently located in, if any."""
-        for building in space:
+        for building in self.space:
             if building.name != self.location.building:
                 continue
             for floor in building.floors:

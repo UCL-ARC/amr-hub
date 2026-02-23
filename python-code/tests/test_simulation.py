@@ -90,6 +90,7 @@ def sample_agent(sample_building: Building) -> Agent:
             building=sample_building.name,
         ),
         heading=0.0,
+        space=[sample_building],
     )
 
 
@@ -148,14 +149,12 @@ def test_simulation_excessive_current_time_raises(
 
 
 def test_agent_get_room(
-    sample_simulation: Simulation,
     sample_agent: Agent,
 ) -> None:
     """Test that the agent can get its current room."""
-    simulation = sample_simulation
     agent = sample_agent
 
-    room = agent.get_room(simulation.space)
+    room = agent.get_room()
 
     assert room is not None
     assert room.name == "Room1"
@@ -173,9 +172,11 @@ def test_agent_get_room_in_multiple_buildings(
 
     simulation_space = [building1, building2, building3]
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
 
-    assert room == sample_building.floors[0].rooms[0]
+    room = sample_agent.get_room()
+
+    assert room == simulation_space[2].floors[0].rooms[0]
 
 
 def test_agent_get_room_no_floors(
@@ -191,7 +192,8 @@ def test_agent_get_room_no_floors(
         ),
     ]
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
+    room = sample_agent.get_room()
 
     assert room is None
 
@@ -207,7 +209,8 @@ def test_agent_get_room_no_matching_floor(
         ),
     ]
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
+    room = sample_agent.get_room()
 
     assert room is None
 
@@ -221,7 +224,8 @@ def test_agent_get_room_no_matching_building(
         Building(name="BuildingB", floors=[Floor(floor_number=0, rooms=[])]),
     ]
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
+    room = sample_agent.get_room()
 
     assert room is None
 
@@ -232,7 +236,8 @@ def test_agent_get_room_no_buildings(
     """Test that the agent returns None when there are no buildings."""
     simulation_space: list[Building] = []
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
+    room = sample_agent.get_room()
 
     assert room is None
 
@@ -248,7 +253,8 @@ def test_agent_get_room_no_rooms(
         ),
     ]
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
+    room = sample_agent.get_room()
 
     assert room is None
 
@@ -262,7 +268,8 @@ def test_agent_get_room_not_found(
         Building(name="BuildingY", floors=[Floor(floor_number=0, rooms=[])]),
     ]
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
+    room = sample_agent.get_room()
 
     assert room is None
 
