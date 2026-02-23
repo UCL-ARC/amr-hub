@@ -8,8 +8,11 @@ import logging
 from pathlib import Path
 
 import yaml
-from dxf_polygon_extraction import config_from_yaml, extract_polygons
-from yaml_construction import (
+from floorplan_extractor.dxf_polygon_extraction import (
+    config_from_yaml,
+    extract_polygons,
+)
+from floorplan_extractor.yaml_construction import (
     build_yaml_structure,
     polygons_to_rooms,
     register_yaml_representers,
