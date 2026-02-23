@@ -33,7 +33,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import shapely
-from shapely.geometry import Point
+import yaml
 from shapely.ops import polygonize
 
 
@@ -115,10 +115,6 @@ def _flatten_z_points(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     g = gdf.copy()
 
-    g["geometry"] = g.geometry.apply(
-        lambda geom: (
-            Point(geom.x, geom.y) if isinstance(geom, Point) and geom.has_z else geom
-        )
     g["geometry"] = shapely.force_2d(g.geometry)
 
     return g
