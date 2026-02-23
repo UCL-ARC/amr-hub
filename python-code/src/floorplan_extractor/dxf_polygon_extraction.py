@@ -32,7 +32,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import geopandas as gpd
-import yaml
+import shapely
 from shapely.geometry import Point
 from shapely.ops import polygonize
 
