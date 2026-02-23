@@ -109,10 +109,7 @@ class Agent:
         if self.location.floor != target_location.floor:
             return False
 
-        distance = math.sqrt(
-            (self.location.x - target_location.x) ** 2
-            + (self.location.y - target_location.y) ** 2
-        )
+        distance = self.location.distance_to(target_location)
         return distance <= self.interaction_radius
 
     def move_to_location(self, new_location: Location) -> None:
