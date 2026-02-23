@@ -119,7 +119,7 @@ def _flatten_z_points(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         lambda geom: (
             Point(geom.x, geom.y) if isinstance(geom, Point) and geom.has_z else geom
         )
-    )
+    g["geometry"] = shapely.force_2d(g.geometry)
 
     return g
 
