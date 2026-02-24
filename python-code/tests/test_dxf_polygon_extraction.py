@@ -1,12 +1,14 @@
 """Module for testing extraction of polygons from dxf linework."""
 
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import yaml
 from shapely.geometry import LineString, Point, Polygon
 
 from floorplan_extractor.dxf_polygon_extraction import (
+    ExtractionConfig,
     PolygonExtractionConfig,
     _attach_polygon_labels,
     _flatten_z_points,
@@ -15,7 +17,6 @@ from floorplan_extractor.dxf_polygon_extraction import (
 )
 
 # Constants
-
 POLYGON_LAYER_NAME: str = "WALLS"
 LABEL_LAYER_NAME: str = "LABELS"
 
@@ -50,26 +51,34 @@ Z_POINT_Z: float = 3.0
 
 
 def test_config_from_yaml(tmp_path: Path) -> None:
-    """YAML configuration is loaded into a PolygonExtractionConfig."""
-    config_data: dict[str, str] = {
-        "polygon_layer_name": POLYGON_LAYER_NAME,
-        "label_layer_name": LABEL_LAYER_NAME,
-        "polygon_label_column": POLYGON_LABEL_COLUMN,
-        "polygon_label_target": POLYGON_LABEL_TARGET,
-        "floor_filter": FLOOR_FILTER,
+    """YAML configuration is loaded into an ExtractionConfig."""
+    config_data: dict[str, Any] = {
+        "polygons": {
+            "polygon_layer_name": POLYGON_LAYER_NAME,
+            "label_layer_name": LABEL_LAYER_NAME,
+            "polygon_label_column": POLYGON_LABEL_COLUMN,
+            "polygon_label_target": POLYGON_LABEL_TARGET,
+            "floor_filter": FLOOR_FILTER,
+            "excluded_room_numbers": [],
+        }
     }
 
     config_path: Path = tmp_path / "config.yaml"
     config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
 
-    config: PolygonExtractionConfig = config_from_yaml(config_path)
+    config = config_from_yaml(config_path)
 
-    assert isinstance(config, PolygonExtractionConfig)
-    assert config.polygon_layer_name == POLYGON_LAYER_NAME
-    assert config.label_layer_name == LABEL_LAYER_NAME
-    assert config.polygon_label_column == POLYGON_LABEL_COLUMN
-    assert config.polygon_label_target == POLYGON_LABEL_TARGET
-    assert config.floor_filter == FLOOR_FILTER
+    assert isinstance(config, ExtractionConfig)
+    assert isinstance(config.polygons, PolygonExtractionConfig)
+
+    assert config.polygons.polygon_layer_name == POLYGON_LAYER_NAME
+    assert config.polygons.label_layer_name == LABEL_LAYER_NAME
+    assert config.polygons.polygon_label_column == POLYGON_LABEL_COLUMN
+    assert config.polygons.polygon_label_target == POLYGON_LABEL_TARGET
+    assert config.polygons.floor_filter == FLOOR_FILTER
+
+    assert config.door_layer_name is None
+    assert config.doors is None
 
 
 def test_flatten_z_points_removes_z_dimension() -> None:

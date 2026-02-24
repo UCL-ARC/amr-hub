@@ -102,6 +102,7 @@ def _polygon_to_walls(polygon: Polygon) -> list[list[float]]:
 def polygons_to_rooms(
     gdf: gpd.GeoDataFrame,
     room_name_column: str,
+    door_column: str | None = None,
 ) -> list[dict]:
     """
     Convert labelled polygons into room definitions.
@@ -122,10 +123,14 @@ def polygons_to_rooms(
     rooms = []
 
     for _, row in gdf.iterrows():
+        door_values = []
+        if door_column and door_column in row and row[door_column]:
+            door_values = [FlowList(d) for d in row[door_column]]
+
         d = {
             "name": row[room_name_column],
             "walls": _polygon_to_walls(row.geometry),
-            "doors": [],  # placeholder
+            "doors": door_values,
         }
         rooms.append(d)
 
