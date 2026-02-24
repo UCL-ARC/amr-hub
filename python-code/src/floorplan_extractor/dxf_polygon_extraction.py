@@ -30,18 +30,15 @@ internal helpers and are not part of the public API.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 import geopandas as gpd
+import pandas as pd
 import shapely
 import yaml
 from shapely.geometry import GeometryCollection
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import polygonize
-
-if TYPE_CHECKING:
-    import pandas as pd
-
 
 XY = tuple[float, float]
 DoorQuad = list[float]  # [x1, y1, x2, y2]
@@ -425,18 +422,47 @@ def _generate_room_numbers(
 
 
 def _generate_doors(gdf: gpd.GeoDataFrame, target_layer: str) -> gpd.GeoDataFrame:
-    doors = gdf.loc[gdf["Layer"] == target_layer, :]
-    doors = doors.loc[
-        doors.geometry.geom_type == "GeometryCollection", ["EntityHandle", "geometry"]
-    ]
+    """
+    Extract door boundary geometries from a DXF GeoDataFrame.
+
+    Door geometries are selected from a specified DXF layer, unpacked from
+    GeometryCollections where necessary, exploded into individual geometries,
+    converted back into a valid GeoDataFrame, forced to 2D, and annotated with
+    centroid coordinates.
+
+    Parameters
+    ----------
+    gdf : geopandas.GeoDataFrame
+        Input GeoDataFrame containing DXF-derived geometries.
+    target_layer : str
+        Name of the DXF layer containing door geometries.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        GeoDataFrame containing door boundary geometries and centroid coordinate
+        columns ``x`` and ``y``.
+
+    """
+    doors = gdf.loc[
+        gdf["Layer"] == target_layer,
+        ["EntityHandle", "geometry"],
+    ].copy()
+
+    doors = pd.DataFrame(doors)
 
     doors["geometry"] = doors["geometry"].apply(_unpack_geometry)
-    doors = doors.explode("geometry", index_parts=False)
+
+    doors = doors.explode("geometry")
+
     doors = gpd.GeoDataFrame(doors, geometry="geometry")
 
-    door_bounds = doors.loc[doors.geometry.geom_type == "MultiLineString", :]
-    door_bounds = _flatten_z_points(door_bounds)
-    return _attach_centroid_coords(door_bounds)
+    doors = doors.loc[
+        doors.geometry.geom_type.isin({"LineString", "MultiLineString"}), :
+    ]
+
+    doors = _flatten_z_points(doors)
+    return _attach_centroid_coords(doors)
 
 
 def _attach_centroid_coords(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -575,7 +601,6 @@ def extract_polygons(
         config.polygons.polygon_label_target,
     )
 
-    complete_polygons = labelled_polygons
     if config.door_layer_name and config.doors:
         doors = _generate_doors(gdf, config.door_layer_name)
         labelled_polygons = attach_room_doors(
@@ -584,6 +609,6 @@ def extract_polygons(
             config.doors,
         )
 
-    return complete_polygons.loc[
-        complete_polygons[config.polygons.polygon_label_target].notna(), :
+    return labelled_polygons.loc[
+        labelled_polygons[config.polygons.polygon_label_target].notna(), :
     ]

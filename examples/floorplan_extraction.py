@@ -38,6 +38,7 @@ def main() -> None:
     rooms = polygons_to_rooms(
         gdf,
         room_name_column=pec.polygons.polygon_label_target,
+        door_column=pec.doors.out_col if pec.doors else None,
     )
 
     logger.info("Converting rooms to yaml")
