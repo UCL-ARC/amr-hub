@@ -1,6 +1,7 @@
 """Module for testing extraction of polygons from dxf linework."""
 
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import yaml
@@ -51,12 +52,13 @@ Z_POINT_Z: float = 3.0
 
 def test_config_from_yaml(tmp_path: Path) -> None:
     """YAML configuration is loaded into a PolygonExtractionConfig."""
-    config_data: dict[str, str] = {
+    config_data: dict[str, Any] = {
         "polygon_layer_name": POLYGON_LAYER_NAME,
         "label_layer_name": LABEL_LAYER_NAME,
         "polygon_label_column": POLYGON_LABEL_COLUMN,
         "polygon_label_target": POLYGON_LABEL_TARGET,
         "floor_filter": FLOOR_FILTER,
+        "excluded_room_numbers": [],
     }
 
     config_path: Path = tmp_path / "config.yaml"

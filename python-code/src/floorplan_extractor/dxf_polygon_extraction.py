@@ -59,6 +59,8 @@ class PolygonExtractionConfig:
         Name of the output column to store aggregated polygon labels.
     floor_filter : str
         Prefix used to select labels belonging to a specific floor.
+    excluded_room_numbers : list[str]
+        List of room numbers to exclude from labelling.
 
     """
 
@@ -67,6 +69,7 @@ class PolygonExtractionConfig:
     polygon_label_column: str
     polygon_label_target: str
     floor_filter: str
+    excluded_room_numbers: list[str]
 
 
 def config_from_yaml(path: Path) -> PolygonExtractionConfig:
@@ -152,6 +155,7 @@ def _generate_room_numbers(
     label_layer_name: str,
     floor_filter: str,
     polygon_label_column: str,
+    excluded_room_numbers: list[str] | None = None,
 ) -> gpd.GeoDataFrame:
     """
     Extract and filter room label point geometries for a given floor.
@@ -178,6 +182,9 @@ def _generate_room_numbers(
 
     """
     room_number_layer = gdf.loc[gdf["Layer"] == label_layer_name, :]
+    room_number_layer = room_number_layer.loc[
+        ~room_number_layer[polygon_label_column].isin(excluded_room_numbers), :
+    ]
     room_numbers = room_number_layer.loc[
         room_number_layer[polygon_label_column].str.startswith(floor_filter),
         [polygon_label_column, "geometry"],
@@ -223,7 +230,7 @@ def _attach_polygon_labels(
 
     aggregated_labels = number_polygon_matches.groupby("index_right")[
         polygon_label_column
-    ].apply(lambda x: ", ".join(sorted(x)))
+    ].apply(lambda x: ", ".join(sorted(set(x))))
 
     labelled_polygons = polygons.join(aggregated_labels)
     labelled_polygons = labelled_polygons.rename(
@@ -275,11 +282,16 @@ def extract_polygons(
         config.label_layer_name,
         config.floor_filter,
         config.polygon_label_column,
+        config.excluded_room_numbers,
     )
 
-    return _attach_polygon_labels(
+    labelled_polygons = _attach_polygon_labels(
         polygons,
         room_numbers,
         config.polygon_label_column,
         config.polygon_label_target,
     )
+
+    return labelled_polygons.loc[
+        labelled_polygons[config.polygon_label_target].notna(), :
+    ]
