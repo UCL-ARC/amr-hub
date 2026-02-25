@@ -121,12 +121,14 @@ class Simulation:
                 np.column_stack(
                     [
                         np.arange(len(agent.trajectory.position)),
+                        agent.trajectory.building,
+                        agent.trajectory.floor,
                         agent.trajectory.position,
                         agent.trajectory.heading.T.flatten(),
                         agent.trajectory.infection_status,
                     ]
                 ),
                 delimiter=",",
-                header="time,x,y,heading,infection_status",
+                header="time,building,floor,x,y,heading,infection_status",
                 comments="",
             )

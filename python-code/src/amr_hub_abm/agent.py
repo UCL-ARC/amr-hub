@@ -58,12 +58,16 @@ class Record:
 
     total_time: int
 
+    building: npt.NDArray[np.int8] = field(init=False)
+    floor: npt.NDArray[np.int8] = field(init=False)
     position: npt.NDArray[np.float64] = field(init=False)
     heading: npt.NDArray[np.float64] = field(init=False)
     infection_status: npt.NDArray[np.int8] = field(init=False)
 
     def __post_init__(self) -> None:
-        """Post-initialization to set up the record arrays."""
+        """Post-initialization to setup the record arrays."""
+        self.building = np.empty(self.total_time, dtype=np.int8)
+        self.floor = np.empty(self.total_time, dtype=np.int8)
         self.position = np.empty((self.total_time, 2), dtype=np.float64)
         self.heading = np.empty((self.total_time, 1), dtype=np.float64)
         self.infection_status = np.empty(self.total_time, dtype=np.int8)
@@ -80,6 +84,10 @@ class Record:
             msg = f"Time {time} exceeds total_time {self.total_time} for record."
             raise ValueError(msg)
 
+        self.building[time] = (
+            0  # Assuming single building for now, can be updated later
+        )
+        self.floor[time] = location.floor
         self.heading[time] = heading
         self.position[time] = [location.x, location.y]
         self.infection_status[time] = infection_status.value
