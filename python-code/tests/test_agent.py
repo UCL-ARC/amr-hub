@@ -22,6 +22,7 @@ def test_agent_creation() -> None:
             x=0.0, y=0.0, floor=1, building=Building(name="Hospital", floors=[]).name
         ),
         heading=90.0,
+        space=[],
     )
 
     expected_location = Location(
@@ -46,6 +47,7 @@ def test_heading_modulo() -> None:
             x=5.0, y=5.0, floor=2, building=Building(name="Hospital", floors=[]).name
         ),
         heading=450.0,  # 450 degrees should wrap to 90 degrees
+        space=[],
     )
     expected_heading = 90.0
 
@@ -67,6 +69,7 @@ def test_agent_intersection_with_walls() -> None:
         infection_status=InfectionStatus.EXPOSED,
         location=Location(x=0.1, y=5.0, floor=1, building="Hospital"),
         heading=180.0,
+        space=[],
     )
 
     agent_not_intersecting = Agent(
@@ -75,6 +78,7 @@ def test_agent_intersection_with_walls() -> None:
         infection_status=InfectionStatus.RECOVERED,
         location=Location(x=15.0, y=5.0, floor=1, building="Hospital"),
         heading=0.0,
+        space=[],
     )
 
     assert agent_intersecting.check_intersection_with_walls(walls) is True
@@ -92,6 +96,7 @@ def test_move_to_location() -> None:
         infection_status=InfectionStatus.SUSCEPTIBLE,
         location=initial_location,
         heading=45.0,
+        space=[],
     )
 
     agent.move_to_location(new_location)
@@ -108,6 +113,7 @@ def test_plot_agent_without_tags() -> None:
         infection_status=InfectionStatus.SUSCEPTIBLE,
         location=Location(x=1.0, y=2.0, floor=1, building="Hospital"),
         heading=0.0,
+        space=[],
     )
     ax = MagicMock()
 
@@ -131,6 +137,7 @@ def test_plot_agent_with_tags() -> None:
         infection_status=InfectionStatus.EXPOSED,
         location=Location(x=0.5, y=0.25, floor=1, building="Hospital"),
         heading=0.0,
+        space=[],
     )
     ax = MagicMock()
 
@@ -173,6 +180,7 @@ def sample_agent(sample_location: Location) -> Agent:
         infection_status=InfectionStatus.INFECTED,
         location=sample_location,
         heading=90.0,
+        space=[],
     )
 
 
