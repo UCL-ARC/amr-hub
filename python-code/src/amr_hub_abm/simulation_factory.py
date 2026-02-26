@@ -268,7 +268,7 @@ def parse_location_timeseries(
             space_tuple=(building, floor, room),
             event_tuple=(location, timestep_index, event_type),
             hcw_dict=hcw_dict,
-            additional_info=additional_info if additional_info else None,
+            additional_info=additional_info or None,
             total_time_steps=total_time_steps,
         )
 
