@@ -26,14 +26,12 @@ class InvalidDistanceError(Exception):
             )
 
 
-class NegativeTimeError(Exception):
+class TimeError(Exception):
     """Exception raised when a negative time value is encountered."""
 
-    def __init__(self, time: int) -> None:
-        """Initialize the NegativeTimeError."""
-        super().__init__(
-            f"Negative time value encountered: {time}. Time must be non-negative."
-        )
+    def __init__(self, message: str) -> None:
+        """Initialize the TimeError."""
+        super().__init__(f"Invalid time value encountered: {message}.")
 
 
 class InvalidRoomError(Exception):

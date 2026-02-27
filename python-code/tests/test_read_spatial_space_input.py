@@ -39,18 +39,18 @@ def test_buildings_and_floors(space_input_reader: SpaceInputReader) -> None:
 def test_floor_rooms(space_input_reader: SpaceInputReader) -> None:
     """Test rooms on the floor are read correctly."""
     floor = space_input_reader.buildings[0].floors[0]
-    assert len(floor.rooms) == 3  # noqa: PLR2004
+    assert len(floor.rooms) == 3
     room_ids = [room.room_id for room in floor.rooms]
     assert room_ids == [0, 1, 2]
     assert floor.adjacency_matrix.shape == (3, 3)
-    expected_edges = {(0, 2), (1, 2), (2, 1), (2, 0)}
+    expected_edges = {(0, 2), (1, 0), (0, 1), (2, 0)}
     assert floor.edge_set == expected_edges
-    expected_room_names = ["Staff Room", "Ward", "Corridor"]
+    expected_room_names = ["Corridor", "Staff Room", "Ward"]
     assert floor.room_names == expected_room_names
     expected_adjacency = [
-        [0, 0, 1],
-        [0, 0, 1],
-        [1, 1, 0],
+        [0, 1, 1],
+        [1, 0, 0],
+        [1, 0, 0],
     ]
     assert floor.adjacency_matrix.tolist() == expected_adjacency
 
