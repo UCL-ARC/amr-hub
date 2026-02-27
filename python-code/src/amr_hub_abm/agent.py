@@ -72,10 +72,13 @@ class Record:
         self.heading = np.empty((self.total_time, 1), dtype=np.float64)
         self.infection_status = np.empty(self.total_time, dtype=np.int8)
 
-    def push(
+    def push(  # noqa: PLR0913
         self,
         time: int,
-        location: Location,
+        building_idx: int,
+        floor: int,
+        pos_x: float,
+        pos_y: float,
         heading: float,
         infection_status: InfectionStatus,
     ) -> None:
@@ -84,12 +87,10 @@ class Record:
             msg = f"Time {time} exceeds total_time {self.total_time} for record."
             raise ValueError(msg)
 
-        self.building[time] = (
-            0  # Assuming single building for now, can be updated later
-        )
-        self.floor[time] = location.floor
+        self.building[time] = building_idx
+        self.floor[time] = floor
         self.heading[time] = heading
-        self.position[time] = [location.x, location.y]
+        self.position[time] = [pos_x, pos_y]
         self.infection_status[time] = infection_status.value
 
 
@@ -383,9 +384,23 @@ class Agent:
             msg += f"exceeds trajectory length {self.trajectory_length}."
             raise ValueError(msg)
 
+        building_idx_list = [
+            b.idx for b in self.space if b.name == self.location.building
+        ]
+        if not building_idx_list:
+            msg = f"Building {self.location.building} not found in agent's space."
+            raise ValueError(msg)
+        if len(building_idx_list) > 1:
+            msg = f"Multiple buildings with name {self.location.building} found."
+            raise ValueError(msg)
+        building_idx = building_idx_list[0]
+
         self.trajectory.push(
             time=current_time,
-            location=self.location,
+            building_idx=building_idx,
+            floor=self.location.floor,
+            pos_x=self.location.x,
+            pos_y=self.location.y,
             heading=self.heading,
             infection_status=self.infection_status,
         )

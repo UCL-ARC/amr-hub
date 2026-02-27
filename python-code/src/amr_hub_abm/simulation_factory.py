@@ -40,7 +40,8 @@ def create_space_from_rooms(rooms: list[Room]) -> list[Building]:
                     floor.rooms.append(room)
                     break
 
-    return list(building_dict.values())
+    raw_buildings = list(building_dict.values())
+    return Building.sort_and_number_buildings(raw_buildings)
 
 
 def create_simulation(config_file: Path) -> Simulation:
@@ -86,6 +87,7 @@ def create_simulation(config_file: Path) -> Simulation:
         time_step_minutes=time_step_minutes,
         total_time_steps=total_steps,
     )
+
     msg = f"Parsed {len(agents)} agents from location time series."
     logger.info(msg)
     logger.info("Simulation creation complete.")
