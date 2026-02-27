@@ -1,19 +1,9 @@
-from amr_hub_abm.agent import Agent, AgentType, InfectionStatus
-from amr_hub_abm.space.building import Building
-from amr_hub_abm.space.location import Location
+import time
+from amr_hub_abm.run import simulate
 
 
-def create_sample_agent() -> Agent:
-    """Create a sample agent for demonstration purposes."""
-    building = Building(name="Sample Building", floors=[])
-    location = Location(x=10.0, y=20.0, building=building.name, floor=1)
-
-    agent = Agent(
-        idx=1,
-        location=location,
-        heading=90.0,
-        agent_type=AgentType.HEALTHCARE_WORKER,
-        infection_status=InfectionStatus.SUSCEPTIBLE,
-    )
-
-    return agent
+if __name__ == "__main__":
+    time_start = time.time()
+    simulate(plot=False, record=True)
+    time_end = time.time()
+    print(f"Simulation run time: {time_end - time_start} seconds")
