@@ -89,7 +89,7 @@ def sample_agent(sample_building: Building) -> Agent:
             floor=0,
             building=sample_building.name,
         ),
-        heading=0.0,
+        heading_rad=0.0,
         space=[sample_building],
     )
 

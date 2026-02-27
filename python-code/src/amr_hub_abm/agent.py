@@ -56,7 +56,7 @@ class Agent:
 
     idx: int
     location: Location
-    heading: float
+    heading_rad: float
     space: list[Building]
 
     interaction_radius: float = field(default=0.05)
@@ -67,16 +67,26 @@ class Agent:
 
     movement_speed: float = field(default=0.1)  # units per time step
 
+    @property
+    def heading_degrees(self) -> float:
+        """Get the agent's heading in degrees."""
+        return math.degrees(self.heading_rad)
+
+    @heading_degrees.setter
+    def heading_degrees(self, value: float) -> None:
+        self.heading_rad = math.radians(value) % (2 * math.pi)
+
     def __post_init__(self) -> None:
         """Post-initialization to log agent creation."""
-        self.heading = self.heading % 360
+        # Ensure heading is between 0 and 360 degrees
+        self.heading_rad = self.heading_rad % (2 * math.pi)
 
         logger.debug(
             "Created Agent id %s of type %s at location %s with heading %s",
             self.idx,
             self.agent_type,
             self.location,
-            self.heading,
+            self.heading_rad,
         )
 
     def get_room(self) -> Room | None:
@@ -143,7 +153,8 @@ class Agent:
     def __repr__(self) -> str:
         """Return a string representation of the agent."""
         return (
-            f"Agent(idx={self.idx}, {self.location}, {self.heading}, "
+            f"Agent(idx={self.idx}, {self.location}, "
+            f"{math.degrees(self.heading_rad):.2f}°, "
             f"{self.interaction_radius}, {self.agent_type.value}, "
             f"{self.infection_status.value})"
         )
@@ -219,17 +230,12 @@ class Agent:
         delta_x = point[0] - self.location.x
         delta_y = point[1] - self.location.y
 
-        angle_radians = math.atan2(delta_y, delta_x)
-        angle_degrees = math.degrees(angle_radians)
-
-        self.heading = angle_degrees % 360
+        self.heading_rad = math.atan2(delta_y, delta_x) % (2 * math.pi)
 
     def move_one_step(self) -> None:
         """Move the agent one step in the direction of its heading."""
-        angle_radians = math.radians(self.heading)
-
-        delta_x = self.movement_speed * math.cos(angle_radians)
-        delta_y = self.movement_speed * math.sin(angle_radians)
+        delta_x = self.movement_speed * math.cos(self.heading_rad)
+        delta_y = self.movement_speed * math.sin(self.heading_rad)
 
         new_x = self.location.x + delta_x
         new_y = self.location.y + delta_y

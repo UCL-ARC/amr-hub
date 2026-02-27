@@ -141,7 +141,7 @@ def update_patient(
         patient_dict[patient_id] = Agent(
             idx=patient_id,
             location=location,
-            heading=0.0,
+            heading_rad=0.0,
             agent_type=AgentType.PATIENT,
             space=space,
         )
@@ -164,7 +164,7 @@ def update_hcw(  # noqa: PLR0913
         hcw_dict[hcw_id] = Agent(
             idx=hcw_id,
             location=hcw_location,
-            heading=0.0,
+            heading_rad=0.0,
             agent_type=AgentType.HEALTHCARE_WORKER,
             space=space,
         )
