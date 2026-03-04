@@ -27,19 +27,18 @@ def _make_room(
 
 
 def _make_door(
-    door_id: int,
     a: int,
     b: int,
     start: tuple[float, float] = (0.0, 0.0),
     end: tuple[float, float] = (1.0, 0.0),
 ) -> Door:
     return Door(
-        door_id=door_id,
-        open=True,
+        is_open=True,
         connecting_rooms=(a, b),
         access_control=(True, True),
         start=start,
         end=end,
+        door_id=0,
     )
 
 
@@ -68,8 +67,8 @@ def test_duplicate_room_ids_raises() -> None:
 def test_edge_set_and_adjacency_matrix() -> None:
     """Test that edge set and adjacency matrix are computed correctly."""
     # Create doors connecting 1-2 and 2-3
-    d12 = _make_door(1, 1, 2, start=(0.0, 0.0), end=(1.0, 0.0))
-    d23 = _make_door(2, 2, 3, start=(1.0, 0.0), end=(2.0, 0.0))
+    d12 = _make_door(1, 2, start=(0.0, 0.0), end=(1.0, 0.0))
+    d23 = _make_door(2, 3, start=(1.0, 0.0), end=(2.0, 0.0))
 
     r1 = _make_room(1, "R1", doors=[d12])
     r2 = _make_room(2, "R2", doors=[d12, d23])
@@ -136,3 +135,46 @@ def test_psedo_room_skips_spatial_room() -> None:
     floor.add_pseudo_rooms()
 
     assert len(floor.pseudo_rooms) == 0
+
+
+def test_locate_room_by_position() -> None:
+    """Test locating a room by a given position."""
+    r1 = Room(
+        room_id=1,
+        name="Room1",
+        building="B1",
+        floor=1,
+        contents=[],
+        doors=[],
+        walls=[
+            Wall((0, 0), (0, 2)),
+            Wall((0, 2), (2, 2)),
+            Wall((2, 2), (2, 0)),
+            Wall((2, 0), (0, 0)),
+        ],
+    )
+    r2 = Room(
+        room_id=2,
+        name="Room2",
+        building="B1",
+        floor=1,
+        contents=[],
+        doors=[],
+        walls=[
+            Wall((3, 3), (3, 5)),
+            Wall((3, 5), (5, 5)),
+            Wall((5, 5), (5, 3)),
+            Wall((5, 3), (3, 3)),
+        ],
+    )
+
+    floor = Floor(floor_number=1, rooms=[r1, r2])
+
+    room_found = floor.find_room_by_location((1.0, 1.0))
+    assert room_found is r1
+
+    room_found = floor.find_room_by_location((4.0, 4.0))
+    assert room_found is r2
+
+    room_found = floor.find_room_by_location((6.0, 6.0))
+    assert room_found is None

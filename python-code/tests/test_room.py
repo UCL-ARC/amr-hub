@@ -1,15 +1,19 @@
 """Tests for the Room class in the AMR Hub ABM simulation."""
 
 from pathlib import Path
+from unittest.mock import patch
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pytest
 import shapely
 
+from amr_hub_abm.agent import Agent
 from amr_hub_abm.exceptions import InvalidRoomError, SimulationModeError
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.content import Content
 from amr_hub_abm.space.door import Door
+from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
 
@@ -132,7 +136,7 @@ def test_simple_room_creation(simple_room: Room) -> None:
     """Test creating a simple valid room."""
     assert simple_room.room_id == 1
     assert simple_room.walls is not None
-    assert len(simple_room.walls) == 4  # noqa: PLR2004
+    assert len(simple_room.walls) == 4
 
 
 def test_complex_room_with_internal_walls(room_with_internal_walls: Room) -> None:
@@ -353,6 +357,38 @@ def test_plot_room(simple_room: Room) -> None:
     plt.close(fig)  # Close the plot to avoid displaying during tests
 
 
+def test_plot_room_with_agent_inside(simple_room: Room) -> None:
+    """Test plotting includes agents located inside the room."""
+    fig, ax = plt.subplots()
+    agent = Agent(
+        idx=1,
+        location=Location(1.0, 1.0, floor=1, building=simple_room.building),
+        heading_rad=0.0,
+        space=[],
+    )
+    with patch.object(agent, "plot_agent") as mock_plot_agent:
+        simple_room.plot(ax=ax, agents=[agent])
+        mock_plot_agent.assert_called_once()
+
+    plt.close(fig)
+
+
+def test_plot_room_skips_agent_outside(simple_room: Room) -> None:
+    """Test plotting skips agents located outside the room."""
+    fig, ax = plt.subplots()
+    agent = Agent(
+        idx=2,
+        location=Location(6.0, 6.0, floor=1, building=simple_room.building),
+        heading_rad=0.0,
+        space=[],
+    )
+
+    with patch.object(agent, "plot_agent") as mock_plot_agent:
+        simple_room.plot(ax=ax, agents=[agent])
+        mock_plot_agent.assert_not_called()
+    plt.close(fig)
+
+
 def test_room_with_doors(
     test_building: Building, empty_contents: list[Content]
 ) -> None:
@@ -367,12 +403,12 @@ def test_room_with_doors(
         ],
         [
             Door(
-                door_id=1,
                 start=(0, 2),
                 end=(0, 3),
-                open=True,
+                is_open=True,
                 connecting_rooms=(1, 2),
                 access_control=(True, True),
+                door_id=1,
             )
         ],
     )
@@ -410,12 +446,12 @@ def test_room_plotting_with_doors(
 
     doors = [
         Door(
-            door_id=1,
             start=(0, 3),
             end=(0, 4),
-            open=True,
+            is_open=True,
             connecting_rooms=(1, 2),
             access_control=(True, True),
+            door_id=1,
         )
     ]
 
@@ -510,3 +546,188 @@ def test_room_hash_type_error(
     )
 
     assert room != "Not a Room Object"
+
+
+def test_room_contains_point(room_4x4: Room) -> None:
+    """Test the contains_point method of the Room class."""
+    inside_point = (2, 2)
+    outside_point = (5.5, 5.5)
+
+    assert room_4x4.contains_point(inside_point) is True
+    assert room_4x4.contains_point(outside_point) is False
+
+
+def test_room_contains_point_topology_error(
+    test_building: Building,
+    empty_doors: list[Door],
+    empty_contents: list[Content],
+) -> None:
+    """Test contains_point method raises error when region is not defined."""
+    room = Room(
+        room_id=11,
+        name="Topology Error Room",
+        building=test_building.name,
+        floor=1,
+        area=15.0,
+        doors=empty_doors,
+        contents=empty_contents,
+    )
+
+    with pytest.raises(SimulationModeError) as exc_info:
+        room.contains_point((1, 1))
+    assert "Cannot check point containment without walls." in str(exc_info.value)
+
+
+def test_room_get_random_point(simple_room: Room) -> None:
+    """Test the get_random_point method of the Room class."""
+    random_point = simple_room.get_random_point()
+    assert simple_room.contains_point(random_point) is True
+    rng = np.random.default_rng()
+    random_point = simple_room.get_random_point(rng=rng)
+
+
+def test_room_get_random_point_topology_error(
+    test_building: Building,
+    empty_doors: list[Door],
+    empty_contents: list[Content],
+) -> None:
+    """Test get_random_point method raises error when region is not defined."""
+    room = Room(
+        room_id=12,
+        name="Topology Error Room",
+        building=test_building.name,
+        floor=1,
+        area=20.0,
+        doors=empty_doors,
+        contents=empty_contents,
+    )
+
+    with pytest.raises(SimulationModeError) as exc_info:
+        room.get_random_point()
+    assert "Cannot get random point without walls." in str(exc_info.value)
+
+
+class AlwaysLowRNG:
+    """Mock RNG that always returns the lower bound."""
+
+    def uniform(self, low: float, _: float) -> float:
+        """Uniformly return the low bound."""
+        return low  # always pick min bound -> boundary point
+
+
+def test_get_random_point_raises_after_max_attempts(
+    square_4x4_walls: list[Wall],
+) -> None:
+    """Test that get_random_point raises an error after max attempts."""
+    room = Room(
+        room_id=13,
+        name="Test Room",
+        building="Test Building",
+        floor=1,
+        walls=square_4x4_walls,
+        doors=[],
+        contents=[],
+    )
+
+    rng = AlwaysLowRNG()
+
+    with pytest.raises(SimulationModeError) as exc_info:
+        room.get_random_point(rng=rng, max_attempts=10)  # type: ignore[arg-type]
+    assert "Failed to find a random point within the room after 10 attempts." in str(
+        exc_info.value
+    )
+
+
+def test_room_get_door_access_point(
+    test_building: Building,
+    simple_walls: list[Wall],
+    empty_contents: list[Content],
+) -> None:
+    """Test the get_door_access_point method of the Room class."""
+    doors = [
+        Door(
+            start=(0, 2),
+            end=(0, 3),
+            is_open=True,
+            connecting_rooms=(1, 2),
+            access_control=(True, True),
+            door_id=1,
+        )
+    ]
+
+    room = Room(
+        room_id=14,
+        name="Room with Door",
+        building=test_building.name,
+        floor=1,
+        walls=simple_walls,
+        doors=doors,
+        contents=empty_contents,
+    )
+
+    door, access_point = room.get_door_access_point()
+    assert door == doors[0]
+    assert isinstance(access_point, tuple)
+    assert len(access_point) == 2
+
+
+def test_room_get_door_access_point_no_doors(
+    test_building: Building,
+    simple_walls: list[Wall],
+    empty_contents: list[Content],
+) -> None:
+    """Test get_door_access_point raises error when no doors are present."""
+    room = Room(
+        room_id=15,
+        name="Room without Doors",
+        building=test_building.name,
+        floor=1,
+        walls=simple_walls,
+        doors=[],
+        contents=empty_contents,
+    )
+
+    with pytest.raises(InvalidRoomError) as exc_info:
+        room.get_door_access_point()
+    assert "has no doors for access." in str(exc_info.value)
+
+
+def test_room_get_door_access_point_multiple_doors(
+    test_building: Building,
+    simple_walls: list[Wall],
+    empty_contents: list[Content],
+) -> None:
+    """Test get_door_access_point with multiple doors."""
+    doors = [
+        Door(
+            start=(0, 1),
+            end=(0, 2),
+            is_open=True,
+            connecting_rooms=(1, 2),
+            access_control=(True, True),
+            door_id=1,
+        ),
+        Door(
+            start=(0, 3),
+            end=(0, 4),
+            is_open=True,
+            connecting_rooms=(1, 3),
+            access_control=(True, True),
+            door_id=2,
+        ),
+    ]
+
+    room = Room(
+        room_id=16,
+        name="Room with Multiple Doors",
+        building=test_building.name,
+        floor=1,
+        walls=simple_walls,
+        doors=doors,
+        contents=empty_contents,
+    )
+
+    with pytest.raises(InvalidRoomError) as exc_info:
+        room.get_door_access_point()
+
+    assert "not supported" in str(exc_info.value)

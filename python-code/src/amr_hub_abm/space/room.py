@@ -1,16 +1,27 @@
 """Module defining room-related classes for the AMR Hub ABM simulation."""
 
-import hashlib
-from dataclasses import dataclass, field
+from __future__ import annotations
 
+import hashlib
+import logging
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+import numpy as np
 import shapely.geometry
 import shapely.ops
-from matplotlib.axes import Axes
 
 from amr_hub_abm.exceptions import InvalidRoomError, SimulationModeError
-from amr_hub_abm.space.content import Content
-from amr_hub_abm.space.door import Door
-from amr_hub_abm.space.wall import Wall
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+
+    from amr_hub_abm.agent import Agent
+    from amr_hub_abm.space.content import Content
+    from amr_hub_abm.space.door import Door
+    from amr_hub_abm.space.wall import Wall
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -34,7 +45,7 @@ class Room:
             msg = "Either walls or area must be provided to define a room."
             raise SimulationModeError(msg)
 
-        if self.walls and len(self.walls) < 3:  # noqa: PLR2004
+        if self.walls and len(self.walls) < 3:
             msg = "A room must have at least 3 walls to form a closed region."
             raise InvalidRoomError(msg)
 
@@ -51,6 +62,11 @@ class Room:
 
         if self.walls:
             self.region = self.form_region()
+        else:
+            self.region = shapely.geometry.Polygon()
+            logger.warning(
+                "Room %s has no walls; region is set to an empty polygon.", self.name
+            )
 
         self.room_hash = (
             self.create_polygon_hash() if self.walls else self.create_name_hash()
@@ -96,7 +112,7 @@ class Room:
 
         return polygon[0]
 
-    def plot(self, ax: Axes, **kwargs: dict) -> None:
+    def plot(self, ax: Axes, agents: list[Agent] | None = None, **kwargs: dict) -> None:
         """Plot the room on a given matplotlib axis."""
         if not self.walls:
             msg = "Cannot plot room without walls."
@@ -113,3 +129,63 @@ class Room:
                 color=kwargs.get("door_color", "brown"),
                 linewidth=kwargs.get("door_width", 2),
             )
+
+        if agents is None:
+            return
+
+        for agent in agents:
+            if (
+                agent.location.building == self.building
+                and agent.location.floor == self.floor
+            ) and self.contains_point((agent.location.x, agent.location.y)):
+                agent.plot_agent(ax)
+
+    def contains_point(self, point: tuple[float, float]) -> bool:
+        """Check if a given point is inside the room."""
+        if not self.walls:
+            msg = "Cannot check point containment without walls."
+            raise SimulationModeError(msg)
+
+        return self.region.contains(shapely.geometry.Point(point))
+
+    def get_random_point(
+        self, rng: np.random.Generator | None = None, max_attempts: int = 1000
+    ) -> tuple[float, float]:
+        """Get a random point within the room."""
+        if not self.walls:
+            msg = "Cannot get random point without walls."
+            raise SimulationModeError(msg)
+
+        if rng is None:
+            rng = np.random.default_rng()
+
+        minx, miny, maxx, maxy = self.region.bounds
+
+        for _ in range(max_attempts):
+            # If required later... Improve efficiency using batching or spatial indexing
+            random_point = shapely.geometry.Point(
+                rng.uniform(minx, maxx), rng.uniform(miny, maxy)
+            )
+            if self.region.contains(random_point):
+                return (random_point.x, random_point.y)
+
+        msg = f"""
+        Failed to find a random point within the room after {max_attempts} attempts.
+        Consider increasing max_attempts or checking room geometry.
+        """
+        raise SimulationModeError(msg)
+
+    def get_door_access_point(self) -> tuple[Door, tuple[float, float]]:
+        """Get a point near one of the room's doors for access."""
+        if not self.doors:
+            msg = f"Room {self.name} has no doors for access."
+            raise InvalidRoomError(msg)
+
+        if len(self.doors) > 1:
+            msg = f"Room {self.name} has multiple doors; \
+            This functionality is not supported for now."
+            raise InvalidRoomError(msg)
+
+        door = self.doors[0]
+        midpoint = door.line.interpolate(0.5, normalized=True)
+        return (door, (midpoint.x, midpoint.y))
