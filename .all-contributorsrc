@@ -9,7 +9,19 @@
       "name": "Arindam Saha",
       "avatar_url": "https://avatars.githubusercontent.com/u/25665512?v=4",
       "profile": "https://github.com/arindamsaha1507",
-      "contributions": ["code"]
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "edthink",
+      "name": "Ed Manley",
+      "avatar_url": "https://avatars.githubusercontent.com/u/7822805?v=4",
+      "profile": "http://urbanmovements.co.uk",
+      "contributions": [
+        "ideas",
+        "projectManagement"
+      ]
     }
   ],
   "contributorsPerLine": 7,
@@ -18,5 +30,8 @@
   "repoHost": "https://github.com",
   "projectName": "amr-hub",
   "projectOwner": "UCL-ARC",
-  "files": ["README.md", "python-code/README.md"]
+  "files": [
+    "README.md",
+    "python-code/README.md"
+  ]
 }
