@@ -45,10 +45,10 @@ install-docs:
 	$(CD) uv sync --extra docs
 
 test:
-	$(CD) uv run pytest tests --cov=src/amr_hub_abm --cov-report=term-missing
+	$(CD) uv run pytest tests --cov=src --cov-report=term-missing
 
 test-cov:
-	$(CD) uv run pytest tests --cov=src/amr_hub_abm --cov-report=xml --cov-report=html
+	$(CD) uv run pytest tests --cov=src --cov-report=xml --cov-report=html
 
 lint: format type-check
 
