@@ -66,7 +66,7 @@ pip install -e .
 
 ### Optional Dependencies
 
-Install additional dependencies for development and documentation:
+Install additional dependencies for development and documentations:
 
 ```sh
 # For development tools (testing, linting, etc.)
