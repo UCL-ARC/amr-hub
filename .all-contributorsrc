@@ -9,7 +9,18 @@
       "name": "Arindam Saha",
       "avatar_url": "https://avatars.githubusercontent.com/u/25665512?v=4",
       "profile": "https://github.com/arindamsaha1507",
-      "contributions": ["code"]
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "jamespjh",
+      "name": "James Hetherington",
+      "avatar_url": "https://avatars.githubusercontent.com/u/55009?v=4",
+      "profile": "https://github.com/jamespjh",
+      "contributions": [
+        "ideas"
+      ]
     }
   ],
   "contributorsPerLine": 7,
@@ -18,5 +29,8 @@
   "repoHost": "https://github.com",
   "projectName": "amr-hub",
   "projectOwner": "UCL-ARC",
-  "files": ["README.md", "python-code/README.md"]
+  "files": [
+    "README.md",
+    "python-code/README.md"
+  ]
 }
