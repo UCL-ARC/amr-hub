@@ -9,14 +9,14 @@
       "name": "Arindam Saha",
       "avatar_url": "https://avatars.githubusercontent.com/u/25665512?v=4",
       "profile": "https://github.com/arindamsaha1507",
-      "contributions": ["code"]
+      "contributions": ["code", "doc", "test"]
     },
     {
       "login": "jamespjh",
       "name": "James Hetherington",
       "avatar_url": "https://avatars.githubusercontent.com/u/55009?v=4",
       "profile": "https://github.com/jamespjh",
-      "contributions": ["ideas"]
+      "contributions": ["ideas", "mentoring", "fundingFinding"]
     },
     {
       "login": "MonikaSvata",
@@ -24,6 +24,27 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/123406697?v=4",
       "profile": "https://github.com/MonikaSvata",
       "contributions": ["projectManagement"]
+    },
+    {
+      "login": "ksuchak1990",
+      "name": "Keiran Suchak",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18059900?v=4",
+      "profile": "https://github.com/ksuchak1990",
+      "contributions": ["code", "doc", "test"]
+    },
+    {
+      "login": "edthink",
+      "name": "Ed Manley",
+      "avatar_url": "https://avatars.githubusercontent.com/u/7822805?v=4",
+      "profile": "https://github.com/edthink",
+      "contributions": ["fundingFinding", "ideas", "mentoring"]
+    },
+    {
+      "login": "yidilozdemir",
+      "name": "yidilozdemir",
+      "avatar_url": "https://avatars.githubusercontent.com/u/30597301?v=4",
+      "profile": "https://github.com/yidilozdemir",
+      "contributions": ["doc", "research"]
     }
   ],
   "contributorsPerLine": 7,
