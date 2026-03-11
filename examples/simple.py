@@ -15,7 +15,7 @@ def simulate(plot: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    time_start = time.time()
+    time_start = time.perf_counter()
     simulate(plot=False)
-    time_end = time.time()
+    time_end = time.perf_counter()
     print(f"Simulation run time: {time_end - time_start} seconds")
