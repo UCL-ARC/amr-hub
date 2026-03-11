@@ -9,7 +9,7 @@ from amr_hub_abm.exceptions import InvalidDoorError
 
 @dataclass(kw_only=True, frozen=True)
 class DetachedDoor:
-    """Representation of a detatched door in the AMR Hub ABM simulation."""
+    """Representation of a detached door in the AMR Hub ABM simulation."""
 
     is_open: bool
     access_control: tuple[bool, bool]
