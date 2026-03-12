@@ -112,9 +112,9 @@ class Task:
 
         if not agent.check_if_location_reached(self.location):
             self.progress = TaskProgress.MOVING_TO_LOCATION
-            logger.info(
-                "Agent id %s moving to task location %s.", agent.idx, self.location
-            )
+            # logger.info(
+            #     "Agent id %s moving to task location %s.", agent.idx, self.location
+            # )
             agent.head_to_point((self.location.x, self.location.y))
             agent.move_one_step()
             return

@@ -112,7 +112,13 @@ class Room:
 
         return polygon[0]
 
-    def plot(self, ax: Axes, agents: list[Agent] | None = None, **kwargs: dict) -> None:
+    def plot(
+        self,
+        ax: Axes,
+        agents: list[Agent] | None = None,
+        trajectory: bool = False,
+        **kwargs: dict,
+    ) -> None:
         """Plot the room on a given matplotlib axis."""
         if not self.walls:
             msg = "Cannot plot room without walls."
@@ -139,6 +145,8 @@ class Room:
                 and agent.location.floor == self.floor
             ) and self.contains_point((agent.location.x, agent.location.y)):
                 agent.plot_agent(ax)
+                if trajectory:
+                    agent.plot_trajectory(ax)
 
     def contains_point(self, point: tuple[float, float]) -> bool:
         """Check if a given point is inside the room."""

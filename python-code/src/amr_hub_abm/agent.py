@@ -170,11 +170,11 @@ class Agent:
 
     def move_to_location(self, new_location: Location) -> None:
         """Move the agent to a new location and log the movement."""
-        msg = f"Moving Agent id {self.idx} from {self.location} to {new_location}"
-        logger.info(msg)
+        # msg = f"Moving Agent id {self.idx} from {self.location} to {new_location}"
+        # logger.info(msg)
         self.location = new_location
 
-    def plot_agent(self, ax: Axes, *, show_tags: bool = False) -> None:
+    def plot_agent(self, ax: Axes, *, show_tags: bool = True) -> None:
         """Plot the agent on the given axes."""
         ax.plot(
             self.location.x,
@@ -193,6 +193,26 @@ class Agent:
                 ha="left",
                 va="bottom",
             )
+
+    def plot_trajectory(self, ax: Axes) -> None:
+        """Plot the agent's trajectory on the given axes."""
+        if self.trajectory_length == 0:
+            msg = "Cannot plot trajectory for agent with trajectory_length of 0."
+            raise ValueError(msg)
+
+        print(
+            f"Plotting trajectory for Agent id {self.idx} with trajectory length {self.trajectory_length}"
+        )
+
+        print(f"Trajectory position data:\n{len(self.trajectory.position)} records")
+
+        ax.plot(
+            self.trajectory.position[:, 0],
+            self.trajectory.position[:, 1],
+            marker="o",
+            color=ROLE_COLOUR_MAP[self.agent_type],
+            alpha=0.5,
+        )
 
     def __repr__(self) -> str:
         """Return a string representation of the agent."""
@@ -364,12 +384,12 @@ class Agent:
             - task.time_needed
             - self.estimate_time_to_reach_location(task.location)
         )
-        logger.info(
-            "Agent id %s next task move time: %s, current time: %s",
-            self.idx,
-            task_move_time,
-            current_time,
-        )
+        # logger.info(
+        #     "Agent id %s next task move time: %s, current time: %s",
+        #     self.idx,
+        #     task_move_time,
+        #     current_time,
+        # )
 
         if current_time < task_move_time:
             return False
@@ -410,13 +430,18 @@ class Agent:
     ) -> None:
         """Perform the agent's current task if it's due."""
         if record:
-            logger.info(
-                "Recording state for Agent id %s at time %s: location=%s",
-                self.idx,
-                current_time,
-                self.location,
-            )
+            # logger.info(
+            #     "Recording state for Agent id %s at time %s: location=%s",
+            #     self.idx,
+            #     current_time,
+            #     self.location,
+            # )
             self.record_state(current_time=current_time)
+
+        msg = f"Time {current_time} Task list: {[task.task_type.value for task in self.tasks]}"
+        logger.info(msg)
+        msg = f"Time {current_time} Task list: {[task.progress.value for task in self.tasks]}"
+        logger.info(msg)
 
         if not self.tasks:
             return

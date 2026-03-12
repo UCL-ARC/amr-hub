@@ -21,11 +21,14 @@ class Building:
     floors: list[Floor]
 
     def plot_building(
-        self, axes: list[Axes], agents: list[Agent] | None = None
+        self,
+        axes: list[Axes],
+        agents: list[Agent] | None = None,
+        trajectory: bool = False,
     ) -> None:
         """Plot the building layout."""
         for floor, ax in zip(self.floors, axes, strict=True):
-            floor.plot(ax=ax, agents=agents)
+            floor.plot(ax=ax, agents=agents, trajectory=trajectory)
 
     @staticmethod
     def sort_and_number_buildings(buildings: list[Building]) -> list[Building]:
