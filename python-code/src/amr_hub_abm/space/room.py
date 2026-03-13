@@ -116,6 +116,7 @@ class Room:
         self,
         ax: Axes,
         agents: list[Agent] | None = None,
+        *,
         trajectory: bool = False,
         **kwargs: dict,
     ) -> None:
