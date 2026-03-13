@@ -24,6 +24,7 @@ class Building:
         self,
         axes: list[Axes],
         agents: list[Agent] | None = None,
+        *,
         trajectory: bool = False,
     ) -> None:
         """Plot the building layout."""

@@ -67,7 +67,7 @@ class Simulation:
         self.time += 1
 
     def plot_current_state(
-        self, directory_path: Path, trajectory: bool = False
+        self, directory_path: Path, *, trajectory: bool = False
     ) -> None:
         """Plot the current state of the simulation."""
         if directory_path.suffix != "":
@@ -135,25 +135,6 @@ class Simulation:
                 comments="",
             )
 
-    def plot_agent_trajectories(self, trajectory_file: Path, output_file: Path) -> None:
+    def plot_agent_trajectories(self, output_file: Path) -> None:
         """Plot the trajectories of all agents from a recorded CSV file."""
-        # data = np.genfromtxt(trajectory_file, delimiter=",", skip_header=1)
-
-        # plt.figure(figsize=(10, 10))
-        # for agent_type in np.unique(data[:, 1]):
-        #     agent_data = data[data[:, 1] == agent_type]
-        #     plt.plot(
-        #         agent_data[:, 3],
-        #         agent_data[:, 4],
-        #         label=f"Agent Type {int(agent_type)}",
-        #     )
-
-        # plt.title("Agent Trajectories")
-        # plt.xlabel("X Position")
-        # plt.ylabel("Y Position")
-        # plt.legend()
-        # plt.grid()
-        # plt.savefig(output_file)
-        # plt.close()
-
         self.plot_current_state(directory_path=output_file.parent, trajectory=True)
