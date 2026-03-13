@@ -17,7 +17,6 @@ from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
 
-# logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 

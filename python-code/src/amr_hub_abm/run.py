@@ -42,10 +42,7 @@ def simulate(
             if plot_path is None:
                 msg = "Plot path must be provided to plot agent trajectories."
                 raise ValueError(msg)
-            simulation.plot_agent_trajectories(
-                record_path,
-                plot_path / "agent_trajectories.png",
-            )
+            simulation.plot_agent_trajectories(record_path)
 
     logger.info("Simulation completed successfully...")
 
