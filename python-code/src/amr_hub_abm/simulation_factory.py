@@ -17,7 +17,6 @@ from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
 
 
 def create_space_from_rooms(rooms: list[Room]) -> list[Building]:

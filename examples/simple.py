@@ -1,8 +1,10 @@
+import logging
 import time
 from amr_hub_abm.run import simulate
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.WARNING)
     time_start = time.time()
     simulate(plot=False, record=True, plot_trajectory=True)
     time_end = time.time()
