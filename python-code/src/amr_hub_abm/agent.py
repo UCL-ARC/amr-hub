@@ -23,6 +23,9 @@ from amr_hub_abm.task import (
     TaskWorkstation,
 )
 
+TASK_TYPES = [task_type.value for task_type in TaskType]
+
+
 logger = getLogger(__name__)
 
 
@@ -167,9 +170,8 @@ class Agent:
         additional_info: dict | None = None,
     ) -> None:
         """Add a task to the agent's task list and log the addition."""
-        task_types = [task_type.value for task_type in TaskType]
-        if event_type not in task_types:
-            msg = f"Invalid task type: {event_type}. Must be one of {task_types}."
+        if event_type not in TASK_TYPES:
+            msg = f"Invalid task type: {event_type}. Must be one of {TASK_TYPES}."
             raise SimulationModeError(msg)
         task_type = TaskType(event_type)
 
