@@ -25,7 +25,7 @@ from amr_hub_abm.task import (
     TaskWorkstation,
 )
 
-TASK_TYPES = [task_type.value for task_type in TaskType]
+TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
 
 
 logger = getLogger(__name__)
