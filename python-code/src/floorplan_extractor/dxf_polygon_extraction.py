@@ -383,7 +383,7 @@ def _generate_room_numbers(
     label_layer_name: str,
     floor_filter: str,
     polygon_label_column: str,
-    excluded_room_numbers: list[str] | None = None,
+    excluded_room_numbers: list[str],
 ) -> gpd.GeoDataFrame:
     """
     Extract and filter room label point geometries for a given floor.
