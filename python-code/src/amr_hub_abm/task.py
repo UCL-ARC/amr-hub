@@ -118,6 +118,8 @@ class Task:
             agent.head_to_point((self.location.x, self.location.y))
             agent.move_one_step()
             return
+        self.progress = TaskProgress.IN_PROGRESS
+        self.time_started = current_time
 
         if self.progress == TaskProgress.MOVING_TO_LOCATION:
             self.progress = TaskProgress.IN_PROGRESS
