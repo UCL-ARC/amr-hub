@@ -1,5 +1,6 @@
 """Tests for the agent module."""
 
+import math
 from dataclasses import replace
 from unittest.mock import MagicMock
 
@@ -21,7 +22,7 @@ def test_agent_creation() -> None:
         location=Location(
             x=0.0, y=0.0, floor=1, building=Building(name="Hospital", floors=[]).name
         ),
-        heading=90.0,
+        heading_rad=math.pi / 2,  # 90 degrees in radians
         space=[],
     )
 
@@ -34,7 +35,7 @@ def test_agent_creation() -> None:
     assert agent.agent_type == AgentType.PATIENT
     assert agent.infection_status == InfectionStatus.SUSCEPTIBLE
     assert agent.location == expected_location
-    assert agent.heading == expected_heading
+    assert agent.heading_degrees == expected_heading
 
 
 def test_heading_modulo() -> None:
@@ -46,12 +47,14 @@ def test_heading_modulo() -> None:
         location=Location(
             x=5.0, y=5.0, floor=2, building=Building(name="Hospital", floors=[]).name
         ),
-        heading=450.0,  # 450 degrees should wrap to 90 degrees
+        heading_rad=math.radians(
+            450
+        ),  # 450 degrees in radians, should wrap to 90 degrees
         space=[],
     )
     expected_heading = 90.0
 
-    assert agent.heading == expected_heading
+    assert agent.heading_degrees == expected_heading
 
 
 def test_agent_intersection_with_walls() -> None:
@@ -68,7 +71,7 @@ def test_agent_intersection_with_walls() -> None:
         agent_type=AgentType.HEALTHCARE_WORKER,
         infection_status=InfectionStatus.EXPOSED,
         location=Location(x=0.1, y=5.0, floor=1, building="Hospital"),
-        heading=180.0,
+        heading_rad=math.pi,  # 180 degrees in radians
         space=[],
     )
 
@@ -77,7 +80,7 @@ def test_agent_intersection_with_walls() -> None:
         agent_type=AgentType.GENERIC,
         infection_status=InfectionStatus.RECOVERED,
         location=Location(x=15.0, y=5.0, floor=1, building="Hospital"),
-        heading=0.0,
+        heading_rad=0.0,
         space=[],
     )
 
@@ -95,7 +98,7 @@ def test_move_to_location() -> None:
         agent_type=AgentType.GENERIC,
         infection_status=InfectionStatus.SUSCEPTIBLE,
         location=initial_location,
-        heading=45.0,
+        heading_rad=math.pi / 4,
         space=[],
     )
 
@@ -112,7 +115,7 @@ def test_plot_agent_without_tags() -> None:
         agent_type=AgentType.PATIENT,
         infection_status=InfectionStatus.SUSCEPTIBLE,
         location=Location(x=1.0, y=2.0, floor=1, building="Hospital"),
-        heading=0.0,
+        heading_rad=0.0,
         space=[],
     )
     ax = MagicMock()
@@ -136,7 +139,7 @@ def test_plot_agent_with_tags() -> None:
         agent_type=AgentType.HEALTHCARE_WORKER,
         infection_status=InfectionStatus.EXPOSED,
         location=Location(x=0.5, y=0.25, floor=1, building="Hospital"),
-        heading=0.0,
+        heading_rad=0.0,
         space=[],
     )
     ax = MagicMock()
@@ -179,7 +182,7 @@ def sample_agent(sample_location: Location) -> Agent:
         agent_type=AgentType.HEALTHCARE_WORKER,
         infection_status=InfectionStatus.INFECTED,
         location=sample_location,
-        heading=90.0,
+        heading_rad=math.pi / 4,  # 45 degrees in radians
         space=[],
     )
 
