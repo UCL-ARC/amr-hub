@@ -402,6 +402,8 @@ def _generate_room_numbers(
         Prefix used to select labels belonging to a specific floor.
     polygon_label_column : str
         Name of the column containing room label text.
+    excluded_room_numbers : list[str]
+        List of room numbers to be excluded.
 
     Returns
     -------
