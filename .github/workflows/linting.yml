@@ -33,4 +33,10 @@ jobs:
         run: python -m pip install pre-commit
 
       - name: Run pre-commit
-        run: pre-commit run --all-files --color always --verbose
+        run: |
+          pre-commit run --all-files --color always --verbose || true
+          echo "---- Files modified by hooks ----"
+          git status --short
+          echo "---- Diff ----"
+          git --no-pager diff
+          git diff --exit-code

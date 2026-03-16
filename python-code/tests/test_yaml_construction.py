@@ -58,7 +58,11 @@ def test_polygons_to_rooms_basic() -> None:
         geometry="geometry",
     )
 
-    rooms: list[dict] = polygons_to_rooms(gdf, ROOM_NAME_COLUMN)
+    rooms: list[dict] = polygons_to_rooms(
+        gdf,
+        ROOM_NAME_COLUMN,
+        door_column=None,
+    )
 
     assert len(rooms) == 1
     assert rooms[0]["name"] == ROOM_NAME
@@ -91,3 +95,25 @@ def test_yaml_flow_style_serialisation() -> None:
     dumped: str = yaml.safe_dump({"walls": walls})
 
     assert str(EXPECTED_FIRST_WALL) in dumped
+
+
+def test_polygons_to_rooms_with_doors() -> None:
+    """Room polygons with attached door geometries are serialised correctly."""
+    polygon = Polygon(SQUARE_COORDINATES)
+
+    gdf = gpd.GeoDataFrame(
+        {
+            ROOM_NAME_COLUMN: [ROOM_NAME],
+            "doors": [[[0.0, 0.0, 1.0, 0.0]]],
+            "geometry": [polygon],
+        },
+        geometry="geometry",
+    )
+
+    rooms = polygons_to_rooms(
+        gdf,
+        ROOM_NAME_COLUMN,
+        door_column="doors",
+    )
+
+    assert rooms[0]["doors"] == [FlowList([0.0, 0.0, 1.0, 0.0])]
