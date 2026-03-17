@@ -14,7 +14,9 @@
         "doc",
         "test",
         "maintenance",
-        "research"
+        "research",
+        "bug",
+        "review"
       ]
     },
     {
@@ -22,121 +24,84 @@
       "name": "James Hetherington",
       "avatar_url": "https://avatars.githubusercontent.com/u/55009?v=4",
       "profile": "https://github.com/jamespjh",
-      "contributions": [
-        "ideas",
-        "mentoring",
-        "fundingFinding"
-      ]
+      "contributions": ["ideas", "mentoring", "fundingFinding"]
     },
     {
       "login": "MonikaSvata",
       "name": "MonikaSvata",
       "avatar_url": "https://avatars.githubusercontent.com/u/123406697?v=4",
       "profile": "https://github.com/MonikaSvata",
-      "contributions": [
-        "projectManagement"
-      ]
+      "contributions": ["projectManagement"]
     },
     {
       "login": "ksuchak1990",
       "name": "Keiran Suchak",
       "avatar_url": "https://avatars.githubusercontent.com/u/18059900?v=4",
       "profile": "https://github.com/ksuchak1990",
-      "contributions": [
-        "code",
-        "doc",
-        "test",
-        "plugin",
-        "research",
-        "review"
-      ]
+      "contributions": ["code", "doc", "test", "plugin", "research", "review"]
     },
     {
       "login": "edthink",
       "name": "Ed Manley",
       "avatar_url": "https://avatars.githubusercontent.com/u/7822805?v=4",
       "profile": "https://github.com/edthink",
-      "contributions": [
-        "fundingFinding",
-        "ideas",
-        "mentoring"
-      ]
+      "contributions": ["fundingFinding", "ideas", "mentoring"]
     },
     {
       "login": "yidilozdemir",
       "name": "yidilozdemir",
       "avatar_url": "https://avatars.githubusercontent.com/u/30597301?v=4",
       "profile": "https://github.com/yidilozdemir",
-      "contributions": [
-        "doc",
-        "research",
-        "code"
-      ]
+      "contributions": ["doc", "research", "code"]
     },
     {
       "login": "skeating",
       "name": "Sarah Keating",
       "avatar_url": "https://avatars.githubusercontent.com/u/1736558?v=4",
       "profile": "https://github.com/skeating",
-      "contributions": [
-        "infra"
-      ]
+      "contributions": ["infra"]
     },
     {
       "login": "p-j-smith",
       "name": "Paul Smith",
       "avatar_url": "https://avatars.githubusercontent.com/u/29753790?v=4",
       "profile": "https://github.com/p-j-smith",
-      "contributions": [
-        "data",
-        "infra"
-      ]
+      "contributions": ["data", "infra"]
     },
     {
       "login": "swise5",
       "name": "Sarah Wise",
       "avatar_url": "https://avatars.githubusercontent.com/u/1005676?v=4",
       "profile": "https://github.com/swise5",
-      "contributions": [
-        "ideas",
-        "mentoring"
-      ]
+      "contributions": ["ideas", "mentoring"]
     },
     {
       "login": "gsvarovsky",
       "name": "George Svarovsky",
       "avatar_url": "https://avatars.githubusercontent.com/u/19226962?v=4",
       "profile": "https://github.com/gsvarovsky",
-      "contributions": [
-        "infra"
-      ]
+      "contributions": ["infra"]
     },
     {
       "login": "lsheridanucl",
       "name": "Lauren Sheridan",
       "avatar_url": "https://avatars.githubusercontent.com/u/210515269?v=4",
       "profile": "https://github.com/lsheridanucl",
-      "contributions": [
-        "infra"
-      ]
+      "contributions": ["infra"]
     },
     {
       "login": "mwij02",
       "name": "Marlon",
       "avatar_url": "https://avatars.githubusercontent.com/u/171925679?v=4",
       "profile": "https://github.com/mwij02",
-      "contributions": [
-        "infra"
-      ]
+      "contributions": ["infra"]
     },
     {
       "login": "dependabot",
       "name": "Dependabot",
       "avatar_url": "https://avatars.githubusercontent.com/u/27347476?v=4",
       "profile": "https://github.com/features/security",
-      "contributions": [
-        "security"
-      ]
+      "contributions": ["security"]
     }
   ],
   "contributorsPerLine": 7,
@@ -145,9 +110,6 @@
   "repoHost": "https://github.com",
   "projectName": "amr-hub",
   "projectOwner": "UCL-ARC",
-  "files": [
-    "README.md",
-    "python-code/README.md"
-  ],
+  "files": ["README.md", "python-code/README.md"],
   "contributorsSortAlphabetically": true
 }
