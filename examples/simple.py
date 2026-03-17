@@ -2,9 +2,9 @@ from pathlib import Path
 import time
 import logging
 
-logger = logging.getLogger(__name__)
-
 from amr_hub_abm.simulation_factory import create_simulation
+
+logger = logging.getLogger(__name__)
 
 
 def simulate(plot: bool = False) -> None:
