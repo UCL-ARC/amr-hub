@@ -14,7 +14,8 @@ dev = [
   "pytest>=8.4.2",
   "ruff",
   "tox",
-  "twine"
+  "twine",
+  "snakeviz>=2.2.2"
 ]
 docs = [
   "mkdocs",
@@ -42,6 +43,7 @@ classifiers = [
 dependencies = [
   "geopandas>=1.1.2",
   "matplotlib>=3.10.7",
+  "pandas>=2.3.3",
   "pyyaml>=6.0.3",
   "shapely>=2.1.2",
   "types-pyyaml>=6.0.12.20250915"
@@ -93,7 +95,8 @@ lint.ignore = [
   "D212", # multi-line-summary-first-line
   "D407", # removed dashes lines under sections
   "D417", # argument description in docstring (unreliable)
-  "ISC001" # simplify implicit str concatenation (ruff-format recommended)
+  "ISC001", # simplify implicit str concatenation (ruff-format recommended)
+  "PLR2004" # literal-comparison (pylint recommended)
 ]
 lint.per-file-ignores = {"tests*" = [
   "INP001", # File is part of an implicit namespace package.

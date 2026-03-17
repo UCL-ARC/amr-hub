@@ -1,13 +1,20 @@
 """Module for Floor class."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import numpy as np
-from matplotlib.axes import Axes
 
 from amr_hub_abm.exceptions import InvalidRoomError
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+
+    from amr_hub_abm.agent import Agent
 
 
 @dataclass
@@ -63,10 +70,10 @@ class Floor:
 
         return adjacency_matrix
 
-    def plot(self, ax: Axes) -> None:
+    def plot(self, ax: Axes, agents: list[Agent] | None = None) -> None:
         """Plot the floor layout including rooms and doors."""
         for room in self.rooms:
-            room.plot(ax=ax)
+            room.plot(ax=ax, agents=agents)
 
     def add_pseudo_rooms(self) -> None:
         """Add pseudo-rooms to the floor."""
@@ -106,8 +113,8 @@ class Floor:
 
         pseudo_doors = room.doors.copy()
         for count, door in enumerate(pseudo_doors):
-            door.start = (2 * count + 1, width)
-            door.end = (2 * count + 2, width)
+            object.__setattr__(door, "start", (2 * count + 1, width))
+            object.__setattr__(door, "end", (2 * count + 2, width))
 
         pseudo_walls = [
             Wall((0, width), (0, 0)),
@@ -131,3 +138,10 @@ class Floor:
             doors=pseudo_doors,
             contents=room.contents,
         )
+
+    def find_room_by_location(self, location: tuple[float, float]) -> Room | None:
+        """Find the room that contains the given location."""
+        for room in self.rooms:
+            if room.walls and room.contains_point(location):
+                return room
+        return None
