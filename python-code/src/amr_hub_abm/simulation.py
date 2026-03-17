@@ -79,12 +79,14 @@ class Simulation:
             axes: list[Axes] = [plt.subplots(nrows=len(building.floors), ncols=1)[1]]
             building.plot_building(axes=axes, agents=self.agents, trajectory=trajectory)
             simulation_name = f"Simulation: {self.name}"
-            time = f"Time: {self.time}/{self.total_simulation_time}"
-            plt.suptitle(f"{simulation_name} | {time}")
-            plt.savefig(
-                directory_path
-                / f"plot_{self.name}_building_{building.name}_time_{self.time}.png"
-            )
+            if trajectory:
+                simulation_name += " | Agent Trajectories"
+                filename = f"{building.name}_trajectories.png"
+            else:
+                simulation_name += f" | Time: {self.time}/{self.total_simulation_time}"
+                filename = f"{building.name}_time_{self.time}.png"
+            plt.suptitle(simulation_name)
+            plt.savefig(directory_path / filename)
             plt.close()
 
     def __repr__(self) -> str:

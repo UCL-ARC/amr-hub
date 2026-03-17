@@ -216,9 +216,10 @@ class Agent:
         ax.plot(
             self.trajectory.position[:, 0],
             self.trajectory.position[:, 1],
-            marker="o",
+            linestyle="-",
+            linewidth=1.5,
             color=ROLE_COLOUR_MAP[self.agent_type],
-            alpha=0.5,
+            alpha=0.7,
         )
 
     def __repr__(self) -> str:
