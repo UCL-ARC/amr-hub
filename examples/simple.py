@@ -4,7 +4,6 @@ from amr_hub_abm.run import simulate
 
 logger = logging.getLogger(__name__)
 
-
 if __name__ == "__main__":
     time_start = time.perf_counter()
     simulate(plot=False, record=True, plot_trajectory=True)
