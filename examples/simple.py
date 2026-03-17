@@ -2,10 +2,11 @@ import logging
 import time
 from amr_hub_abm.run import simulate
 
+logger = logging.getLogger(__name__)
+
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.WARNING)
-    time_start = time.time()
+    time_start = time.perf_counter()
     simulate(plot=False, record=True, plot_trajectory=True)
-    time_end = time.time()
-    print(f"Simulation run time: {time_end - time_start} seconds")
+    time_end = time.perf_counter()
+    logger.info("Simulation run time: %s seconds", time_end - time_start)
