@@ -284,7 +284,7 @@ def test_simulation_repr(
 
     assert "Simulation: TestSimulation" in repr_str
     assert "Description: A test simulation." in repr_str
-    assert "Mode: topological" in repr_str
+    assert "Mode: 1" in repr_str
     assert "Total Simulation Time: 10" in repr_str
     assert "Current Time: 0" in repr_str
     assert "Number of Buildings: 1" in repr_str
@@ -300,7 +300,7 @@ def test_plot_current_state(
 
     simulation.plot_current_state(tmp_path)
 
-    expected_file = tmp_path / "plot_TestSimulation_building_TestBuilding_time_0.png"
+    expected_file = tmp_path / "TestBuilding_time_0.png"
     assert expected_file.exists()
 
 

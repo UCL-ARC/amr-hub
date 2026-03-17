@@ -17,7 +17,6 @@ from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
 
-logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -154,7 +153,7 @@ class SpaceInputReader:
             logger.info(msg)
             buildings.append(building)
 
-        return buildings
+        return Building.sort_and_number_buildings(buildings)
 
     def create_rooms_from_data(self) -> None:
         """Create Room instances from the validated data."""

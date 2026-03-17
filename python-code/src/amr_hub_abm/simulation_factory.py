@@ -17,7 +17,6 @@ from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
 
 
 def create_space_from_rooms(rooms: list[Room]) -> list[Building]:
@@ -40,7 +39,8 @@ def create_space_from_rooms(rooms: list[Room]) -> list[Building]:
                     floor.rooms.append(room)
                     break
 
-    return list(building_dict.values())
+    raw_buildings = list(building_dict.values())
+    return Building.sort_and_number_buildings(raw_buildings)
 
 
 def create_simulation(config_file: Path) -> Simulation:
@@ -84,7 +84,9 @@ def create_simulation(config_file: Path) -> Simulation:
         rooms=space_reader.rooms,
         start_time=start_time,
         time_step_minutes=time_step_minutes,
+        total_time_steps=total_steps,
     )
+
     msg = f"Parsed {len(agents)} agents from location time series."
     logger.info(msg)
     logger.info("Simulation creation complete.")
@@ -130,6 +132,7 @@ def update_patient(
     patient_id: int,
     space_tuple: tuple[str, int, Room],
     patient_dict: dict[int, Agent],
+    total_time_steps: int,
     space: list[Building],
 ) -> None:
     """Update patient information from data."""
@@ -143,6 +146,7 @@ def update_patient(
             location=location,
             heading_rad=0.0,
             agent_type=AgentType.PATIENT,
+            trajectory_length=total_time_steps,
             space=space,
         )
 
@@ -152,6 +156,7 @@ def update_hcw(  # noqa: PLR0913
     space_tuple: tuple[str, int, Room],
     event_tuple: tuple[Location, int, str],
     hcw_dict: dict[int, Agent],
+    total_time_steps: int,
     space: list[Building],
     additional_info: dict | None = None,
 ) -> None:
@@ -166,6 +171,7 @@ def update_hcw(  # noqa: PLR0913
             location=hcw_location,
             heading_rad=0.0,
             agent_type=AgentType.HEALTHCARE_WORKER,
+            trajectory_length=total_time_steps,
             space=space,
         )
 
@@ -197,6 +203,7 @@ def parse_location_timeseries(
     rooms: list[Room],
     start_time: pd.Timestamp,
     time_step_minutes: int,
+    total_time_steps: int,
 ) -> list[Agent]:
     """
     Parse a CSV file containing location time series data for agents.
@@ -246,6 +253,7 @@ def parse_location_timeseries(
                 patient_id=patient_id,
                 space_tuple=(building, floor, room),
                 patient_dict=patient_dict,
+                total_time_steps=total_time_steps,
                 space=create_space_from_rooms(rooms),
             )
             patient = patient_dict[patient_id]
@@ -292,6 +300,7 @@ def parse_location_timeseries(
             event_tuple=(location, timestep_index, event_type),
             hcw_dict=hcw_dict,
             additional_info=additional_info or None,
+            total_time_steps=total_time_steps,
             space=create_space_from_rooms(rooms),
         )
 

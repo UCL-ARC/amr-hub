@@ -1,14 +1,14 @@
 """Module defining room content types for the rooms of the AMR Hub ABM simulation."""
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import IntEnum
 
 
-class ContentType(Enum):
+class ContentType(IntEnum):
     """Enumeration of possible room content types."""
 
-    BED = "bed"
-    WORKSTATION = "workstation"
+    BED = 0
+    WORKSTATION = 1
 
 
 @dataclass

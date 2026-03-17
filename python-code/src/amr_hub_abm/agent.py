@@ -2,9 +2,11 @@
 
 import math
 from dataclasses import dataclass, field, replace
-from enum import Enum
+from enum import IntEnum
 from logging import getLogger
 
+import numpy as np
+import numpy.typing as npt
 import shapely
 from matplotlib.axes import Axes
 
@@ -23,18 +25,18 @@ from amr_hub_abm.task import (
     TaskWorkstation,
 )
 
-TASK_TYPES = [task_type.value for task_type in TaskType]
+TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
 
 
 logger = getLogger(__name__)
 
 
-class AgentType(Enum):
+class AgentType(IntEnum):
     """Enumeration of possible agent types."""
 
-    GENERIC = "generic"
-    PATIENT = "patient"
-    HEALTHCARE_WORKER = "healthcare_worker"
+    GENERIC = 0
+    PATIENT = 1
+    HEALTHCARE_WORKER = 2
 
 
 ROLE_COLOUR_MAP = {
@@ -44,13 +46,55 @@ ROLE_COLOUR_MAP = {
 }
 
 
-class InfectionStatus(Enum):
+class InfectionStatus(IntEnum):
     """Enumeration of possible infection statuses."""
 
-    SUSCEPTIBLE = "susceptible"
-    EXPOSED = "exposed"
-    INFECTED = "infected"
-    RECOVERED = "recovered"
+    SUSCEPTIBLE = 0
+    EXPOSED = 1
+    INFECTED = 2
+    RECOVERED = 3
+
+
+@dataclass(slots=True)
+class Record:
+    """Representation of a record of an agent's state at a given time step."""
+
+    total_time: int
+
+    building: npt.NDArray[np.int8] = field(init=False)
+    floor: npt.NDArray[np.int8] = field(init=False)
+    position: npt.NDArray[np.float64] = field(init=False)
+    heading: npt.NDArray[np.float64] = field(init=False)
+    infection_status: npt.NDArray[np.int8] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Post-initialization to setup the record arrays."""
+        self.building = np.empty(self.total_time, dtype=np.int8)
+        self.floor = np.empty(self.total_time, dtype=np.int8)
+        self.position = np.empty((self.total_time, 2), dtype=np.float64)
+        self.heading = np.empty((self.total_time, 1), dtype=np.float64)
+        self.infection_status = np.empty(self.total_time, dtype=np.int8)
+
+    def push(  # noqa: PLR0913
+        self,
+        time: int,
+        building_idx: int,
+        floor: int,
+        pos_x: float,
+        pos_y: float,
+        heading: float,
+        infection_status: InfectionStatus,
+    ) -> None:
+        """Push a new record of the agent's state at a given time step."""
+        if time >= self.total_time:
+            msg = f"Time {time} exceeds total_time {self.total_time} for record."
+            raise ValueError(msg)
+
+        self.building[time] = building_idx
+        self.floor[time] = floor
+        self.heading[time] = heading
+        self.position[time] = [pos_x, pos_y]
+        self.infection_status[time] = infection_status.value
 
 
 @dataclass
@@ -69,6 +113,9 @@ class Agent:
     infection_details: dict = field(default_factory=dict)
 
     movement_speed: float = field(default=0.1)  # units per time step
+
+    trajectory_length: int = field(default=0)
+    trajectory: Record = field(init=False)
 
     @property
     def heading_degrees(self) -> float:
@@ -91,6 +138,13 @@ class Agent:
             self.location,
             self.heading_rad,
         )
+
+        if self.trajectory_length < 0:
+            msg = "trajectory_length must be non-negative."
+            raise ValueError(msg)
+
+        if self.trajectory_length > 0:
+            self.trajectory = Record(total_time=self.trajectory_length)
 
     def get_room(self) -> Room | None:
         """Get the room the agent is currently located in, if any."""
@@ -133,7 +187,7 @@ class Agent:
         logger.info(msg)
         self.location = new_location
 
-    def plot_agent(self, ax: Axes, *, show_tags: bool = False) -> None:
+    def plot_agent(self, ax: Axes, *, show_tags: bool = True) -> None:
         """Plot the agent on the given axes."""
         ax.plot(
             self.location.x,
@@ -152,6 +206,21 @@ class Agent:
                 ha="left",
                 va="bottom",
             )
+
+    def plot_trajectory(self, ax: Axes) -> None:
+        """Plot the agent's trajectory on the given axes."""
+        if self.trajectory_length == 0:
+            msg = "Cannot plot trajectory for agent with trajectory_length of 0."
+            raise ValueError(msg)
+
+        ax.plot(
+            self.trajectory.position[:, 0],
+            self.trajectory.position[:, 1],
+            linestyle="-",
+            linewidth=1.5,
+            color=ROLE_COLOUR_MAP[self.agent_type],
+            alpha=0.7,
+        )
 
     def __repr__(self) -> str:
         """Return a string representation of the agent."""
@@ -173,8 +242,7 @@ class Agent:
         if event_type not in TASK_TYPES:
             msg = f"Invalid task type: {event_type}. Must be one of {TASK_TYPES}."
             raise SimulationModeError(msg)
-        task_type = TaskType(event_type)
-
+        task_type = TaskType[event_type.upper()]
         task: Task
 
         if task_type == TaskType.ATTEND_PATIENT:
@@ -222,7 +290,7 @@ class Agent:
             )
 
         else:
-            msg = f"Task type {task_type} not implemented yet."
+            msg = f"Task type {task_type.name} not implemented yet."
             raise NotImplementedError(msg)
 
         self.tasks.append(task)
@@ -332,8 +400,54 @@ class Agent:
         task.update_progress(current_time=current_time, agent=self)
         return True
 
-    def perform_task(self, current_time: int, rooms: list[Room]) -> None:
+    def record_state(self, current_time: int) -> None:
+        """Push a record of the agent's current state to the trajectory."""
+        if current_time >= self.trajectory_length:
+            msg = f"Current time {current_time} "
+            msg += f"exceeds trajectory length {self.trajectory_length}."
+            raise ValueError(msg)
+
+        building_idx_list = [
+            b.idx for b in self.space if b.name == self.location.building
+        ]
+        if not building_idx_list:
+            msg = f"Building {self.location.building} not found in agent's space."
+            raise ValueError(msg)
+        if len(building_idx_list) > 1:
+            msg = f"Multiple buildings with name {self.location.building} found."
+            raise ValueError(msg)
+        building_idx = building_idx_list[0]
+
+        self.trajectory.push(
+            time=current_time,
+            building_idx=building_idx,
+            floor=self.location.floor,
+            pos_x=self.location.x,
+            pos_y=self.location.y,
+            heading=self.heading_rad,
+            infection_status=self.infection_status,
+        )
+
+    def perform_task(
+        self, current_time: int, rooms: list[Room], *, record: bool = False
+    ) -> None:
         """Perform the agent's current task if it's due."""
+        if record:
+            logger.info(
+                "Recording state for Agent id %s at time %s: location=%s",
+                self.idx,
+                current_time,
+                self.location,
+            )
+            self.record_state(current_time=current_time)
+
+        task_list_values = [task.task_type.value for task in self.tasks]
+        task_progress_values = [task.progress.value for task in self.tasks]
+        msg = f"Time {current_time} Task list: {task_list_values}"
+        logger.info(msg)
+        msg = f"Time {current_time} Task list: {task_progress_values}"
+        logger.info(msg)
+
         if not self.tasks:
             return
 
