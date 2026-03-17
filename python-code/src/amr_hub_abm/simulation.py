@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import IntEnum
 from typing import TYPE_CHECKING
 
+import numpy as np
 from matplotlib import pyplot as plt
 
 from amr_hub_abm.exceptions import TimeError
@@ -21,11 +22,11 @@ if TYPE_CHECKING:
     from amr_hub_abm.space.room import Room
 
 
-class SimulationMode(Enum):
+class SimulationMode(IntEnum):
     """Enumeration of simulation modes."""
 
-    SPATIAL = "spatial"
-    TOPOLOGICAL = "topological"
+    SPATIAL = 0
+    TOPOLOGICAL = 1
 
 
 @dataclass
@@ -43,7 +44,12 @@ class Simulation:
 
     time: int = field(default=0, init=False)
 
-    def step(self, plot_path: Path | None = None) -> None:
+    def step(
+        self,
+        plot_path: Path | None = None,
+        *,
+        record: bool = False,
+    ) -> None:
         """Advance the simulation by one time step."""
         if self.time >= self.total_simulation_time:
             msg = "Simulation has already reached its total simulation time."
@@ -53,7 +59,7 @@ class Simulation:
         random.shuffle(self.agents)
 
         for agent in self.agents:
-            agent.perform_task(current_time=self.time, rooms=self.rooms)
+            agent.perform_task(current_time=self.time, rooms=self.rooms, record=record)
 
         if plot_path is not None:
             self.plot_current_state(directory_path=plot_path)
@@ -101,3 +107,28 @@ class Simulation:
             for floor in building.floors:
                 all_rooms.extend(floor.rooms)
         return all_rooms
+
+    def record_agent_states(self, file_path: Path) -> None:
+        """Record the states of all agents at the current time step to a CSV file."""
+        for agent in self.agents:
+            agent_filename = (
+                file_path.parent
+                / f"agent_{agent.agent_type.value}_{agent.idx}_trajectory.csv"
+            )
+
+            np.savetxt(
+                agent_filename,
+                np.column_stack(
+                    [
+                        np.arange(len(agent.trajectory.position)),
+                        agent.trajectory.building,
+                        agent.trajectory.floor,
+                        agent.trajectory.position,
+                        agent.trajectory.heading.T.flatten(),
+                        agent.trajectory.infection_status,
+                    ]
+                ),
+                delimiter=",",
+                header="time,building,floor,x,y,heading,infection_status",
+                comments="",
+            )
