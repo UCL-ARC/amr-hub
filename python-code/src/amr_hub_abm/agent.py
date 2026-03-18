@@ -159,14 +159,15 @@ class Agent:
                     return room
         return None
 
-    def check_intersection_with_walls(self, walls: list[Wall]) -> bool:
+    @staticmethod
+    def check_intersection_with_walls(
+        loc_x: float, loc_y: float, interaction_radius: float, walls: list[Wall]
+    ) -> bool:
         """Check if the agent intersects with any walls."""
         for wall in walls:
             if (
-                wall.polygon.distance(
-                    shapely.geometry.Point(self.location.x, self.location.y)
-                )
-                < self.interaction_radius
+                wall.polygon.distance(shapely.geometry.Point(loc_x, loc_y))
+                < interaction_radius
             ):
                 return True
         return False
@@ -309,6 +310,25 @@ class Agent:
 
         new_x = self.location.x + delta_x
         new_y = self.location.y + delta_y
+
+        room = self.get_room()
+        if room is None:
+            msg = f"Agent id {self.idx} is not located in any room."
+            raise ValueError(msg)
+        walls = room.walls
+        if not walls:
+            msg = f"Room {room.name} has no walls defined."
+            raise ValueError(msg)
+
+        if self.check_intersection_with_walls(
+            new_x, new_y, self.interaction_radius, walls
+        ):
+            logger.error(
+                "Agent id %s cannot move to (%s, %s) due to wall intersection.",
+                self.idx,
+                new_x,
+                new_y,
+            )
 
         new_location = replace(
             self.location,
