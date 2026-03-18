@@ -59,7 +59,7 @@ class Simulation:
         random.shuffle(self.agents)
 
         for agent in self.agents:
-            agent.perform_task(current_time=self.time, rooms=self.rooms, record=record)
+            agent.perform_task(current_time=self.time, record=record)
 
         if plot_path is not None:
             self.plot_current_state(directory_path=plot_path)

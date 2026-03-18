@@ -428,9 +428,7 @@ class Agent:
             infection_status=self.infection_status,
         )
 
-    def perform_task(
-        self, current_time: int, rooms: list[Room], *, record: bool = False
-    ) -> None:
+    def perform_task(self, current_time: int, *, record: bool = False) -> None:
         """Perform the agent's current task if it's due."""
         if record:
             logger.info(
@@ -450,7 +448,6 @@ class Agent:
 
         if not self.tasks:
             return
-
         logger.debug(
             "Agent id %s has %s tasks to perform.",
             self.idx,
@@ -459,7 +456,6 @@ class Agent:
 
         if self.perform_in_progress_task(current_time=current_time):
             return
-
         logger.debug(
             "No in-progress tasks for Agent id %s.",
             self.idx,
@@ -467,7 +463,6 @@ class Agent:
 
         if self.perform_moving_to_task_location(current_time=current_time):
             return
-
         logger.debug(
             "No tasks to move to for Agent id %s.",
             self.idx,
@@ -475,7 +470,6 @@ class Agent:
 
         if self.perform_suspended_task(current_time=current_time):
             return
-
         logger.debug(
             "No suspended tasks for Agent id %s.",
             self.idx,
@@ -483,16 +477,9 @@ class Agent:
 
         if self.perform_to_be_started_task(current_time=current_time):
             return
-
         logger.debug(
             "No to-be-started tasks for Agent id %s.",
             self.idx,
-        )
-
-        logger.debug(
-            "Number of rooms available for Agent id %s: %s",
-            self.idx,
-            len(rooms),
         )
 
     def estimate_time_to_reach_location(self, target_location: Location) -> float:
