@@ -318,69 +318,55 @@ class Agent:
 
         self.move_to_location(new_location)
 
+    def select_task_based_on_progress(
+        self, progress: TaskProgress, *, allow_multiple: bool = False
+    ) -> Task | None:
+        """Select a task based on its progress."""
+        tasks = [task for task in self.tasks if task.progress == progress]
+        if not tasks:
+            return None
+        if len(tasks) > 1:
+            if not allow_multiple:
+                msg = f"Agent {self.idx} has multiple tasks"
+                msg += f" with progress {progress.value}."
+                logger.error(msg)
+                raise RuntimeError(msg)
+            tasks.sort(key=lambda t: t.priority.value, reverse=True)
+        return tasks[0]
+
     def perform_in_progress_task(self, current_time: int) -> bool:
         """Perform an in-progress task and return True if a task was performed."""
-        in_progress_tasks = [
-            task for task in self.tasks if task.progress == TaskProgress.IN_PROGRESS
-        ]
-
-        if not in_progress_tasks:
+        task = self.select_task_based_on_progress(TaskProgress.IN_PROGRESS)
+        if task is None:
             return False
-
-        if len(in_progress_tasks) > 1:
-            msg = f"Agent id {self.idx} has multiple ongoing tasks."
-            logger.error(msg)
-            raise RuntimeError(msg)
-
-        task = in_progress_tasks[0]
         task.update_progress(current_time=current_time, agent=self)
         return True
 
     def perform_moving_to_task_location(self, current_time: int) -> bool:
         """Move the agent towards the location of its next task."""
-        moving_to_location_tasks = [
-            task
-            for task in self.tasks
-            if task.progress == TaskProgress.MOVING_TO_LOCATION
-        ]
-
-        if not moving_to_location_tasks:
+        next_task = self.select_task_based_on_progress(TaskProgress.MOVING_TO_LOCATION)
+        if next_task is None:
             return False
-
-        if len(moving_to_location_tasks) > 1:
-            msg = f"Agent id {self.idx} has multiple tasks to start."
-            logger.error(msg)
-            raise RuntimeError(msg)
-
-        next_task = moving_to_location_tasks[0]
         next_task.update_progress(current_time=current_time, agent=self)
         return True
 
     def perform_suspended_task(self, current_time: int) -> bool:
         """Perform a suspended task and return True if a task was performed."""
-        suspended_tasks = [
-            task for task in self.tasks if task.progress == TaskProgress.SUSPENDED
-        ]
-
-        if not suspended_tasks:
+        task = self.select_task_based_on_progress(
+            TaskProgress.SUSPENDED, allow_multiple=True
+        )
+        if task is None:
             return False
-
-        suspended_tasks.sort(key=lambda t: t.priority.value, reverse=True)
-        task = suspended_tasks[0]
         task.update_progress(current_time=current_time, agent=self)
         return True
 
     def perform_to_be_started_task(self, current_time: int) -> bool:
         """Perform a to-be-started task and return True if a task was performed."""
-        to_be_started_tasks = [
-            task for task in self.tasks if task.progress == TaskProgress.NOT_STARTED
-        ]
-
-        if not to_be_started_tasks:
+        task = self.select_task_based_on_progress(
+            TaskProgress.NOT_STARTED, allow_multiple=True
+        )
+        if task is None:
             return False
-
-        to_be_started_tasks.sort(key=lambda t: t.priority.value, reverse=True)
-        task = to_be_started_tasks[0]
 
         task_move_time = (
             task.time_due
