@@ -157,6 +157,11 @@ class Agent:
                 room = floor.find_room_by_location((self.location.x, self.location.y))
                 if room:
                     return room
+        logger.warning(
+            "Agent id %s is not located in any room. Location: %s",
+            self.idx,
+            self.location,
+        )
         return None
 
     @staticmethod
@@ -303,13 +308,34 @@ class Agent:
 
         self.heading_rad = math.atan2(delta_y, delta_x) % (2 * math.pi)
 
-    def move_one_step(self) -> None:
-        """Move the agent one step in the direction of its heading."""
-        delta_x = self.movement_speed * math.cos(self.heading_rad)
-        delta_y = self.movement_speed * math.sin(self.heading_rad)
+    @staticmethod
+    def propose_new_coordinates(
+        coordinates: tuple[float, float],
+        heading_rad: float,
+        movement_speed: float,
+        stochasticity: float,
+    ) -> tuple[float, float]:
+        """Propose a new location for agent movement."""
+        delta_x = movement_speed * math.cos(heading_rad)
+        delta_y = movement_speed * math.sin(heading_rad)
 
-        new_x = self.location.x + delta_x
-        new_y = self.location.y + delta_y
+        rng = np.random.default_rng()
+        delta_x = (1 + rng.normal(0, stochasticity)) * delta_x
+        delta_y = (1 + rng.normal(0, stochasticity)) * delta_y
+
+        new_x = coordinates[0] + delta_x
+        new_y = coordinates[1] + delta_y
+
+        return new_x, new_y
+
+    def move_one_step(self, stochasticity: float = 0.0) -> None:
+        """Move the agent one step in the direction of its heading."""
+        new_x, new_y = self.propose_new_coordinates(
+            (self.location.x, self.location.y),
+            self.heading_rad,
+            self.movement_speed,
+            stochasticity,
+        )
 
         room = self.get_room()
         if room is None:
