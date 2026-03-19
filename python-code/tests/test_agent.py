@@ -85,7 +85,7 @@ def test_agent_intersection_with_walls() -> None:
     )
 
     assert (
-        agent_not_intersecting.check_intersection_with_walls(
+        Location.check_intersection_with_walls(
             agent_intersecting.location.x,
             agent_intersecting.location.y,
             agent_intersecting.interaction_radius,
@@ -95,7 +95,7 @@ def test_agent_intersection_with_walls() -> None:
     )
 
     assert (
-        agent_not_intersecting.check_intersection_with_walls(
+        Location.check_intersection_with_walls(
             agent_not_intersecting.location.x,
             agent_not_intersecting.location.y,
             agent_not_intersecting.interaction_radius,

@@ -7,7 +7,6 @@ from logging import getLogger
 
 import numpy as np
 import numpy.typing as npt
-import shapely
 from matplotlib.axes import Axes
 
 from amr_hub_abm.exceptions import SimulationModeError
@@ -15,7 +14,6 @@ from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
-from amr_hub_abm.space.wall import Wall
 from amr_hub_abm.task import (
     Task,
     TaskAttendPatient,
@@ -166,19 +164,6 @@ class Agent:
             self.location,
         )
         return None
-
-    @staticmethod
-    def check_intersection_with_walls(
-        loc_x: float, loc_y: float, interaction_radius: float, walls: list[Wall]
-    ) -> bool:
-        """Check if the agent intersects with any walls."""
-        for wall in walls:
-            if (
-                wall.polygon.distance(shapely.geometry.Point(loc_x, loc_y))
-                < interaction_radius
-            ):
-                return True
-        return False
 
     def check_if_location_reached(self, target_location: Location) -> bool:
         """Check if the agent has reached the target location."""
@@ -386,7 +371,7 @@ class Agent:
                 stochasticity,
             )
 
-        if self.check_intersection_with_walls(
+        if Location.check_intersection_with_walls(
             proposed_x, proposed_y, self.interaction_radius, walls
         ):
             logger.error(
