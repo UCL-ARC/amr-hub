@@ -86,6 +86,7 @@ def room_with_internal_walls(
         walls=walls,
         doors=empty_doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
 
@@ -105,6 +106,7 @@ def simple_room(
         walls=simple_walls,
         doors=empty_doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
 
@@ -124,6 +126,7 @@ def room_4x4(
         walls=square_4x4_walls,
         doors=empty_doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
 
@@ -164,6 +167,7 @@ def test_invalid_room_no_walls_or_area(
             walls=None,
             doors=empty_doors,
             contents=empty_contents,
+            rng_generator=np.random.default_rng(),
         )
     assert "Either walls or area must be provided to define a room." in str(
         exc_info.value
@@ -187,6 +191,7 @@ def test_invalid_room_both_walls_and_area(
             area=25.0,
             doors=empty_doors,
             contents=empty_contents,
+            rng_generator=np.random.default_rng(),
         )
     assert "Provide either walls or area, not both, to define a room." in str(
         exc_info.value
@@ -208,6 +213,7 @@ def test_invalid_room_negative_area(
             area=-10.0,
             doors=empty_doors,
             contents=empty_contents,
+            rng_generator=np.random.default_rng(),
         )
     assert "Room area must be positive." in str(exc_info.value)
 
@@ -226,6 +232,7 @@ def test_invalid_region_creation(
         area=10.0,
         doors=empty_doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
     with pytest.raises(InvalidRoomError) as exc_info:
         room.form_region()
@@ -246,6 +253,7 @@ def test_invalid_plot_creation(
         area=10.0,
         doors=empty_doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
     fig = plt.figure()
@@ -269,6 +277,7 @@ def test_invalid_polygon_hash_creation(
         area=10.0,
         doors=empty_doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
     with pytest.raises(SimulationModeError) as exc_info:
@@ -296,6 +305,7 @@ def test_invalid_room_too_few_walls(
             walls=walls,
             doors=empty_doors,
             contents=empty_contents,
+            rng_generator=np.random.default_rng(),
         )
     assert "A room must have at least 3 walls to form a closed region." in str(
         exc_info.value
@@ -324,6 +334,7 @@ def test_invalid_room_non_closed_walls(
             walls=walls,
             doors=empty_doors,
             contents=empty_contents,
+            rng_generator=np.random.default_rng(),
         )
     assert "The walls do not form a valid closed region." in str(exc_info.value)
 
@@ -346,6 +357,7 @@ def test_unconnected_walls() -> None:
             walls=walls,
             doors=[],
             contents=[],
+            rng_generator=np.random.default_rng(),
         )
     assert "The walls do not form a valid closed region" in str(exc_info.value)
 
@@ -365,6 +377,7 @@ def test_plot_room_with_agent_inside(simple_room: Room) -> None:
         location=Location(1.0, 1.0, floor=1, building=simple_room.building),
         heading_rad=0.0,
         space=[],
+        rng_generator=np.random.default_rng(),
     )
     with patch.object(agent, "plot_agent") as mock_plot_agent:
         simple_room.plot(ax=ax, agents=[agent])
@@ -381,6 +394,7 @@ def test_plot_room_skips_agent_outside(simple_room: Room) -> None:
         location=Location(6.0, 6.0, floor=1, building=simple_room.building),
         heading_rad=0.0,
         space=[],
+        rng_generator=np.random.default_rng(),
     )
 
     with patch.object(agent, "plot_agent") as mock_plot_agent:
@@ -421,6 +435,7 @@ def test_room_with_doors(
         walls=walls,
         doors=doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
     assert len(room.doors) == 1
@@ -463,6 +478,7 @@ def test_room_plotting_with_doors(
         walls=walls,
         doors=doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
     fig, ax = plt.subplots()
@@ -483,6 +499,7 @@ def test_room_hash_equality(simple_room: Room, room_4x4: Room) -> None:
         walls=simple_room.walls,
         doors=simple_room.doors,
         contents=simple_room.contents,
+        rng_generator=np.random.default_rng(),
     )
 
     assert hash(simple_room) == hash(another_simple_room)
@@ -504,6 +521,7 @@ def test_room_name_hash(
         area=30.0,
         doors=empty_doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
     assert room.room_hash is not None
@@ -524,6 +542,7 @@ def test_room_polygon_hash(
         walls=simple_walls,
         doors=empty_doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
     assert room.room_hash is not None
@@ -543,6 +562,7 @@ def test_room_hash_type_error(
         area=20.0,
         doors=empty_doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
     assert room != "Not a Room Object"
@@ -571,6 +591,7 @@ def test_room_contains_point_topology_error(
         area=15.0,
         doors=empty_doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
     with pytest.raises(SimulationModeError) as exc_info:
@@ -582,8 +603,7 @@ def test_room_get_random_point(simple_room: Room) -> None:
     """Test the get_random_point method of the Room class."""
     random_point = simple_room.get_random_point()
     assert simple_room.contains_point(random_point) is True
-    rng = np.random.default_rng()
-    random_point = simple_room.get_random_point(rng=rng)
+    random_point = simple_room.get_random_point()
 
 
 def test_room_get_random_point_topology_error(
@@ -600,6 +620,7 @@ def test_room_get_random_point_topology_error(
         area=20.0,
         doors=empty_doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
     with pytest.raises(SimulationModeError) as exc_info:
@@ -627,12 +648,11 @@ def test_get_random_point_raises_after_max_attempts(
         walls=square_4x4_walls,
         doors=[],
         contents=[],
+        rng_generator=AlwaysLowRNG(),  # type: ignore[assignment]
     )
 
-    rng = AlwaysLowRNG()
-
     with pytest.raises(SimulationModeError) as exc_info:
-        room.get_random_point(rng=rng, max_attempts=10)  # type: ignore[arg-type]
+        room.get_random_point(max_attempts=10)  # type: ignore[arg-type]
     assert "Failed to find a random point within the room after 10 attempts." in str(
         exc_info.value
     )
@@ -663,6 +683,7 @@ def test_room_get_door_access_point(
         walls=simple_walls,
         doors=doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
     door, access_point = room.get_door_access_point()
@@ -685,6 +706,7 @@ def test_room_get_door_access_point_no_doors(
         walls=simple_walls,
         doors=[],
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
     with pytest.raises(InvalidRoomError) as exc_info:
@@ -725,6 +747,7 @@ def test_room_get_door_access_point_multiple_doors(
         walls=simple_walls,
         doors=doors,
         contents=empty_contents,
+        rng_generator=np.random.default_rng(),
     )
 
     with pytest.raises(InvalidRoomError) as exc_info:

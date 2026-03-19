@@ -139,6 +139,7 @@ class Floor:
             walls=pseudo_walls,
             doors=pseudo_doors,
             contents=room.contents,
+            rng_generator=np.random.default_rng(),
         )
 
     def find_room_by_location(self, location: tuple[float, float]) -> Room | None:

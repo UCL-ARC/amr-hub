@@ -1,5 +1,6 @@
 """Tests for the Location class in the space module."""
 
+import numpy as np
 import pytest
 
 from amr_hub_abm.exceptions import InvalidDistanceError
@@ -26,6 +27,7 @@ def sample_room() -> Room:
         walls=walls,
         doors=[],
         contents=[],
+        rng_generator=np.random.default_rng(),
     )
 
 

@@ -1,8 +1,10 @@
 """Module to import space input data for the AMR Hub ABM simulation."""
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml  # type: ignore[import]
 
@@ -17,6 +19,11 @@ from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from numpy.random import Generator
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,6 +32,7 @@ class SpaceInputReader:
     """Class to read space input data from a YAML file."""
 
     input_path: Path
+    rng_generator: Generator
     data: dict = field(init=False)
 
     door_list: list[Door] = field(init=False, default_factory=list)
@@ -220,6 +228,7 @@ class SpaceInputReader:
             doors=room_doors,
             contents=room_data.get("contents", []),
             area=room_data["area"],
+            rng_generator=self.rng_generator,
         )
 
     def create_spatial_room(
@@ -247,6 +256,7 @@ class SpaceInputReader:
             walls=room_walls,
             doors=room_doors,
             contents=room_data.get("contents", []),
+            rng_generator=self.rng_generator,
         )
 
     @staticmethod

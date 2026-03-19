@@ -1,19 +1,19 @@
 """Module to represent an agent in the AMR Hub ABM simulation."""
 
+from __future__ import annotations
+
 import math
 from dataclasses import dataclass, field, replace
 from enum import IntEnum
 from logging import getLogger
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
-from matplotlib.axes import Axes
 
 from amr_hub_abm.exceptions import SimulationModeError
-from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.room import Room
 from amr_hub_abm.task import (
     Task,
     TaskAttendPatient,
@@ -22,6 +22,14 @@ from amr_hub_abm.task import (
     TaskType,
     TaskWorkstation,
 )
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from numpy.random import Generator
+
+    from amr_hub_abm.space.building import Building
+    from amr_hub_abm.space.room import Room
+
 
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
 
@@ -103,6 +111,7 @@ class Agent:
     location: Location
     heading_rad: float
     space: list[Building]
+    rng_generator: Generator
 
     interaction_radius: float = field(default=0.01)
     tasks: list[Task] = field(default_factory=list)
@@ -302,14 +311,14 @@ class Agent:
         heading_rad: float,
         movement_speed: float,
         stochasticity: float,
+        rng_generator: Generator,
     ) -> tuple[float, float]:
         """Propose a new location for agent movement."""
         delta_x = movement_speed * math.cos(heading_rad)
         delta_y = movement_speed * math.sin(heading_rad)
 
-        rng = np.random.default_rng()
-        delta_x = (1 + rng.normal(0, stochasticity)) * delta_x
-        delta_y = (1 + rng.normal(0, stochasticity)) * delta_y
+        delta_x = (1 + rng_generator.normal(0, stochasticity)) * delta_x
+        delta_y = (1 + rng_generator.normal(0, stochasticity)) * delta_y
 
         new_x = coordinates[0] + delta_x
         new_y = coordinates[1] + delta_y
@@ -328,6 +337,7 @@ class Agent:
                 self.heading_rad,
                 self.movement_speed,
                 stochasticity,
+                self.rng_generator,
             )
 
             room = self.get_room((new_x, new_y))

@@ -1,6 +1,7 @@
 """Tests for the Building class."""
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.floor import Floor
@@ -34,6 +35,7 @@ def test_building_with_one_floor() -> None:
         walls=walls,
         doors=[],
         contents=[],
+        rng_generator=np.random.default_rng(),
     )
 
     floor = Floor(floor_number=1, rooms=[room])

@@ -4,6 +4,7 @@ import math
 from dataclasses import replace
 from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 
 from amr_hub_abm.agent import ROLE_COLOUR_MAP, Agent, AgentType, InfectionStatus
@@ -24,6 +25,7 @@ def test_agent_creation() -> None:
         ),
         heading_rad=math.pi / 2,  # 90 degrees in radians
         space=[],
+        rng_generator=np.random.default_rng(),
     )
 
     expected_location = Location(
@@ -51,6 +53,7 @@ def test_heading_modulo() -> None:
             450
         ),  # 450 degrees in radians, should wrap to 90 degrees
         space=[],
+        rng_generator=np.random.default_rng(),
     )
     expected_heading = 90.0
 
@@ -73,6 +76,7 @@ def test_agent_intersection_with_walls() -> None:
         location=Location(x=0.1, y=5.0, floor=1, building="Hospital"),
         heading_rad=math.pi,  # 180 degrees in radians
         space=[],
+        rng_generator=np.random.default_rng(),
     )
 
     agent_not_intersecting = Agent(
@@ -82,6 +86,7 @@ def test_agent_intersection_with_walls() -> None:
         location=Location(x=15.0, y=5.0, floor=1, building="Hospital"),
         heading_rad=0.0,
         space=[],
+        rng_generator=np.random.default_rng(),
     )
 
     assert (
@@ -117,6 +122,7 @@ def test_move_to_location() -> None:
         location=initial_location,
         heading_rad=math.pi / 4,
         space=[],
+        rng_generator=np.random.default_rng(),
     )
 
     agent.move_to_location(new_location)
@@ -134,6 +140,7 @@ def test_plot_agent_without_tags() -> None:
         location=Location(x=1.0, y=2.0, floor=1, building="Hospital"),
         heading_rad=0.0,
         space=[],
+        rng_generator=np.random.default_rng(),
     )
     ax = MagicMock()
 
@@ -158,6 +165,7 @@ def test_plot_agent_with_tags() -> None:
         location=Location(x=0.5, y=0.25, floor=1, building="Hospital"),
         heading_rad=0.0,
         space=[],
+        rng_generator=np.random.default_rng(),
     )
     ax = MagicMock()
 
@@ -201,6 +209,7 @@ def sample_agent(sample_location: Location) -> Agent:
         location=sample_location,
         heading_rad=math.pi / 4,  # 45 degrees in radians
         space=[],
+        rng_generator=np.random.default_rng(),
     )
 
 

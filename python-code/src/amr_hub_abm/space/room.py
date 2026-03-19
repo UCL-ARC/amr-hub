@@ -7,7 +7,6 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-import numpy as np
 import shapely.geometry
 import shapely.ops
 
@@ -16,6 +15,7 @@ from amr_hub_abm.space.location import Location
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
+    from numpy.random import Generator
 
     from amr_hub_abm.agent import Agent
     from amr_hub_abm.space.content import Content
@@ -35,6 +35,7 @@ class Room:
     floor: int
     contents: list[Content]
     doors: list[Door]
+    rng_generator: Generator
     walls: list[Wall] | None = field(default=None)
     area: float | None = field(default=None)
     region: shapely.geometry.Polygon = field(init=False)
@@ -158,23 +159,19 @@ class Room:
 
         return self.region.contains(shapely.geometry.Point(point))
 
-    def get_random_point(
-        self, rng: np.random.Generator | None = None, max_attempts: int = 1000
-    ) -> tuple[float, float]:
+    def get_random_point(self, max_attempts: int = 1000) -> tuple[float, float]:
         """Get a random point within the room."""
         if not self.walls:
             msg = "Cannot get random point without walls."
             raise SimulationModeError(msg)
-
-        if rng is None:
-            rng = np.random.default_rng()
 
         minx, miny, maxx, maxy = self.region.bounds
 
         for _ in range(max_attempts):
             # If required later... Improve efficiency using batching or spatial indexing
             random_point = shapely.geometry.Point(
-                rng.uniform(minx, maxx), rng.uniform(miny, maxy)
+                self.rng_generator.uniform(minx, maxx),
+                self.rng_generator.uniform(miny, maxy),
             )
             if self.region.contains(
                 random_point
