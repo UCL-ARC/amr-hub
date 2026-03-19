@@ -316,13 +316,15 @@ class Agent:
 
         return new_x, new_y
 
-    def step_inside_room(
-        self, stochasticity: float, attempt: int = 1, max_attempts: int = 5
-    ) -> tuple[float, float, Room]:
-        """Return a proposed in-room location and its containing room."""
+    def try_move_one_step(
+        self,
+        stochasticity: float,
+        attempt: int = 1,
+        max_attempts: int = 5,
+    ) -> tuple[float, float]:
+        """Return valid coordinates for a single movement step."""
         if attempt > max_attempts:
-            msg = f"Maximum attempts {max_attempts} exceeded for "
-            msg += "proposing new coordinates."
+            msg = f"Maximum attempts {max_attempts} exceeded for moving one step."
             raise RuntimeError(msg)
 
         new_x, new_y = self.propose_new_coordinates(
@@ -334,77 +336,44 @@ class Agent:
 
         room = self.get_room((new_x, new_y))
         if room is None:
-            msg = f"Location ({new_x}, {new_y}) is not located in any room."
-            logger.warning(msg)
-            return self.step_inside_room(
+            logger.warning(
+                "Attempt %s: location (%s, %s) is not located in any room.",
+                attempt,
+                new_x,
+                new_y,
+            )
+            return self.try_move_one_step(
                 stochasticity=stochasticity,
                 attempt=attempt + 1,
                 max_attempts=max_attempts,
             )
 
-        return new_x, new_y, room
-
-    def try_avoid_walls(
-        self,
-        coordinates: tuple[float, float, Room],
-        stochasticity: float,
-        attempt: int = 0,
-        max_attempts: int = 5,
-    ) -> tuple[float, float, Room]:
-        """Try to avoid walls."""
-        proposed_x, proposed_y, room = coordinates
         walls = room.walls
         if not walls:
-            msg = f"Room {room.name} has no walls defined."
-            raise ValueError(msg)
-
-        if attempt > max_attempts:
-            msg = f"Maximum attempts {max_attempts} exceeded for "
-            msg += "proposing new coordinates while avoiding walls."
-            raise RuntimeError(msg)
-
-        if attempt > 0:
-            proposed_x, proposed_y = self.propose_new_coordinates(
-                (self.location.x, self.location.y),
-                self.heading_rad,
-                self.movement_speed,
-                stochasticity,
-            )
+            msg = f"Room {room.name} has no walls defined, "
+            msg += "cannot check for wall intersections."
+            raise SimulationModeError(msg)
 
         if Location.check_intersection_with_walls(
-            proposed_x, proposed_y, self.interaction_radius, walls
+            new_x,
+            new_y,
+            self.interaction_radius,
+            walls,
         ):
-            logger.error(
-                "Agent id %s cannot move to (%s, %s) due to wall intersection.",
+            logger.warning(
+                "Attempt %s: Agent id %s cannot move to (%s, %s): wall intersection.",
+                attempt,
                 self.idx,
-                proposed_x,
-                proposed_y,
+                new_x,
+                new_y,
             )
-            return self.try_avoid_walls(
-                coordinates=(proposed_x, proposed_y, room),
+            return self.try_move_one_step(
                 stochasticity=stochasticity,
                 attempt=attempt + 1,
                 max_attempts=max_attempts,
             )
 
-        return proposed_x, proposed_y, room
-
-    def try_move_one_step(
-        self, stochasticity: float, attempt: int = 1, max_attempts: int = 10
-    ) -> tuple[float, float]:
-        """Try moving one step."""
-        new_step = self.step_inside_room(
-            stochasticity=stochasticity, attempt=attempt, max_attempts=max_attempts
-        )
-        proposed_x, proposed_y, room = new_step
-
-        new_step = self.try_avoid_walls(
-            coordinates=(proposed_x, proposed_y, room),
-            stochasticity=stochasticity,
-            attempt=attempt,
-            max_attempts=max_attempts,
-        )
-        return new_step[0], new_step[1]
+        return new_x, new_y
 
     def move_one_step(self, stochasticity: float = 0.2) -> None:
         """Move the agent one step in the direction of its heading."""
