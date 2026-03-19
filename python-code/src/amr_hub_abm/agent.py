@@ -409,14 +409,7 @@ class Agent:
     def move_one_step(self, stochasticity: float = 0.2) -> None:
         """Move the agent one step in the direction of its heading."""
         new_x, new_y = self.try_move_one_step(stochasticity)
-
-        new_location = replace(
-            self.location,
-            x=new_x,
-            y=new_y,
-        )
-
-        self.move_to_location(new_location)
+        self.move_to_location(replace(self.location, x=new_x, y=new_y))
 
     def select_task_based_on_progress(
         self, progress: TaskProgress, *, allow_multiple: bool = False
