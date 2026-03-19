@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass, field, replace
 from enum import IntEnum
@@ -400,14 +401,12 @@ class Agent:
         tasks = [task for task in self.tasks if task.progress == progress]
         if not tasks:
             return None
-        if len(tasks) > 1:
-            if not allow_multiple:
-                msg = f"Agent {self.idx} has multiple tasks"
-                msg += f" with progress {progress.value}."
-                logger.error(msg)
-                raise RuntimeError(msg)
-            tasks.sort(key=lambda t: t.priority.value, reverse=True)
-        return tasks[0]
+        if len(tasks) > 1 and not allow_multiple:
+            msg = f"Agent {self.idx} has multiple tasks"
+            msg += f" with progress {progress.value}."
+            logger.error(msg)
+            raise RuntimeError(msg)
+        return max(tasks, key=lambda t: t.priority.value)
 
     def perform_in_progress_task(self, current_time: int) -> bool:
         """Perform an in-progress task and return True if a task was performed."""
@@ -500,12 +499,13 @@ class Agent:
             )
             self.record_state(current_time=current_time)
 
-        task_list_values = [task.task_type.value for task in self.tasks]
-        task_progress_values = [task.progress.value for task in self.tasks]
-        msg = f"Time {current_time} Task list: {task_list_values}"
-        logger.info(msg)
-        msg = f"Time {current_time} Task list: {task_progress_values}"
-        logger.info(msg)
+        if logger.isEnabledFor(logging.INFO):
+            task_list_values = [task.task_type.value for task in self.tasks]
+            task_progress_values = [task.progress.value for task in self.tasks]
+            msg = f"Time {current_time} Task list: {task_list_values}"
+            logger.info(msg)
+            msg = f"Time {current_time} Task list: {task_progress_values}"
+            logger.info(msg)
 
         if not self.tasks:
             return
