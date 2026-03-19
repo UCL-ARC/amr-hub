@@ -146,15 +146,18 @@ class Agent:
         if self.trajectory_length > 0:
             self.trajectory = Record(total_time=self.trajectory_length)
 
-    def get_room(self) -> Room | None:
+    def get_room(self, coords: tuple[float, float] | None = None) -> Room | None:
         """Get the room the agent is currently located in, if any."""
+        if coords is None:
+            coords = (self.location.x, self.location.y)
+
         for building in self.space:
             if building.name != self.location.building:
                 continue
             for floor in building.floors:
                 if floor.floor_number != self.location.floor:
                     continue
-                room = floor.find_room_by_location((self.location.x, self.location.y))
+                room = floor.find_room_by_location(coords)
                 if room:
                     return room
         logger.warning(
@@ -328,8 +331,15 @@ class Agent:
 
         return new_x, new_y
 
-    def move_one_step(self, stochasticity: float = 0.0) -> None:
-        """Move the agent one step in the direction of its heading."""
+    def try_move_one_step(
+        self, stochasticity: float, attempt: int = 1, max_attempts: int = 5
+    ) -> tuple[float, float, Room]:
+        """Return a proposed in-room location and its containing room."""
+        if attempt > max_attempts:
+            msg = f"Maximum attempts {max_attempts} exceeded for "
+            msg += "proposing new coordinates."
+            raise RuntimeError(msg)
+
         new_x, new_y = self.propose_new_coordinates(
             (self.location.x, self.location.y),
             self.heading_rad,
@@ -337,10 +347,22 @@ class Agent:
             stochasticity,
         )
 
-        room = self.get_room()
+        room = self.get_room((new_x, new_y))
         if room is None:
-            msg = f"Agent id {self.idx} is not located in any room."
-            raise ValueError(msg)
+            msg = f"Location ({new_x}, {new_y}) is not located in any room."
+            logger.warning(msg)
+            return self.try_move_one_step(
+                stochasticity=stochasticity,
+                attempt=attempt + 1,
+                max_attempts=max_attempts,
+            )
+
+        return new_x, new_y, room
+
+    def move_one_step(self, stochasticity: float = 0.9) -> None:
+        """Move the agent one step in the direction of its heading."""
+        new_x, new_y, room = self.try_move_one_step(stochasticity)
+
         walls = room.walls
         if not walls:
             msg = f"Room {room.name} has no walls defined."
