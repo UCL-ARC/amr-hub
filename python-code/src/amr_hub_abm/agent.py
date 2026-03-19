@@ -319,59 +319,62 @@ class Agent:
     def try_move_one_step(
         self,
         stochasticity: float,
-        attempt: int = 1,
         max_attempts: int = 5,
     ) -> tuple[float, float]:
         """Return valid coordinates for a single movement step."""
-        if attempt > max_attempts:
-            msg = f"Maximum attempts {max_attempts} exceeded for moving one step."
-            raise RuntimeError(msg)
+        for attempt in range(1, max_attempts + 1):
+            new_x, new_y = self.propose_new_coordinates(
+                (self.location.x, self.location.y),
+                self.heading_rad,
+                self.movement_speed,
+                stochasticity,
+            )
 
-        new_x, new_y = self.propose_new_coordinates(
-            (self.location.x, self.location.y),
-            self.heading_rad,
-            self.movement_speed,
-            stochasticity,
+            room = self.get_room((new_x, new_y))
+            if room is None:
+                logger.warning(
+                    "Attempt %s: location (%s, %s) is not located in any room.",
+                    attempt,
+                    new_x,
+                    new_y,
+                )
+                continue
+
+            walls = room.walls
+            if not walls:
+                msg = (
+                    f"Room {room.name} has no walls defined, "
+                    "cannot check for wall intersections."
+                )
+                raise SimulationModeError(msg)
+
+            if Location.check_intersection_with_walls(
+                new_x,
+                new_y,
+                self.interaction_radius,
+                walls,
+            ):
+                logger.warning(
+                    "Attempt %s: Agent id %s cannot move to (%s, %s): "
+                    "wall intersection.",
+                    attempt,
+                    self.idx,
+                    new_x,
+                    new_y,
+                )
+                continue
+
+            return new_x, new_y
+
+        logger.error(
+            "Maximum attempts %s exceeded for moving one step. "
+            "Agent id %s moving to proposed coordinates (%s, %s) despite "
+            "wall intersection.",
+            max_attempts,
+            self.idx,
+            self.location.x,
+            self.location.y,
         )
-
-        room = self.get_room((new_x, new_y))
-        if room is None:
-            logger.warning(
-                "Attempt %s: location (%s, %s) is not located in any room.",
-                attempt,
-                new_x,
-                new_y,
-            )
-            return self.try_move_one_step(
-                stochasticity=stochasticity,
-                attempt=attempt + 1,
-                max_attempts=max_attempts,
-            )
-
-        walls = room.walls
-        if not walls:
-            msg = f"Room {room.name} has no walls defined, "
-            msg += "cannot check for wall intersections."
-            raise SimulationModeError(msg)
-
-        if Location.check_intersection_with_walls(
-            new_x,
-            new_y,
-            self.interaction_radius,
-            walls,
-        ):
-            logger.warning(
-                "Attempt %s: Agent id %s cannot move to (%s, %s): wall intersection.",
-                attempt,
-                self.idx,
-                new_x,
-                new_y,
-            )
-            return self.try_move_one_step(
-                stochasticity=stochasticity,
-                attempt=attempt + 1,
-                max_attempts=max_attempts,
-            )
 
         return new_x, new_y
 
