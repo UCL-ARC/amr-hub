@@ -102,6 +102,7 @@ def create_simulation(config_file: Path) -> Simulation:
         space=space_reader.buildings,
         agents=agents,
         total_simulation_time=total_steps,
+        rng_generator=rng_generator,
     )
 
 
