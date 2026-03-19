@@ -108,6 +108,7 @@ def sample_simulation(sample_building: Building, sample_agent: Agent) -> Simulat
         mode=SimulationMode.TOPOLOGICAL,
         space=[sample_building],
         agents=[sample_agent],
+        rng_generator=np.random.default_rng(),
     )
 
 
