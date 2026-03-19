@@ -104,7 +104,7 @@ class Agent:
     heading_rad: float
     space: list[Building]
 
-    interaction_radius: float = field(default=0.05)
+    interaction_radius: float = field(default=0.01)
     tasks: list[Task] = field(default_factory=list)
     agent_type: AgentType = field(default=AgentType.GENERIC)
     infection_status: InfectionStatus = field(default=InfectionStatus.SUSCEPTIBLE)
@@ -390,7 +390,7 @@ class Agent:
         return proposed_x, proposed_y, room
 
     def try_move_one_step(
-        self, stochasticity: float, attempt: int = 1, max_attempts: int = 5
+        self, stochasticity: float, attempt: int = 1, max_attempts: int = 10
     ) -> tuple[float, float]:
         """Try moving one step."""
         new_step = self.step_inside_room(
@@ -406,7 +406,7 @@ class Agent:
         )
         return new_step[0], new_step[1]
 
-    def move_one_step(self, stochasticity: float = 0.9) -> None:
+    def move_one_step(self, stochasticity: float = 0.2) -> None:
         """Move the agent one step in the direction of its heading."""
         new_x, new_y = self.try_move_one_step(stochasticity)
 

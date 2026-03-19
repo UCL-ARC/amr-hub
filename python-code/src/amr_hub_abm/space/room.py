@@ -12,6 +12,7 @@ import shapely.geometry
 import shapely.ops
 
 from amr_hub_abm.exceptions import InvalidRoomError, SimulationModeError
+from amr_hub_abm.space.location import Location
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -175,7 +176,11 @@ class Room:
             random_point = shapely.geometry.Point(
                 rng.uniform(minx, maxx), rng.uniform(miny, maxy)
             )
-            if self.region.contains(random_point):
+            if self.region.contains(
+                random_point
+            ) and not Location.check_intersection_with_walls(
+                random_point.x, random_point.y, 0.1, self.walls
+            ):
                 return (random_point.x, random_point.y)
 
         msg = f"""
