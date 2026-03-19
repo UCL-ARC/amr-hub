@@ -380,7 +380,7 @@ class Agent:
 
         if attempt > 0:
             proposed_x, proposed_y = self.propose_new_coordinates(
-                (proposed_x, proposed_y),
+                (self.location.x, self.location.y),
                 self.heading_rad,
                 self.movement_speed,
                 stochasticity,
