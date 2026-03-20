@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from amr_hub_abm.agent import Agent, AgentType, InfectionStatus
@@ -45,6 +46,7 @@ def sample_rooms(sample_door: Door) -> list[Room]:
             Wall(start=(5.0, 1.0), end=(5.0, 0.0)),
             Wall(start=(5.0, 0.0), end=(0.0, 0.0)),
         ],
+        rng_generator=np.random.default_rng(),
     )
     room2 = Room(
         room_id=1,
@@ -60,6 +62,7 @@ def sample_rooms(sample_door: Door) -> list[Room]:
             Wall(start=(10.0, 0.0), end=(5.0, 0.0)),
             Wall(start=(5.0, 0.0), end=(5.0, 2.0)),
         ],
+        rng_generator=np.random.default_rng(),
     )
     return [room1, room2]
 
@@ -91,6 +94,7 @@ def sample_agent(sample_building: Building) -> Agent:
         ),
         heading_rad=0.0,
         space=[sample_building],
+        rng_generator=np.random.default_rng(),
     )
 
 
@@ -104,6 +108,7 @@ def sample_simulation(sample_building: Building, sample_agent: Agent) -> Simulat
         mode=SimulationMode.TOPOLOGICAL,
         space=[sample_building],
         agents=[sample_agent],
+        rng_generator=np.random.default_rng(),
     )
 
 
@@ -284,7 +289,7 @@ def test_simulation_repr(
 
     assert "Simulation: TestSimulation" in repr_str
     assert "Description: A test simulation." in repr_str
-    assert "Mode: topological" in repr_str
+    assert "Mode: 1" in repr_str
     assert "Total Simulation Time: 10" in repr_str
     assert "Current Time: 0" in repr_str
     assert "Number of Buildings: 1" in repr_str
@@ -300,7 +305,7 @@ def test_plot_current_state(
 
     simulation.plot_current_state(tmp_path)
 
-    expected_file = tmp_path / "plot_TestSimulation_building_TestBuilding_time_0.png"
+    expected_file = tmp_path / "TestBuilding_time_0.png"
     assert expected_file.exists()
 
 

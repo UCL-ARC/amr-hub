@@ -67,3 +67,16 @@ class Location:
         )
 
         return not any(line_of_sight.crosses(wall.line) for wall in walls)
+
+    @staticmethod
+    def check_intersection_with_walls(
+        loc_x: float, loc_y: float, interaction_radius: float, walls: list[Wall]
+    ) -> bool:
+        """Check if the agent intersects with any walls."""
+        for wall in walls:
+            if (
+                wall.polygon.distance(shapely.geometry.Point(loc_x, loc_y))
+                < interaction_radius
+            ):
+                return True
+        return False
