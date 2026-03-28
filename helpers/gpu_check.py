@@ -5,6 +5,13 @@ import time
 import jax
 import jax.numpy as jnp
 
+from typing import Protocol
+
+
+class DeviceLike(Protocol):
+    platform: str
+    id: int
+
 
 def print_device_info() -> None:
     print("JAX version:", jax.__version__)
@@ -34,7 +41,7 @@ def test_array_placement() -> None:
     print()
 
 
-def benchmark_on_device(device: jax.Device, size: int = 4000) -> None:
+def benchmark_on_device(device: DeviceLike, size: int = 4000) -> None:
     print(f"=== Benchmark on {device.platform.upper()} ===")
 
     key1 = jax.random.key(0)
