@@ -13,13 +13,6 @@ building:
             - [5, 0, 0, 0]
           doors:
             - [3, 3, 4, 3]
-          contents:
-            - type: "workstation"
-              position: [1, 1]
-            - type: "chair"
-              position: [2, 1]
-            - type: "chair"
-              position: [1, 2]
 
         - name: Ward
           walls:
@@ -30,15 +23,6 @@ building:
             - [2, 4, 0, 4]
           doors:
             - [2, 4, 3, 4]
-          contents:
-            - type: "chair"
-              position: [1, 5]
-            - type: "chair"
-              position: [1, 6]
-            - type: "chair"
-              position: [2, 5]
-            - type: "chair"
-              position: [2, 6]
 
         - name: Corridor
           walls:
@@ -51,12 +35,3 @@ building:
           doors:
             - [2, 4, 3, 4]
             - [4, 3, 3, 3]
-          contents:
-            - type: "bed"
-              position: [1, 3.5]
-            - type: "bed"
-              position: [4, 3.5]
-            - type: "bed"
-              position: [2.5, 3.5]
-            - type: "chair"
-              position: [3.5, 3.5]
