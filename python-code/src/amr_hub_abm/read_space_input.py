@@ -14,6 +14,7 @@ from amr_hub_abm.exceptions import (
     InvalidRoomError,
 )
 from amr_hub_abm.space.building import Building
+from amr_hub_abm.space.content import Content, ContentType
 from amr_hub_abm.space.door import DetachedDoor, Door
 from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.room import Room
@@ -248,6 +249,21 @@ class SpaceInputReader:
             self.wall_list.append(wall)
             room_walls.append(wall)
 
+        contents: list[Content] = []
+        for content_data in room_data.get("contents", []):
+            content_type = content_data["type"].upper()
+            if content_type not in ContentType.__members__:
+                msg = f"Invalid content type '{content_data['type']}' "
+                msg += f"in room '{room_data['name']}'."
+                logger.error(msg)
+                raise InvalidDefinitionError(msg)
+
+            content = Content(
+                content_type=ContentType[content_data["type"].upper()],
+                position=(content_data["position"][0], content_data["position"][1]),
+            )
+            contents.append(content)
+
         return Room(
             room_id=room_id,
             name=room_data["name"],
@@ -255,7 +271,7 @@ class SpaceInputReader:
             floor=floor_level,
             walls=room_walls,
             doors=room_doors,
-            contents=room_data.get("contents", []),
+            contents=contents,
             rng_generator=self.rng_generator,
         )
 
