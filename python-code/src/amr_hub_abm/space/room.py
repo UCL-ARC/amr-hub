@@ -74,6 +74,8 @@ class Room:
             self.create_polygon_hash() if self.walls else self.create_name_hash()
         )
 
+        self.validate_contents()
+
     def __hash__(self) -> int:
         """Generate a hash for the room based on its unique hash string."""
         return hash(self.room_hash)
@@ -200,3 +202,14 @@ class Room:
         door = self.doors[0]
         midpoint = door.line.interpolate(0.5, normalized=True)
         return (door, (midpoint.x, midpoint.y))
+
+    def validate_contents(self) -> None:
+        """Validate that all contents are located within the room."""
+        if not self.walls:
+            return
+
+        for content in self.contents:
+            if not self.contains_point(content.position):
+                msg = f"Content {content.content_id} of type {content.content_type} "
+                msg += f"is located at {content.position}, which is outside the room."
+                raise InvalidRoomError(msg)

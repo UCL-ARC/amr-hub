@@ -19,5 +19,7 @@ class Content:
     content_id: int = field(init=False)
     content_type: ContentType
     position: tuple[float, float]
-    polygon: list[tuple[float, float]] = field(init=False)
-    size: float = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Post-initialization to set content_id based on content_type and position."""
+        self.content_id = hash((self.content_type, self.position))
