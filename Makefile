@@ -16,6 +16,7 @@ help:
 	@echo ""
 	@echo "Installation:"
 	@echo "  make install          Install the package in editable mode"
+	@echo "  make install-gpu      Install with GPU dependencies"
 	@echo "  make install-dev      Install with development dependencies"
 	@echo "  make install-docs     Install with documentation dependencies"
 	@echo ""
@@ -38,11 +39,14 @@ help:
 install:
 	$(CD) uv sync
 
+install-gpu:
+	$(CD) uv sync --group gpu
+
 install-dev:
-	$(CD) uv sync --extra dev
+	$(CD) uv sync --group dev
 
 install-docs:
-	$(CD) uv sync --extra docs
+	$(CD) uv sync --group docs
 
 test:
 	$(CD) uv run pytest tests --cov=src --cov-report=term-missing

@@ -28,6 +28,9 @@ test = [
   "pytest",
   "pytest-cov"
 ]
+gpu = [
+  "jax[cuda12]"
+]
 
 [project]
 authors = [
