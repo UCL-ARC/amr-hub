@@ -141,6 +141,16 @@ class Room:
                 linewidth=kwargs.get("door_width", 2),
             )
 
+        for content in self.contents:
+            ax.scatter(
+                content.position[0],
+                content.position[1],
+                marker=kwargs.get("content_marker", "s"),  # pyright: ignore[reportArgumentType]
+                color=kwargs.get("content_color", "gray"),
+                s=kwargs.get("content_size", 100),  # pyright: ignore[reportArgumentType]
+                label=f"{content.content_type.name} ({content.content_id})",
+            )
+
         if agents is None:
             return
 

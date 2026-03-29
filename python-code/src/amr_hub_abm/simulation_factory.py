@@ -13,6 +13,7 @@ from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.read_space_input import SpaceInputReader
 from amr_hub_abm.simulation import Simulation, SimulationMode
 from amr_hub_abm.space.building import Building
+from amr_hub_abm.space.content import ContentType
 from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
@@ -299,7 +300,22 @@ def parse_location_timeseries(  # noqa: PLR0913
                 y=point[1],
             )
         elif event_type == "workstation":
-            location = get_random_location(room, building, floor)
+            possible_locations = [
+                c.position
+                for c in room.contents
+                if c.content_type == ContentType.WORKSTATION
+            ]
+            if not possible_locations:
+                msg = f"No workstation found in room {room.name} for 'workstation'"
+                msg += f" event. Row: {row}"
+                raise SimulationModeError(msg)
+
+            location = Location(
+                building=building,
+                floor=floor,
+                x=possible_locations[0][0],
+                y=possible_locations[0][1],
+            )
 
         else:
             msg = f"Unknown event type: {event_type} in row: {row}"
