@@ -208,7 +208,7 @@ def read_location_timeseries(
     return pd.read_csv(file_path)
 
 
-def parse_location_timeseries(  # noqa: PLR0913
+def parse_location_timeseries(  # noqa: PLR0913, PLR0915
     timeseries_data: pd.DataFrame,
     rooms: list[Room],
     start_time: pd.Timestamp,
@@ -307,8 +307,9 @@ def parse_location_timeseries(  # noqa: PLR0913
             ]
             if not possible_locations:
                 msg = f"No workstation found in room {room.name} for 'workstation'"
-                msg += f" event. Row: {row}"
-                raise SimulationModeError(msg)
+                msg += f" event. Row: {row}. Selecting random location in room instead."
+                logger.error(msg)
+                possible_locations = [room.get_random_point()]
 
             location = Location(
                 building=building,
