@@ -5,6 +5,8 @@ from enum import IntEnum
 
 import shapely
 
+from amr_hub_abm.agent import AgentType
+
 
 class ContentType(IntEnum):
     """Enumeration of possible room content types."""
@@ -36,7 +38,7 @@ class Content:
     position: tuple[float, float]
     color: str = field(init=False)
     size: tuple[float, float] = field(init=False)
-    occupied: bool = field(default=False)
+    occupier_id: tuple[int, AgentType] | None = field(default=None)
 
     marker_type: str = field(init=False, default="s")
     marker_size: int = field(init=False, default=100)
@@ -66,3 +68,8 @@ class Content:
         return shapely.geometry.box(
             x - length / 2, y - width / 2, x + length / 2, y + width / 2
         )
+
+    @property
+    def occupied(self) -> bool:
+        """Check if the content is currently occupied by an agent."""
+        return self.occupier_id is not None

@@ -160,7 +160,7 @@ def update_patient(  # noqa: PLR0913
             location = get_random_location(room, building, floor)
         else:
             bed = available_beds[0]
-            bed.occupied = True
+            bed.occupier_id = (patient_id, AgentType.PATIENT)
             location = Location(
                 building=building,
                 floor=floor,
@@ -207,7 +207,7 @@ def update_hcw(  # noqa: PLR0913
             hcw_location = get_random_location(room, building, floor)
         else:
             chair = available_chairs[0]
-            chair.occupied = True
+            chair.occupier_id = (hcw_id, AgentType.HEALTHCARE_WORKER)
             hcw_location = Location(
                 building=building,
                 floor=floor,
