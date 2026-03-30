@@ -161,12 +161,7 @@ def update_patient(  # noqa: PLR0913
         else:
             bed = available_beds[0]
             bed.occupier_id = (patient_id, AgentType.PATIENT)
-            location = Location(
-                building=building,
-                floor=floor,
-                x=bed.position[0],
-                y=bed.position[1],
-            )
+            location = bed.location
 
         patient_dict[patient_id] = Agent(
             idx=patient_id,
@@ -208,12 +203,7 @@ def update_hcw(  # noqa: PLR0913
         else:
             chair = available_chairs[0]
             chair.occupier_id = (hcw_id, AgentType.HEALTHCARE_WORKER)
-            hcw_location = Location(
-                building=building,
-                floor=floor,
-                x=chair.position[0],
-                y=chair.position[1],
-            )
+            hcw_location = chair.location
 
         hcw_dict[hcw_id] = Agent(
             idx=hcw_id,

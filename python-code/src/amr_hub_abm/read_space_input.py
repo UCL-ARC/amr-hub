@@ -17,6 +17,7 @@ from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.content import Content, ContentType
 from amr_hub_abm.space.door import DetachedDoor, Door
 from amr_hub_abm.space.floor import Floor
+from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
 
@@ -258,9 +259,15 @@ class SpaceInputReader:
                 logger.error(msg)
                 raise InvalidDefinitionError(msg)
 
+            content_location = Location(
+                building=building_name,
+                floor=floor_level,
+                x=content_data["position"][0],
+                y=content_data["position"][1],
+            )
             content = Content(
                 content_type=ContentType[content_data["type"].upper()],
-                position=(content_data["position"][0], content_data["position"][1]),
+                location=content_location,
             )
             contents.append(content)
 
