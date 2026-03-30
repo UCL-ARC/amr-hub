@@ -37,6 +37,9 @@ class Content:
     color: str = field(init=False)
     size: tuple[float, float] = field(init=False)
 
+    marker_type: str = field(init=False, default="s")
+    marker_size: int = field(init=False, default=100)
+
     def __post_init__(self) -> None:
         """Post-initialization to set content_id based on content_type and position."""
         self.content_id = hash((self.content_type, self.position))
