@@ -309,6 +309,12 @@ class SpaceInputReader:
         if not topological:
             walls: list[Wall] = []
             walls_data: list[list[float]] = room_data["walls"]
+
+            if len(walls_data) < 3:
+                msg = f"Room '{room_data['name']}' has less than 3 walls."
+                logger.error(msg)
+                raise InvalidRoomError(msg)
+
             for wall in walls_data:
                 SpaceInputReader.check_tuple_length(wall, 4, "wall")
                 walls.append(Wall(start=(wall[0], wall[1]), end=(wall[2], wall[3])))
