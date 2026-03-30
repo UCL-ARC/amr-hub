@@ -36,6 +36,7 @@ class Content:
     position: tuple[float, float]
     color: str = field(init=False)
     size: tuple[float, float] = field(init=False)
+    occupied: bool = field(default=False)
 
     marker_type: str = field(init=False, default="s")
     marker_size: int = field(init=False, default=100)

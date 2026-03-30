@@ -146,7 +146,27 @@ def update_patient(  # noqa: PLR0913
     building, floor, room = space_tuple
 
     if patient_id is not None and patient_id not in patient_dict:
-        location = get_random_location(room, building, floor)
+        available_beds = [
+            b
+            for b in room.contents
+            if b.content_type == ContentType.BED and not b.occupied
+        ]
+        if not available_beds:
+            msg = (
+                f"No available beds found in room {room.name} for patient {patient_id}."
+            )
+            msg += " Selecting random location in room instead."
+            logger.error(msg)
+            location = get_random_location(room, building, floor)
+        else:
+            bed = available_beds[0]
+            bed.occupied = True
+            location = Location(
+                building=building,
+                floor=floor,
+                x=bed.position[0],
+                y=bed.position[1],
+            )
 
         patient_dict[patient_id] = Agent(
             idx=patient_id,
@@ -174,7 +194,27 @@ def update_hcw(  # noqa: PLR0913
     location, timestep_index, event_type = event_tuple
 
     if hcw_id not in hcw_dict:
-        hcw_location = get_random_location(room, building, floor)
+        available_chairs = [
+            c
+            for c in room.contents
+            if c.content_type == ContentType.CHAIR and not c.occupied
+        ]
+
+        if not available_chairs:
+            msg = f"No available chairs found in room {room.name} for HCW {hcw_id}."
+            msg += " Selecting random location in room instead."
+            logger.error(msg)
+            hcw_location = get_random_location(room, building, floor)
+        else:
+            chair = available_chairs[0]
+            chair.occupied = True
+            hcw_location = Location(
+                building=building,
+                floor=floor,
+                x=chair.position[0],
+                y=chair.position[1],
+            )
+
         hcw_dict[hcw_id] = Agent(
             idx=hcw_id,
             location=hcw_location,
