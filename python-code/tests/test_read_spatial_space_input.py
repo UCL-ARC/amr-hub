@@ -122,7 +122,9 @@ def test_missing_keys_from_room() -> None:
         SpaceInputReader.validate_room_data(sample_dict)
     assert "walls" in str(exc_info.value)
     sample_dict["walls"] = []
-    assert SpaceInputReader.validate_room_data(sample_dict) is None
+    with pytest.raises(InvalidRoomError) as exc_info:
+        SpaceInputReader.validate_room_data(sample_dict)
+    assert "less than 3 walls." in str(exc_info.value)
 
     sample_dict["area"] = 50.0
     with pytest.raises(KeyError) as exc_info:
