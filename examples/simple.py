@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def simulate(plot: bool = False) -> None:
-    config_path = Path("tests/inputs/simulation_config.yml")
+    config_path = Path("tests/real/data/simulation_config.yml")
     simulation = create_simulation(config_path)
     logger.info([room.doors for room in simulation.space[0].floors[0].rooms])
     logger.info("Simulation created successfully...")
@@ -19,6 +19,6 @@ def simulate(plot: bool = False) -> None:
 
 if __name__ == "__main__":
     time_start = time.perf_counter()
-    simulate(plot=False)
+    simulate(plot=True)
     time_end = time.perf_counter()
     logger.info("Simulation run time: %s seconds", time_end - time_start)

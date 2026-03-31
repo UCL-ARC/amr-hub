@@ -25,9 +25,9 @@ register_yaml_representers()
 
 def main() -> None:
     """Run main routine."""
-    data_path = Path("floorplan.dxf")
-    config_path = Path("./config.yaml")
-    output_path = Path("./output.yaml")
+    data_path = Path("tests/real/data/floorplan.dxf")
+    config_path = Path("tests/real/data/config.yaml")
+    output_path = Path("tests/real/data/output.yaml")
 
     pec = config_from_yaml(config_path)
 
