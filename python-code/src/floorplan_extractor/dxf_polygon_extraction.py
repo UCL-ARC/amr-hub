@@ -171,12 +171,11 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
         msg = "YAML configuration must be a mapping"
         raise TypeError(msg)
 
-    # if "polygons" not in data:
-    #     msg = "Missing required 'polygons' configuration block"
-    #     raise KeyError(msg)
+    if "polygons" not in data:
+        msg = "Missing required 'polygons' configuration block"
+        raise KeyError(msg)
 
-    print(data)
-    polygons_cfg = PolygonExtractionConfig(**data)
+    polygons_cfg = PolygonExtractionConfig(**data["polygons"])
 
     door_layer_name: str | None = None
     door_config: DoorAttachmentConfig | None = None
