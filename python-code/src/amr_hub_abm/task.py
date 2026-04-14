@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from amr_hub_abm.agent import Agent
     from amr_hub_abm.space.content import Content
     from amr_hub_abm.space.door import Door
+    from amr_hub_abm.space.room import Room
 
 
 logger = logging.getLogger(__name__)
@@ -250,11 +251,27 @@ class TaskOccupyContent(Task):
     """Representation of an 'occupy content' task."""
 
     task_type: ClassVar[TaskType] = TaskType.OCCUPY_CONTENT
-    content: Content
+    content_type: int
+    room: Room
+    content: Content = field(init=False)
 
     def __post_init__(self) -> None:
         """Post-initialization to set the task location."""
         super().__post_init__()
+
+        content = next(
+            (c for c in self.room.contents if c.content_type == self.content_type), None
+        )
+
+        if content is None:
+            msg = (
+                f"No content of type {self.content_type} found in {self.room.name} "
+                f"for 'occupy_content' task."
+            )
+            raise SimulationModeError(msg)
+
+        self.content = content
+
         self.location = Location(
             building=self.content.location.building,
             floor=self.content.location.floor,

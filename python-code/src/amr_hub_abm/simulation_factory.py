@@ -357,27 +357,12 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
                 msg += f"Row: {row}"
                 raise SimulationModeError(msg)
 
-            content = next(
-                (
-                    c
-                    for c in room.contents
-                    if c.content_type == ContentType(content_type) and not c.occupied
-                ),
-                None,
-            )
+            # Dummy location for task assignment; actual location will be determined by
+            # the content's location when the task is executed
 
-            if content is None:
-                msg = f"No available content of type {content_type} found in room "
-                msg += f"{room.name} for 'occupy_content' event. Row: {row}"
-                raise SimulationModeError(msg)
-
-            location = Location(
-                building=building,
-                floor=floor,
-                x=content.location.x,
-                y=content.location.y,
-            )
-            additional_info["content"] = content
+            location = Location(building=building, floor=floor, x=0, y=0)
+            additional_info["content_type"] = content_type
+            additional_info["room"] = room
 
         else:
             msg = f"Unknown event type: {event_type} in row: {row}"

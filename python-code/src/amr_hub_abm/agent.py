@@ -15,6 +15,7 @@ import numpy.typing as npt
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
+from amr_hub_abm.space.room import Room
 from amr_hub_abm.task import (
     Task,
     TaskAttendPatient,
@@ -30,7 +31,6 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from amr_hub_abm.space.building import Building
-    from amr_hub_abm.space.room import Room
 
 
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
@@ -236,7 +236,7 @@ class Agent:
             f"{self.infection_status.value})"
         )
 
-    def add_task(
+    def add_task(  # noqa: PLR0912
         self,
         time: int,
         location: Location,
@@ -299,13 +299,22 @@ class Agent:
                 msg = "additional_info must be a dictionary for occupy_content tasks."
                 raise SimulationModeError(msg)
 
-            if "content" not in additional_info:
-                msg = "Content must be provided in additional_info for occupy_content "
-                msg += "tasks."
+            if "content_type" not in additional_info:
+                msg = "Content type must be provided in additional_info for "
+                msg += "occupy_content tasks."
+                raise SimulationModeError(msg)
+
+            if "room" not in additional_info or not isinstance(
+                additional_info["room"], Room
+            ):
+                msg = (
+                    "Room must be provided in additional_info for occupy_content tasks."
+                )
                 raise SimulationModeError(msg)
 
             task = TaskOccupyContent(
-                content=additional_info["content"],
+                content_type=additional_info["content_type"],
+                room=additional_info["room"],
                 time_needed=10,
                 time_due=time,
             )
