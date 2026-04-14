@@ -12,6 +12,7 @@ from amr_hub_abm.space.location import Location
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent import Agent
+    from amr_hub_abm.space.content import Content
     from amr_hub_abm.space.door import Door
 
 
@@ -39,6 +40,26 @@ def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
             )
 
 
+def add_agent_occupancy(agent: Agent, content: Content, current_time: int) -> None:
+    """Add the agent's occupancy to the specified content."""
+    content.occupier_id = (agent.idx, agent.agent_type)
+
+    room = agent.get_room()
+    room_name = "unknown" if room is None else room.name
+
+    logger.info(
+        """
+        Agent id %s added occupancy to content id %s of type %s
+        in room %s at time %d.
+        """,
+        agent.idx,
+        content.content_id,
+        content.content_type,
+        room_name,
+        current_time,
+    )
+
+
 class TaskProgress(IntEnum):
     """Enumeration of possible task progress states."""
 
@@ -64,6 +85,7 @@ class TaskType(IntEnum):
     INTERACT_WITH_AGENT = 9
     DOOR_ACCESS = 10
     WORKSTATION = 11
+    OCCUPY_CONTENT = 12
 
 
 class TaskPriority(IntEnum):
@@ -121,6 +143,8 @@ class Task:
         if time_spent >= self.time_needed:
             self.progress = TaskProgress.COMPLETED
             self.time_completed = current_time
+            if isinstance(self, TaskOccupyContent):
+                add_agent_occupancy(agent, self.content, current_time=current_time)
             return
 
         if self.progress == TaskProgress.IN_PROGRESS:
@@ -219,3 +243,21 @@ class TaskWorkstation(Task):
         """Post-initialization to set the task location."""
         super().__post_init__()
         self.location = self.workstation_location
+
+
+@dataclass
+class TaskOccupyContent(Task):
+    """Representation of an 'occupy content' task."""
+
+    task_type: ClassVar[TaskType] = TaskType.OCCUPY_CONTENT
+    content: Content
+
+    def __post_init__(self) -> None:
+        """Post-initialization to set the task location."""
+        super().__post_init__()
+        self.location = Location(
+            building=self.content.location.building,
+            floor=self.content.location.floor,
+            x=self.content.location.x,
+            y=self.content.location.y,
+        )

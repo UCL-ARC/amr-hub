@@ -238,7 +238,7 @@ def read_location_timeseries(
     return pd.read_csv(file_path)
 
 
-def parse_location_timeseries(  # noqa: PLR0913, PLR0915
+def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
     timeseries_data: pd.DataFrame,
     rooms: list[Room],
     start_time: pd.Timestamp,
@@ -347,6 +347,37 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915
                 x=possible_locations[0][0],
                 y=possible_locations[0][1],
             )
+
+        elif event_type == "occupy_content":
+            content_type = (
+                int(row["content_type"]) if row["content_type"] != "-" else None
+            )
+            if content_type is None:
+                msg = "Content type must be provided for 'occupy_content' events. "
+                msg += f"Row: {row}"
+                raise SimulationModeError(msg)
+
+            content = next(
+                (
+                    c
+                    for c in room.contents
+                    if c.content_type == ContentType(content_type) and not c.occupied
+                ),
+                None,
+            )
+
+            if content is None:
+                msg = f"No available content of type {content_type} found in room "
+                msg += f"{room.name} for 'occupy_content' event. Row: {row}"
+                raise SimulationModeError(msg)
+
+            location = Location(
+                building=building,
+                floor=floor,
+                x=content.location.x,
+                y=content.location.y,
+            )
+            additional_info["content"] = content
 
         else:
             msg = f"Unknown event type: {event_type} in row: {row}"

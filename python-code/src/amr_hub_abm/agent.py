@@ -19,6 +19,7 @@ from amr_hub_abm.task import (
     Task,
     TaskAttendPatient,
     TaskDoorAccess,
+    TaskOccupyContent,
     TaskProgress,
     TaskType,
     TaskWorkstation,
@@ -290,6 +291,22 @@ class Agent:
             task = TaskWorkstation(
                 workstation_location=location,
                 time_needed=30,
+                time_due=time,
+            )
+
+        elif task_type == TaskType.OCCUPY_CONTENT:
+            if not additional_info or not isinstance(additional_info, dict):
+                msg = "additional_info must be a dictionary for occupy_content tasks."
+                raise SimulationModeError(msg)
+
+            if "content" not in additional_info:
+                msg = "Content must be provided in additional_info for occupy_content "
+                msg += "tasks."
+                raise SimulationModeError(msg)
+
+            task = TaskOccupyContent(
+                content=additional_info["content"],
+                time_needed=10,
                 time_due=time,
             )
 
