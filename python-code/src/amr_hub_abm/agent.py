@@ -467,6 +467,8 @@ class Agent:
         )
         if task is None:
             return False
+        if isinstance(task, TaskOccupyContent):
+            task.assign_content()
 
         task_move_time = (
             task.time_due

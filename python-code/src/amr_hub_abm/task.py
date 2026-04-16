@@ -259,6 +259,8 @@ class TaskOccupyContent(Task):
         """Post-initialization to set the task location."""
         super().__post_init__()
 
+    def assign_content(self) -> None:
+        """Assign the content to be occupied based on the content type and room."""
         content = next(
             (c for c in self.room.contents if c.content_type == self.content_type), None
         )
