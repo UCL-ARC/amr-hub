@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pytest
 
 from amr_hub_abm.exceptions import (
@@ -16,7 +17,10 @@ from amr_hub_abm.read_space_input import SpaceInputReader
 @pytest.fixture
 def space_input_reader() -> SpaceInputReader:
     """Fixture for SpaceInputReader instance."""
-    return SpaceInputReader(input_path=Path("tests/inputs/sample_floor_spatial.yml"))
+    return SpaceInputReader(
+        input_path=Path("tests/inputs/sample_floor_spatial.yml"),
+        rng_generator=np.random.default_rng(),
+    )
 
 
 def test_successful_reading(space_input_reader: SpaceInputReader) -> None:
@@ -61,7 +65,8 @@ def test_door_with_no_connection() -> None:
         SpaceInputReader(
             input_path=Path(
                 "tests/inputs/incorrect/incorrect_sample_floor_spatial_doors.yml"
-            )
+            ),
+            rng_generator=np.random.default_rng(),
         )
     assert "must connect exactly two rooms." in str(exc_info.value)
 
@@ -70,7 +75,8 @@ def test_missing_building_key() -> None:
     """Test that missing 'building' key raises an error."""
     with pytest.raises(KeyError) as exc_info:
         SpaceInputReader(
-            input_path=Path("tests/inputs/incorrect/missing_building_key.yml")
+            input_path=Path("tests/inputs/incorrect/missing_building_key.yml"),
+            rng_generator=np.random.default_rng(),
         )
     assert "The input data must contain a 'building' key." in str(exc_info.value)
 

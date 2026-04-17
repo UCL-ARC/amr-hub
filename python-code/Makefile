@@ -87,3 +87,7 @@ clean:
 
 tox:
 	$(CD) uv run tox
+
+profile:
+	$(CD) uv run python -m cProfile -o profile.prof ../examples/simple.py
+	$(CD) uv run snakeviz profile.prof

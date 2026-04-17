@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import TYPE_CHECKING
@@ -42,6 +41,8 @@ class Simulation:
 
     total_simulation_time: int
 
+    rng_generator: np.random.Generator
+
     time: int = field(default=0, init=False)
 
     def step(
@@ -56,10 +57,10 @@ class Simulation:
             raise TimeError(msg)
 
         # randomize agent order each step to avoid bias
-        random.shuffle(self.agents)
+        self.rng_generator.shuffle(self.agents)
 
         for agent in self.agents:
-            agent.perform_task(current_time=self.time, rooms=self.rooms, record=record)
+            agent.perform_task(current_time=self.time, record=record)
 
         if plot_path is not None:
             self.plot_current_state(directory_path=plot_path)

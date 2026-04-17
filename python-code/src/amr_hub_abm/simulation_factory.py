@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -61,10 +62,12 @@ def create_simulation(config_file: Path) -> Simulation:
     with config_file.open(encoding="utf-8") as file:
         config_data = yaml.safe_load(file)
 
+    rng_generator = np.random.default_rng()
+
     buildings_path = Path(config_data["buildings_path"])
     msg = f"Buildings path from config: {buildings_path}"
     logger.debug(msg)
-    space_reader = SpaceInputReader(buildings_path)
+    space_reader = SpaceInputReader(buildings_path, rng_generator)
     logger.debug("Buildings loaded successfully.")
     logger.debug(space_reader.buildings)
 
@@ -85,6 +88,7 @@ def create_simulation(config_file: Path) -> Simulation:
         start_time=start_time,
         time_step_minutes=time_step_minutes,
         total_time_steps=total_steps,
+        rng_generator=rng_generator,
     )
 
     msg = f"Parsed {len(agents)} agents from location time series."
@@ -98,6 +102,7 @@ def create_simulation(config_file: Path) -> Simulation:
         space=space_reader.buildings,
         agents=agents,
         total_simulation_time=total_steps,
+        rng_generator=rng_generator,
     )
 
 
@@ -128,12 +133,13 @@ def get_random_location(room: Room, building: str, floor: int) -> Location:
     )
 
 
-def update_patient(
+def update_patient(  # noqa: PLR0913
     patient_id: int,
     space_tuple: tuple[str, int, Room],
     patient_dict: dict[int, Agent],
     total_time_steps: int,
     space: list[Building],
+    rng_generator: np.random.Generator,
 ) -> None:
     """Update patient information from data."""
     building, floor, room = space_tuple
@@ -148,6 +154,7 @@ def update_patient(
             agent_type=AgentType.PATIENT,
             trajectory_length=total_time_steps,
             space=space,
+            rng_generator=rng_generator,
         )
 
 
@@ -158,6 +165,7 @@ def update_hcw(  # noqa: PLR0913
     hcw_dict: dict[int, Agent],
     total_time_steps: int,
     space: list[Building],
+    rng_generator: np.random.Generator,
     additional_info: dict | None = None,
 ) -> None:
     """Update healthcare worker information from data."""
@@ -173,6 +181,7 @@ def update_hcw(  # noqa: PLR0913
             agent_type=AgentType.HEALTHCARE_WORKER,
             trajectory_length=total_time_steps,
             space=space,
+            rng_generator=rng_generator,
         )
 
     hcw_dict[hcw_id].add_task(timestep_index, location, event_type, additional_info)
@@ -198,12 +207,13 @@ def read_location_timeseries(
     return pd.read_csv(file_path)
 
 
-def parse_location_timeseries(
+def parse_location_timeseries(  # noqa: PLR0913
     timeseries_data: pd.DataFrame,
     rooms: list[Room],
     start_time: pd.Timestamp,
     time_step_minutes: int,
     total_time_steps: int,
+    rng_generator: np.random.Generator,
 ) -> list[Agent]:
     """
     Parse a CSV file containing location time series data for agents.
@@ -255,6 +265,7 @@ def parse_location_timeseries(
                 patient_dict=patient_dict,
                 total_time_steps=total_time_steps,
                 space=create_space_from_rooms(rooms),
+                rng_generator=rng_generator,
             )
             patient = patient_dict[patient_id]
 
@@ -302,6 +313,7 @@ def parse_location_timeseries(
             additional_info=additional_info or None,
             total_time_steps=total_time_steps,
             space=create_space_from_rooms(rooms),
+            rng_generator=rng_generator,
         )
 
     return list(hcw_dict.values()) + list(patient_dict.values())

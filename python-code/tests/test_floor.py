@@ -23,6 +23,7 @@ def _make_room(
         contents=[],
         doors=doors,
         area=area,
+        rng_generator=np.random.default_rng(),
     )
 
 
@@ -129,6 +130,7 @@ def test_psedo_room_skips_spatial_room() -> None:
             Wall((1, 1), (1, 0)),
             Wall((1, 0), (0, 0)),
         ],
+        rng_generator=np.random.default_rng(),
     )
 
     floor = Floor(floor_number=1, rooms=[r1])
@@ -152,6 +154,7 @@ def test_locate_room_by_position() -> None:
             Wall((2, 2), (2, 0)),
             Wall((2, 0), (0, 0)),
         ],
+        rng_generator=np.random.default_rng(),
     )
     r2 = Room(
         room_id=2,
@@ -166,6 +169,7 @@ def test_locate_room_by_position() -> None:
             Wall((5, 5), (5, 3)),
             Wall((5, 3), (3, 3)),
         ],
+        rng_generator=np.random.default_rng(),
     )
 
     floor = Floor(floor_number=1, rooms=[r1, r2])
