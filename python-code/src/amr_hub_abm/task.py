@@ -10,11 +10,33 @@ from typing import TYPE_CHECKING, ClassVar
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.location import Location
 
-logger = logging.getLogger(__name__)
-
 if TYPE_CHECKING:
     from amr_hub_abm.agent import Agent
     from amr_hub_abm.space.door import Door
+
+
+logger = logging.getLogger(__name__)
+
+
+def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
+    """Remove the agent's occupancy from any content they are currently occupying."""
+    room = agent.get_room()
+    if room is None:
+        return
+    for content in room.contents:
+        if content.occupier_id == (agent.idx, agent.agent_type):
+            content.occupier_id = None
+            logger.info(
+                """
+                Agent id %s removed occupancy from content id %s of type %s
+                in room %s at time %d.
+                """,
+                agent.idx,
+                content.content_id,
+                content.content_type,
+                room.name,
+                current_time,
+            )
 
 
 class TaskProgress(IntEnum):
@@ -112,6 +134,7 @@ class Task:
 
         if not agent.check_if_location_reached(self.location):
             self.progress = TaskProgress.MOVING_TO_LOCATION
+            remove_agent_occupancy(agent, current_time=current_time)
             logger.info(
                 "Agent id %s moving to task location %s.", agent.idx, self.location
             )
