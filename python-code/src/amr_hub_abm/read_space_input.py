@@ -154,7 +154,7 @@ class SpaceInputReader:
             logger.info(msg)
             buildings.append(building)
 
-        return buildings
+        return Building.sort_and_number_buildings(buildings)
 
     def create_rooms_from_data(self) -> None:
         """Create Room instances from the validated data."""
