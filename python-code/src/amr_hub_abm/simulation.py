@@ -66,7 +66,9 @@ class Simulation:
 
         self.time += 1
 
-    def plot_current_state(self, directory_path: Path) -> None:
+    def plot_current_state(
+        self, directory_path: Path, *, trajectory: bool = False
+    ) -> None:
         """Plot the current state of the simulation."""
         if directory_path.suffix != "":
             msg = f"The path {directory_path} is not a directory."
@@ -75,14 +77,16 @@ class Simulation:
 
         for building in self.space:
             axes: list[Axes] = [plt.subplots(nrows=len(building.floors), ncols=1)[1]]
-            building.plot_building(axes=axes, agents=self.agents)
+            building.plot_building(axes=axes, agents=self.agents, trajectory=trajectory)
             simulation_name = f"Simulation: {self.name}"
-            time = f"Time: {self.time}/{self.total_simulation_time}"
-            plt.suptitle(f"{simulation_name} | {time}")
-            plt.savefig(
-                directory_path
-                / f"plot_{self.name}_building_{building.name}_time_{self.time}.png"
-            )
+            if trajectory:
+                simulation_name += " | Agent Trajectories"
+                filename = f"{building.name}_trajectories.png"
+            else:
+                simulation_name += f" | Time: {self.time}/{self.total_simulation_time}"
+                filename = f"{building.name}_time_{self.time}.png"
+            plt.suptitle(simulation_name)
+            plt.savefig(directory_path / filename)
             plt.close()
 
     def __repr__(self) -> str:
@@ -132,3 +136,7 @@ class Simulation:
                 header="time,building,floor,x,y,heading,infection_status",
                 comments="",
             )
+
+    def plot_agent_trajectories(self, output_file: Path) -> None:
+        """Plot the trajectories of all agents from a recorded CSV file."""
+        self.plot_current_state(directory_path=output_file.parent, trajectory=True)

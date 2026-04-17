@@ -300,7 +300,7 @@ def test_plot_current_state(
 
     simulation.plot_current_state(tmp_path)
 
-    expected_file = tmp_path / "plot_TestSimulation_building_TestBuilding_time_0.png"
+    expected_file = tmp_path / "TestBuilding_time_0.png"
     assert expected_file.exists()
 
 

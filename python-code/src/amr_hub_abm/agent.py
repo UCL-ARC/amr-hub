@@ -187,7 +187,7 @@ class Agent:
         logger.info(msg)
         self.location = new_location
 
-    def plot_agent(self, ax: Axes, *, show_tags: bool = False) -> None:
+    def plot_agent(self, ax: Axes, *, show_tags: bool = True) -> None:
         """Plot the agent on the given axes."""
         ax.plot(
             self.location.x,
@@ -206,6 +206,21 @@ class Agent:
                 ha="left",
                 va="bottom",
             )
+
+    def plot_trajectory(self, ax: Axes) -> None:
+        """Plot the agent's trajectory on the given axes."""
+        if self.trajectory_length == 0:
+            msg = "Cannot plot trajectory for agent with trajectory_length of 0."
+            raise ValueError(msg)
+
+        ax.plot(
+            self.trajectory.position[:, 0],
+            self.trajectory.position[:, 1],
+            linestyle="-",
+            linewidth=1.5,
+            color=ROLE_COLOUR_MAP[self.agent_type],
+            alpha=0.7,
+        )
 
     def __repr__(self) -> str:
         """Return a string representation of the agent."""
@@ -425,6 +440,13 @@ class Agent:
                 self.location,
             )
             self.record_state(current_time=current_time)
+
+        task_list_values = [task.task_type.value for task in self.tasks]
+        task_progress_values = [task.progress.value for task in self.tasks]
+        msg = f"Time {current_time} Task list: {task_list_values}"
+        logger.info(msg)
+        msg = f"Time {current_time} Task list: {task_progress_values}"
+        logger.info(msg)
 
         if not self.tasks:
             return
