@@ -126,6 +126,8 @@ class Agent:
     trajectory_length: int = field(default=0)
     trajectory: Record = field(init=False)
 
+    stationary: bool = field(default=False, init=False)
+
     @property
     def heading_degrees(self) -> float:
         """Get the agent's heading in degrees."""
