@@ -1,4 +1,5 @@
 hcw_id,timestamp,location,event_type,patient_id,door_id,content_type
+1,2024-01-01 01:00:00,Sample Hospital:0:Staff Room,workstation,-,-,-
 1,2024-01-01 05:00:00,Sample Hospital:0:Staff Room,door_access,-,1,-
 1,2024-01-01 06:00:00,Sample Hospital:0:Corridor,door_access,-,0,-
 1,2024-01-01 07:00:00,Sample Hospital:0:Ward,attend_patient,1,-,-

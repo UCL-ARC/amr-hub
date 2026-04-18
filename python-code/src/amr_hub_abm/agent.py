@@ -435,7 +435,7 @@ class Agent:
             msg += f" with progress {progress.value}."
             logger.error(msg)
             raise RuntimeError(msg)
-        return max(tasks, key=lambda t: t.priority.value)
+        return min(tasks, key=lambda t: (t.time_due, t.priority.value))
 
     def perform_in_progress_task(self, current_time: int) -> bool:
         """Perform an in-progress task and return True if a task was performed."""
@@ -486,30 +486,7 @@ class Agent:
         )
 
         if current_time < task_move_time:
-            room = self.get_room()
-            if room is None:
-                logger.warning(
-                    "Agent id %s is not located in any room. Cannot check for "
-                    "empty chairs for task %s.",
-                    self.idx,
-                    task.task_type.name,
-                )
-                return False
-
-            empty_chairs = [
-                content
-                for content in room.contents
-                if content.content_type == ContentType.CHAIR
-                and content.occupier_id is None
-            ]
-
-            logger.info(
-                "Agent id %s found %s empty chairs in room %s for task %s.",
-                self.idx,
-                len(empty_chairs),
-                room.name,
-                task.task_type.name,
-            )
+            self.attempt_task_insertion(next_task=task, next_task_move_time=task_move_time, current_time=current_time)
             return False
 
         task.update_progress(current_time=current_time, agent=self)
@@ -602,3 +579,51 @@ class Agent:
         """Estimate the time required to reach a target location."""
         distance = self.location.distance_to(target_location)
         return distance / self.movement_speed
+
+
+    def attempt_task_insertion(self, next_task: Task, next_task_move_time: int, current_time: int) -> None:
+        """Attempt to insert a task to occupy an empty chair before moving to the task location."""
+        if isinstance(next_task, TaskOccupyContent):
+            return
+
+        room = self.get_room()
+        if room is None:
+            logger.warning(
+                "Agent id %s is not located in any room. Cannot check for "
+                "empty chairs for task %s.",
+                self.idx,
+                next_task.task_type.name,
+            )
+            return
+
+        empty_chairs = [
+            content
+            for content in room.contents
+            if content.content_type == ContentType.CHAIR
+            and content.occupier_id is None
+        ]
+
+        logger.info(
+            "Agent id %s found %s empty chairs in room %s for task %s.",
+            self.idx,
+            len(empty_chairs),
+            room.name,
+            next_task.task_type.name,
+        )
+
+        if empty_chairs:
+            chair = empty_chairs[0]
+            estimated_time_to_chair = self.estimate_time_to_reach_location(
+                chair.location
+            )
+            if current_time + estimated_time_to_chair < next_task_move_time:
+                self.add_task(
+                    time=current_time,
+                    location=chair.location,
+                    event_type="occupy_content",
+                    additional_info={
+                        "content_type": ContentType.CHAIR,
+                        "room": room,
+                    },
+                )
+                print(f"Current time: {current_time}, Agent id {self.idx} added task to occupy chair at location {chair.location} before moving to task location {next_task.location} for task {next_task.task_type.name}.")
