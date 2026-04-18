@@ -486,7 +486,11 @@ class Agent:
         )
 
         if current_time < task_move_time:
-            self.attempt_task_insertion(next_task=task, next_task_move_time=task_move_time, current_time=current_time)
+            self.attempt_task_insertion(
+                next_task=task,
+                next_task_move_time=task_move_time,
+                current_time=current_time,
+            )
             return False
 
         task.update_progress(current_time=current_time, agent=self)
@@ -580,9 +584,10 @@ class Agent:
         distance = self.location.distance_to(target_location)
         return distance / self.movement_speed
 
-
-    def attempt_task_insertion(self, next_task: Task, next_task_move_time: int, current_time: int) -> None:
-        """Attempt to insert a task to occupy an empty chair before moving to the task location."""
+    def attempt_task_insertion(
+        self, next_task: Task, next_task_move_time: float, current_time: int
+    ) -> None:
+        """Attempt to insert a task to occupy an empty chair."""
         if isinstance(next_task, TaskOccupyContent):
             return
 
@@ -599,8 +604,7 @@ class Agent:
         empty_chairs = [
             content
             for content in room.contents
-            if content.content_type == ContentType.CHAIR
-            and content.occupier_id is None
+            if content.content_type == ContentType.CHAIR and content.occupier_id is None
         ]
 
         logger.info(
@@ -626,4 +630,3 @@ class Agent:
                         "room": room,
                     },
                 )
-                print(f"Current time: {current_time}, Agent id {self.idx} added task to occupy chair at location {chair.location} before moving to task location {next_task.location} for task {next_task.task_type.name}.")
