@@ -146,6 +146,12 @@ class Task:
 
         if time_spent >= self.time_needed:
             self.progress = TaskProgress.COMPLETED
+            logger.error(
+                "Task %s completed for Agent id %s at time %d.",
+                self.task_type.name,
+                agent.idx,
+                current_time,
+            )
             self.time_completed = current_time
             if isinstance(self, TaskOccupyContent):
                 add_agent_occupancy(agent, self.content, current_time=current_time)

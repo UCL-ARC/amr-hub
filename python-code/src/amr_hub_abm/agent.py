@@ -13,6 +13,7 @@ import numpy as np
 import numpy.typing as npt
 
 from amr_hub_abm.exceptions import SimulationModeError
+from amr_hub_abm.space.content import ContentType
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
@@ -485,6 +486,30 @@ class Agent:
         )
 
         if current_time < task_move_time:
+            room = self.get_room()
+            if room is None:
+                logger.warning(
+                    "Agent id %s is not located in any room. Cannot check for "
+                    "empty chairs for task %s.",
+                    self.idx,
+                    task.task_type.name,
+                )
+                return False
+
+            empty_chairs = [
+                content
+                for content in room.contents
+                if content.content_type == ContentType.CHAIR
+                and content.occupier_id is None
+            ]
+
+            logger.info(
+                "Agent id %s found %s empty chairs in room %s for task %s.",
+                self.idx,
+                len(empty_chairs),
+                room.name,
+                task.task_type.name,
+            )
             return False
 
         task.update_progress(current_time=current_time, agent=self)
