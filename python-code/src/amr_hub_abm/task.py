@@ -146,7 +146,7 @@ class Task:
 
         if time_spent >= self.time_needed:
             self.progress = TaskProgress.COMPLETED
-            logger.error(
+            logger.info(
                 "Task %s completed for Agent id %s at time %d.",
                 self.task_type.name,
                 agent.idx,
