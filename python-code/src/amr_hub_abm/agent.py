@@ -172,7 +172,7 @@ class Agent:
                 room = floor.find_room_by_location(coords)
                 if room:
                     return room
-        logger.warning(
+        logger.info(
             "Agent id %s is not located in any room. Location: %s",
             self.idx,
             self.location,
@@ -372,7 +372,7 @@ class Agent:
 
             room = self.get_room((new_x, new_y))
             if room is None:
-                logger.warning(
+                logger.info(
                     "Attempt %s: location (%s, %s) is not located in any room.",
                     attempt,
                     new_x,
@@ -394,7 +394,7 @@ class Agent:
                 self.interaction_radius,
                 walls,
             ):
-                logger.warning(
+                logger.info(
                     "Attempt %s: Agent id %s cannot move to (%s, %s): "
                     "wall intersection.",
                     attempt,
@@ -406,7 +406,7 @@ class Agent:
 
             return new_x, new_y
 
-        logger.error(
+        logger.info(
             "Maximum attempts %s exceeded for moving one step. "
             "Agent id %s moving to proposed coordinates (%s, %s) despite "
             "wall intersection.",
@@ -593,7 +593,7 @@ class Agent:
 
         room = self.get_room()
         if room is None:
-            logger.warning(
+            logger.info(
                 "Agent id %s is not located in any room. Cannot check for "
                 "empty chairs for task %s.",
                 self.idx,
@@ -629,4 +629,17 @@ class Agent:
                         "content_type": ContentType.CHAIR,
                         "room": room,
                     },
+                )
+                logger.warning(
+                    """
+                    Current time: %s, estimated time to chair: %s, next task move time: %s.
+                    Agent id %s inserted occupy_content task for chair at location %s
+                    to be performed before next task move time %s.
+                    """,
+                    current_time,
+                    estimated_time_to_chair,
+                    next_task_move_time,
+                    self.idx,
+                    chair.location,
+                    next_task_move_time,
                 )
