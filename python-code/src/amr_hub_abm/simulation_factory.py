@@ -215,7 +215,6 @@ def update_hcw(  # noqa: PLR0913
             rng_generator=rng_generator,
         )
 
-    print(room.room_id)
     hcw_dict[hcw_id].add_task(timestep_index, location, event_type, additional_info)
 
 
@@ -323,7 +322,11 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
             midpoint = door.line.interpolate(0.5, normalized=True)
             point = (midpoint.x, midpoint.y)
             additional_info["door"] = door
-            print("From parser: ", room)
+
+            destination = next(
+                idx for idx in door.connecting_rooms if idx != room.room_id
+            )
+            additional_info["destination"] = destination
 
             location = Location(
                 building=building,
