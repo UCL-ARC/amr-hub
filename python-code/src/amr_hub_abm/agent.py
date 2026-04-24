@@ -632,7 +632,9 @@ class Agent:
                 )
                 logger.warning(
                     """
-                    Current time: %s, estimated time to chair: %s, next task move time: %s.
+                    Current time: %s
+                    Estimated time to chair: %s
+                    Next task move time: %s.
                     Agent id %s inserted occupy_content task for chair at location %s
                     to be performed before next task move time %s.
                     """,
