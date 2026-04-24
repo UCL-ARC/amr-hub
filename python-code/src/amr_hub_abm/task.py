@@ -225,6 +225,7 @@ class TaskDoorAccess(Task):
     door: Door
     building: str
     floor: int
+    destination_room: Room
 
     def __post_init__(self) -> None:
         """Post-initialization to set the task location."""

@@ -282,8 +282,12 @@ class Agent:
                 msg = "Door must be provided in additional_info for door access tasks."
                 raise SimulationModeError(msg)
 
+            print(additional_info["door"])
+            exit()
+
             task = TaskDoorAccess(
                 door=additional_info["door"],
+                destination_room=additional_info["destination"],
                 time_needed=1,
                 time_due=time,
                 building=location.building,
