@@ -1,10 +1,12 @@
 """Module defining tests for the AMR Hub ABM task functionalities."""
 
+import numpy as np
 import pytest
 
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
+from amr_hub_abm.space.room import Room
 from amr_hub_abm.task import (
     Task,
     TaskDoorAccess,
@@ -109,6 +111,16 @@ def test_door_access_task_location_setting() -> None:
         door=door,
         building="Building A",
         floor=0,
+        destination_room=Room(
+            room_id=1,
+            building="Building A",
+            floor=0,
+            area=1.0,
+            doors=[],
+            contents=[],
+            name="Room 1",
+            rng_generator=np.random.default_rng(42),
+        ),
     )
 
     assert door_task.task_type == TaskType.DOOR_ACCESS
@@ -137,6 +149,16 @@ def test_door_access_task_with_invalid_door_raises() -> None:
             door=door,
             building="Building B",
             floor=1,
+            destination_room=Room(
+                room_id=1,
+                building="Building A",
+                floor=0,
+                area=1.0,
+                doors=[],
+                contents=[],
+                name="Room 1",
+                rng_generator=np.random.default_rng(42),
+            ),
         )
 
     assert "Door must have defined start and end points to set task location." in str(
