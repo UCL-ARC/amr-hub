@@ -227,7 +227,7 @@ class TaskDoorAccess(Task):
     door: Door
     building: str
     floor: int
-    destination_room: Room
+    destination_room: int
     buffer_distance: float = 0.01
 
     def __post_init__(self) -> None:
@@ -269,10 +269,15 @@ class TaskDoorAccess(Task):
             y=(self.door.start[1] + self.door.end[1]) / 2 - self.buffer_distance,
         )
 
-        if (
-            agent.get_room((proposed_location1.x, proposed_location1.y))
-            != self.destination_room
-        ):
+        proposed_location1_room = agent.get_room(
+            (proposed_location1.x, proposed_location1.y)
+        )
+
+        if proposed_location1_room is None:
+            msg = "Proposed location 1 does not correspond to a valid room."
+            raise SimulationModeError(msg)
+
+        if proposed_location1_room.room_id == self.destination_room:
             self.location = proposed_location1
         else:
             self.location = proposed_location2
