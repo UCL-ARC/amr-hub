@@ -15,6 +15,9 @@ def simulate(
     """Simulate the AMR Hub ABM based on a configuration file."""
     config_path = Path("tests/inputs/simulation_config.yml")
     simulation = create_simulation(config_path)
+    if plot:
+        output_dir = Path("../simulation_outputs")
+        output_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info([room.doors for room in simulation.space[0].floors[0].rooms])
     for agent in simulation.agents:
