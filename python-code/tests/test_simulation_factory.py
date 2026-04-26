@@ -92,7 +92,6 @@ def test_missing_patient_id_in_location_timeseries(
             timeseries_data=df,
             rooms=[sample_room],
             start_time=pd.Timestamp("2023-01-01 08:00:00"),
-            time_step_minutes=15,
             total_time_steps=4,
             rng_generator=np.random.default_rng(),
         )
@@ -112,7 +111,6 @@ def test_location_timeseries_invalid_event_type(
             timeseries_data=df,
             rooms=[sample_room],
             start_time=pd.Timestamp("2023-01-01 08:00:00"),
-            time_step_minutes=15,
             total_time_steps=4,
             rng_generator=np.random.default_rng(),
         )
