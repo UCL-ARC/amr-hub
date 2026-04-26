@@ -400,7 +400,7 @@ def timestamp_to_timestep(
     Args:
         timestamp (pd.Timestamp): The timestamp to convert.
         start_time (pd.Timestamp): The simulation start time.
-        time_step_minutes (int): The duration of each time step in minutes.
+        time_scaling_factor (int): The duration of timestep in seconds.
 
     Returns:
         int: The corresponding time step index.
