@@ -631,7 +631,7 @@ class Agent:
                         "room": room,
                     },
                 )
-                logger.warning(
+                logger.info(
                     """
                     Current time: %s
                     Estimated time to chair: %s
