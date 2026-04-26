@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -62,6 +63,7 @@ def sample_room() -> Room:
         doors=[],
         walls=[],
         area=100.0,
+        rng_generator=np.random.default_rng(),
     )
 
 
@@ -91,6 +93,8 @@ def test_missing_patient_id_in_location_timeseries(
             rooms=[sample_room],
             start_time=pd.Timestamp("2023-01-01 08:00:00"),
             time_step_minutes=15,
+            total_time_steps=4,
+            rng_generator=np.random.default_rng(),
         )
 
     assert "Patient ID must be provided" in str(exc_info.value)
@@ -109,6 +113,8 @@ def test_location_timeseries_invalid_event_type(
             rooms=[sample_room],
             start_time=pd.Timestamp("2023-01-01 08:00:00"),
             time_step_minutes=15,
+            total_time_steps=4,
+            rng_generator=np.random.default_rng(),
         )
 
     assert "Unknown event type" in str(exc_info.value)

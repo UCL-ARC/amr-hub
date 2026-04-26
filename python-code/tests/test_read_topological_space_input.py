@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from amr_hub_abm.exceptions import InvalidDoorError
@@ -13,7 +14,8 @@ from amr_hub_abm.space.floor import Floor
 def space_input_reader() -> SpaceInputReader:
     """Fixture for SpaceInputReader instance."""
     return SpaceInputReader(
-        input_path=Path("tests/inputs/sample_floor_topological.yml")
+        input_path=Path("tests/inputs/sample_floor_topological.yml"),
+        rng_generator=np.random.default_rng(),
     )
 
 

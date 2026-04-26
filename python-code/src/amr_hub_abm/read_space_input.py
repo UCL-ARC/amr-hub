@@ -1,8 +1,10 @@
 """Module to import space input data for the AMR Hub ABM simulation."""
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml  # type: ignore[import]
 
@@ -12,12 +14,18 @@ from amr_hub_abm.exceptions import (
     InvalidRoomError,
 )
 from amr_hub_abm.space.building import Building
+from amr_hub_abm.space.content import Content, ContentType
 from amr_hub_abm.space.door import DetachedDoor, Door
 from amr_hub_abm.space.floor import Floor
+from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
 
-logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from numpy.random import Generator
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,6 +34,7 @@ class SpaceInputReader:
     """Class to read space input data from a YAML file."""
 
     input_path: Path
+    rng_generator: Generator
     data: dict = field(init=False)
 
     door_list: list[Door] = field(init=False, default_factory=list)
@@ -154,7 +163,7 @@ class SpaceInputReader:
             logger.info(msg)
             buildings.append(building)
 
-        return buildings
+        return Building.sort_and_number_buildings(buildings)
 
     def create_rooms_from_data(self) -> None:
         """Create Room instances from the validated data."""
@@ -221,6 +230,7 @@ class SpaceInputReader:
             doors=room_doors,
             contents=room_data.get("contents", []),
             area=room_data["area"],
+            rng_generator=self.rng_generator,
         )
 
     def create_spatial_room(
@@ -240,6 +250,27 @@ class SpaceInputReader:
             self.wall_list.append(wall)
             room_walls.append(wall)
 
+        contents: list[Content] = []
+        for content_data in room_data.get("contents", []):
+            content_type = content_data["type"].upper()
+            if content_type not in ContentType.__members__:
+                msg = f"Invalid content type '{content_data['type']}' "
+                msg += f"in room '{room_data['name']}'."
+                logger.error(msg)
+                raise InvalidDefinitionError(msg)
+
+            content_location = Location(
+                building=building_name,
+                floor=floor_level,
+                x=content_data["position"][0],
+                y=content_data["position"][1],
+            )
+            content = Content(
+                content_type=ContentType[content_data["type"].upper()],
+                location=content_location,
+            )
+            contents.append(content)
+
         return Room(
             room_id=room_id,
             name=room_data["name"],
@@ -247,7 +278,8 @@ class SpaceInputReader:
             floor=floor_level,
             walls=room_walls,
             doors=room_doors,
-            contents=room_data.get("contents", []),
+            contents=contents,
+            rng_generator=self.rng_generator,
         )
 
     @staticmethod

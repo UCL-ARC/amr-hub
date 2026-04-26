@@ -4,47 +4,69 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import IntEnum
 from typing import TYPE_CHECKING, ClassVar
 
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.location import Location
-
-logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent import Agent
     from amr_hub_abm.space.door import Door
 
 
-class TaskProgress(Enum):
+logger = logging.getLogger(__name__)
+
+
+def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
+    """Remove the agent's occupancy from any content they are currently occupying."""
+    room = agent.get_room()
+    if room is None:
+        return
+    for content in room.contents:
+        if content.occupier_id == (agent.idx, agent.agent_type):
+            content.occupier_id = None
+            logger.info(
+                """
+                Agent id %s removed occupancy from content id %s of type %s
+                in room %s at time %d.
+                """,
+                agent.idx,
+                content.content_id,
+                content.content_type,
+                room.name,
+                current_time,
+            )
+
+
+class TaskProgress(IntEnum):
     """Enumeration of possible task progress states."""
 
-    NOT_STARTED = "not_started"
-    MOVING_TO_LOCATION = "moving_to_location"
-    SUSPENDED = "suspended"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
+    NOT_STARTED = 0
+    MOVING_TO_LOCATION = 1
+    SUSPENDED = 2
+    IN_PROGRESS = 3
+    COMPLETED = 4
 
 
-class TaskType(Enum):
+class TaskType(IntEnum):
     """Enumeration of possible task types."""
 
-    GENERIC = "generic"
-    OFFICE_WORK = "office_work"
-    NURSE_ROUND = "nurse_round"
-    ATTEND_PATIENT = "attend_patient"
-    GOTO_LOCATION = "goto_location"
-    GOTO_AGENT = "goto_agent"
-    ATTEND_BELL = "attend_bell"
-    STAY_IN_BED = "stay_in_bed"
-    STAY_IN_ROOM = "stay_in_room"
-    INTERACT_WITH_AGENT = "interact_with_agent"
-    DOOR_ACCESS = "door_access"
-    WORKSTATION = "workstation"
+    GENERIC = 0
+    OFFICE_WORK = 1
+    NURSE_ROUND = 2
+    ATTEND_PATIENT = 3
+    GOTO_LOCATION = 4
+    GOTO_AGENT = 5
+    ATTEND_BELL = 6
+    STAY_IN_BED = 7
+    STAY_IN_ROOM = 8
+    INTERACT_WITH_AGENT = 9
+    DOOR_ACCESS = 10
+    WORKSTATION = 11
 
 
-class TaskPriority(Enum):
+class TaskPriority(IntEnum):
     """Enumeration of possible task priority levels."""
 
     LOW = 1
@@ -112,12 +134,15 @@ class Task:
 
         if not agent.check_if_location_reached(self.location):
             self.progress = TaskProgress.MOVING_TO_LOCATION
+            remove_agent_occupancy(agent, current_time=current_time)
             logger.info(
                 "Agent id %s moving to task location %s.", agent.idx, self.location
             )
             agent.head_to_point((self.location.x, self.location.y))
             agent.move_one_step()
             return
+        self.progress = TaskProgress.IN_PROGRESS
+        self.time_started = current_time
 
         if self.progress == TaskProgress.MOVING_TO_LOCATION:
             self.progress = TaskProgress.IN_PROGRESS

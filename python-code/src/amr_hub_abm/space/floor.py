@@ -70,10 +70,12 @@ class Floor:
 
         return adjacency_matrix
 
-    def plot(self, ax: Axes, agents: list[Agent] | None = None) -> None:
+    def plot(
+        self, ax: Axes, agents: list[Agent] | None = None, *, trajectory: bool = False
+    ) -> None:
         """Plot the floor layout including rooms and doors."""
         for room in self.rooms:
-            room.plot(ax=ax, agents=agents)
+            room.plot(ax=ax, agents=agents, trajectory=trajectory)
 
     def add_pseudo_rooms(self) -> None:
         """Add pseudo-rooms to the floor."""
@@ -137,6 +139,7 @@ class Floor:
             walls=pseudo_walls,
             doors=pseudo_doors,
             contents=room.contents,
+            rng_generator=np.random.default_rng(),
         )
 
     def find_room_by_location(self, location: tuple[float, float]) -> Room | None:
