@@ -73,10 +73,9 @@ def create_simulation(config_file: Path) -> Simulation:
     logger.debug(space_reader.buildings)
 
     start_time = pd.to_datetime(config_data["start_time"])
-    time_step_minutes = config_data["time_step_minutes"]
     end_time = pd.to_datetime(config_data["end_time"])
-    total_minutes = (end_time - start_time).total_seconds() / 60
-    total_steps = int(total_minutes // time_step_minutes)
+    total_seconds = (end_time - start_time).total_seconds()
+    total_steps = int(total_seconds)
     logger.info("Total simulation time steps: %d", total_steps)
 
     timeseries_data = read_location_timeseries(
@@ -87,7 +86,6 @@ def create_simulation(config_file: Path) -> Simulation:
         timeseries_data=timeseries_data,
         rooms=space_reader.rooms,
         start_time=start_time,
-        time_step_minutes=time_step_minutes,
         total_time_steps=total_steps,
         rng_generator=rng_generator,
     )
@@ -238,11 +236,10 @@ def read_location_timeseries(
     return pd.read_csv(file_path)
 
 
-def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
+def parse_location_timeseries(  # noqa: PLR0915, PLR0912
     timeseries_data: pd.DataFrame,
     rooms: list[Room],
     start_time: pd.Timestamp,
-    time_step_minutes: int,
     total_time_steps: int,
     rng_generator: np.random.Generator,
 ) -> list[Agent]:
@@ -268,7 +265,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
         door_id = int(row["door_id"]) if row["door_id"] != "-" else None
 
         timestep = pd.to_datetime(timestamp)
-        timestep_index = timestamp_to_timestep(timestep, start_time, time_step_minutes)
+        timestep_index = timestamp_to_timestep(timestep, start_time)
         building, floor, room_str = parse_location_string(location_str)
         additional_info: dict[Any, Any] = {}
 
@@ -390,7 +387,6 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
 def timestamp_to_timestep(
     timestamp: pd.Timestamp,
     start_time: pd.Timestamp,
-    time_step_minutes: int,
 ) -> int:
     """
     Convert a timestamp to a simulation time step index.
@@ -405,5 +401,5 @@ def timestamp_to_timestep(
 
     """
     delta = timestamp - start_time
-    total_minutes = delta.total_seconds() / 60
-    return int(total_minutes // time_step_minutes)
+    total_minutes = delta.total_seconds()
+    return int(total_minutes)
