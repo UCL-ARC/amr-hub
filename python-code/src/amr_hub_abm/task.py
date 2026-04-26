@@ -228,7 +228,7 @@ class TaskDoorAccess(Task):
     building: str
     floor: int
     destination_room: int
-    buffer_distance: float = 0.01
+    buffer_distance: float = 0.05
 
     def __post_init__(self) -> None:
         """Post-initialization to set the task location."""

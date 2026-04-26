@@ -8,3 +8,5 @@ maximum_hcw_speed: 2.0 # Maximum speed of healthcare workers in m/s
 
 start_time: 2024-01-01 00:00:00
 end_time: 2024-01-02 00:00:00
+
+length_of_timestep_in_seconds: 60 # Length of each timestep in seconds (e.g., 900 seconds = 15 minutes)
