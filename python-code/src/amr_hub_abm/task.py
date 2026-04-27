@@ -168,6 +168,8 @@ class Task:
 
         if not agent.check_if_location_reached(self.location):
             self.progress = TaskProgress.MOVING_TO_LOCATION
+            if isinstance(self, TaskDoorAccess):
+                self.modify_location(agent)
             remove_agent_occupancy(agent, current_time=current_time)
             logger.info(
                 "Agent id %s moving to task location %s.", agent.idx, self.location
@@ -225,6 +227,8 @@ class TaskDoorAccess(Task):
     door: Door
     building: str
     floor: int
+    destination_room: int
+    buffer_distance: float = 0.01
 
     def __post_init__(self) -> None:
         """Post-initialization to set the task location."""
@@ -240,6 +244,43 @@ class TaskDoorAccess(Task):
             x=(self.door.start[0] + self.door.end[0]) / 2,
             y=(self.door.start[1] + self.door.end[1]) / 2,
         )
+
+    def modify_location(self, agent: Agent) -> None:
+        """Modify the location of the task to account for buffer."""
+        if self.door.start is None:
+            msg = "Door coords needed"
+            raise SimulationModeError(msg)
+
+        if self.door.end is None:
+            msg = "Door coords needed"
+            raise SimulationModeError(msg)
+
+        proposed_location1 = Location(
+            building=self.building,
+            floor=self.floor,
+            x=(self.door.start[0] + self.door.end[0]) / 2,
+            y=(self.door.start[1] + self.door.end[1]) / 2 + self.buffer_distance,
+        )
+
+        proposed_location2 = Location(
+            building=self.building,
+            floor=self.floor,
+            x=(self.door.start[0] + self.door.end[0]) / 2,
+            y=(self.door.start[1] + self.door.end[1]) / 2 - self.buffer_distance,
+        )
+
+        proposed_location1_room = agent.get_room(
+            (proposed_location1.x, proposed_location1.y)
+        )
+
+        if proposed_location1_room is None:
+            msg = "Proposed location 1 does not correspond to a valid room."
+            raise SimulationModeError(msg)
+
+        if proposed_location1_room.room_id == self.destination_room:
+            self.location = proposed_location1
+        else:
+            self.location = proposed_location2
 
 
 @dataclass

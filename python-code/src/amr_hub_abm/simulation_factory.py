@@ -323,6 +323,11 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
             point = (midpoint.x, midpoint.y)
             additional_info["door"] = door
 
+            destination = next(
+                idx for idx in door.connecting_rooms if idx != room.room_id
+            )
+            additional_info["destination"] = destination
+
             location = Location(
                 building=building,
                 floor=floor,
