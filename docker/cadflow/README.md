@@ -54,6 +54,31 @@ This performs:
 make builder-use
 ```
 
+## ODA File Converter version
+
+The converter image reads the ODA package selection from:
+
+> config/oda.env
+
+By default this contains:
+
+```dotenv
+ODA_VER=27.1
+ODA_DEB_URL=
+ODA_SHA256=
+```
+
+`ODA_VER` is used to construct the standard ODA guestfiles download URL. Set
+`ODA_DEB_URL` only if ODA changes its filename pattern or you need to point at a
+specific package URL. `ODA_SHA256` is optional, but recommended for reproducible
+builds.
+
+You can inspect the active values with:
+
+```bash
+make oda-config
+```
+
 ### Build all images
 
 ```bash
@@ -90,13 +115,13 @@ Place input drawings in:
 ### Execute the full conversion pipeline
 
 ```bash
-docker compose up
+make up
 ```
 
-or
+To call Compose directly, pass the CADFlow config env file:
 
 ```bash
-make up
+docker compose --env-file config/oda.env up
 ```
 
 The converter outputs `.dxf` files to `work/`.
@@ -202,6 +227,11 @@ Ctrl+C, or `--abort-on-container-exit` behaviour).
 
 ```text
 cadflow/
+├── config/
+│   ├── oda.env                    ODA package version/URL for converter builds
+│   ├── default_filters.yml          (optional)
+│   ├── blank_filters.yml            (optional)
+│   └── <drawing_name>.yml           (optional per-drawing)
 ├── converter/
 │   ├── Dockerfile
 │   └── run_convert.sh
@@ -210,10 +240,6 @@ cadflow/
 │   ├── run_conversion.py
 │   ├── run_process.sh
 │   └── utils.py
-├── config/
-│   ├── default_filters.yml          (optional)
-│   ├── blank_filters.yml            (optional)
-│   └── <drawing_name>.yml           (optional per-drawing)
 ├── in/
 ├── work/
 ├── out/
