@@ -591,6 +591,8 @@ class Agent:
         """Attempt to insert a task to occupy an empty chair."""
         if isinstance(next_task, TaskOccupyContent):
             return
+        if self.stationary:
+            return
 
         room = self.get_room()
         if room is None:
@@ -631,7 +633,7 @@ class Agent:
                         "room": room,
                     },
                 )
-                logger.warning(
+                logger.info(
                     """
                     Current time: %s
                     Estimated time to chair: %s
@@ -645,4 +647,11 @@ class Agent:
                     self.idx,
                     chair.location,
                     next_task_move_time,
+                )
+                logger.warning(
+                    """
+                    Length of task list %s at time %s.
+                    """,
+                    len(self.tasks),
+                    current_time,
                 )
