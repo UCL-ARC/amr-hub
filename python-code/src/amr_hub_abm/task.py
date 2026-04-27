@@ -12,7 +12,9 @@ from amr_hub_abm.space.location import Location
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent import Agent
+    from amr_hub_abm.space.content import Content
     from amr_hub_abm.space.door import Door
+    from amr_hub_abm.space.room import Room
 
 
 logger = logging.getLogger(__name__)
@@ -26,6 +28,7 @@ def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
     for content in room.contents:
         if content.occupier_id == (agent.idx, agent.agent_type):
             content.occupier_id = None
+            agent.stationary = False
             logger.info(
                 """
                 Agent id %s removed occupancy from content id %s of type %s
@@ -37,6 +40,28 @@ def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
                 room.name,
                 current_time,
             )
+            return
+
+
+def add_agent_occupancy(agent: Agent, content: Content, current_time: int) -> None:
+    """Add the agent's occupancy to the specified content."""
+    content.occupier_id = (agent.idx, agent.agent_type)
+    agent.stationary = True
+
+    room = agent.get_room()
+    room_name = "unknown" if room is None else room.name
+
+    logger.info(
+        """
+        Agent id %s added occupancy to content id %s of type %s
+        in room %s at time %d.
+        """,
+        agent.idx,
+        content.content_id,
+        content.content_type,
+        room_name,
+        current_time,
+    )
 
 
 class TaskProgress(IntEnum):
@@ -64,6 +89,7 @@ class TaskType(IntEnum):
     INTERACT_WITH_AGENT = 9
     DOOR_ACCESS = 10
     WORKSTATION = 11
+    OCCUPY_CONTENT = 12
 
 
 class TaskPriority(IntEnum):
@@ -120,7 +146,15 @@ class Task:
 
         if time_spent >= self.time_needed:
             self.progress = TaskProgress.COMPLETED
+            logger.info(
+                "Task %s completed for Agent id %s at time %d.",
+                self.task_type.name,
+                agent.idx,
+                current_time,
+            )
             self.time_completed = current_time
+            if isinstance(self, TaskOccupyContent):
+                add_agent_occupancy(agent, self.content, current_time=current_time)
             return
 
         if self.progress == TaskProgress.IN_PROGRESS:
@@ -219,3 +253,39 @@ class TaskWorkstation(Task):
         """Post-initialization to set the task location."""
         super().__post_init__()
         self.location = self.workstation_location
+
+
+@dataclass
+class TaskOccupyContent(Task):
+    """Representation of an 'occupy content' task."""
+
+    task_type: ClassVar[TaskType] = TaskType.OCCUPY_CONTENT
+    content_type: int
+    room: Room
+    content: Content = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Post-initialization to set the task location."""
+        super().__post_init__()
+
+    def assign_content(self) -> None:
+        """Assign the content to be occupied based on the content type and room."""
+        content = next(
+            (c for c in self.room.contents if c.content_type == self.content_type), None
+        )
+
+        if content is None:
+            msg = (
+                f"No content of type {self.content_type} found in {self.room.name} "
+                f"for 'occupy_content' task."
+            )
+            raise SimulationModeError(msg)
+
+        self.content = content
+
+        self.location = Location(
+            building=self.content.location.building,
+            floor=self.content.location.floor,
+            x=self.content.location.x,
+            y=self.content.location.y,
+        )

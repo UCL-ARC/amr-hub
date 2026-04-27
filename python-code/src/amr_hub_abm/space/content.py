@@ -1,12 +1,16 @@
 """Module defining room content types for the rooms of the AMR Hub ABM simulation."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import IntEnum
+from typing import TYPE_CHECKING
 
 import shapely
 
-from amr_hub_abm.agent import AgentType
-from amr_hub_abm.space.location import Location
+if TYPE_CHECKING:
+    from amr_hub_abm.agent import AgentType
+    from amr_hub_abm.space.location import Location
 
 
 class ContentType(IntEnum):
