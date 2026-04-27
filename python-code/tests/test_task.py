@@ -109,6 +109,7 @@ def test_door_access_task_location_setting() -> None:
         door=door,
         building="Building A",
         floor=0,
+        destination_room=1,
     )
 
     assert door_task.task_type == TaskType.DOOR_ACCESS
@@ -137,6 +138,7 @@ def test_door_access_task_with_invalid_door_raises() -> None:
             door=door,
             building="Building B",
             floor=1,
+            destination_room=1,
         )
 
     assert "Door must have defined start and end points to set task location." in str(

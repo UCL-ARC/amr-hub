@@ -13,12 +13,15 @@ import numpy as np
 import numpy.typing as npt
 
 from amr_hub_abm.exceptions import SimulationModeError
+from amr_hub_abm.space.content import ContentType
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
+from amr_hub_abm.space.room import Room
 from amr_hub_abm.task import (
     Task,
     TaskAttendPatient,
     TaskDoorAccess,
+    TaskOccupyContent,
     TaskProgress,
     TaskType,
     TaskWorkstation,
@@ -29,7 +32,6 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from amr_hub_abm.space.building import Building
-    from amr_hub_abm.space.room import Room
 
 
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
@@ -125,6 +127,8 @@ class Agent:
     trajectory_length: int = field(default=0)
     trajectory: Record = field(init=False)
 
+    stationary: bool = field(default=False, init=False)
+
     @property
     def heading_degrees(self) -> float:
         """Get the agent's heading in degrees."""
@@ -168,7 +172,7 @@ class Agent:
                 room = floor.find_room_by_location(coords)
                 if room:
                     return room
-        logger.warning(
+        logger.info(
             "Agent id %s is not located in any room. Location: %s",
             self.idx,
             self.location,
@@ -235,7 +239,7 @@ class Agent:
             f"{self.infection_status.value})"
         )
 
-    def add_task(
+    def add_task(  # noqa: PLR0912
         self,
         time: int,
         location: Location,
@@ -280,6 +284,7 @@ class Agent:
 
             task = TaskDoorAccess(
                 door=additional_info["door"],
+                destination_room=additional_info["destination"],
                 time_needed=1,
                 time_due=time,
                 building=location.building,
@@ -290,6 +295,31 @@ class Agent:
             task = TaskWorkstation(
                 workstation_location=location,
                 time_needed=30,
+                time_due=time,
+            )
+
+        elif task_type == TaskType.OCCUPY_CONTENT:
+            if not additional_info or not isinstance(additional_info, dict):
+                msg = "additional_info must be a dictionary for occupy_content tasks."
+                raise SimulationModeError(msg)
+
+            if "content_type" not in additional_info:
+                msg = "Content type must be provided in additional_info for "
+                msg += "occupy_content tasks."
+                raise SimulationModeError(msg)
+
+            if "room" not in additional_info or not isinstance(
+                additional_info["room"], Room
+            ):
+                msg = (
+                    "Room must be provided in additional_info for occupy_content tasks."
+                )
+                raise SimulationModeError(msg)
+
+            task = TaskOccupyContent(
+                content_type=additional_info["content_type"],
+                room=additional_info["room"],
+                time_needed=10,
                 time_due=time,
             )
 
@@ -343,7 +373,7 @@ class Agent:
 
             room = self.get_room((new_x, new_y))
             if room is None:
-                logger.warning(
+                logger.info(
                     "Attempt %s: location (%s, %s) is not located in any room.",
                     attempt,
                     new_x,
@@ -365,7 +395,7 @@ class Agent:
                 self.interaction_radius,
                 walls,
             ):
-                logger.warning(
+                logger.info(
                     "Attempt %s: Agent id %s cannot move to (%s, %s): "
                     "wall intersection.",
                     attempt,
@@ -377,7 +407,7 @@ class Agent:
 
             return new_x, new_y
 
-        logger.error(
+        logger.info(
             "Maximum attempts %s exceeded for moving one step. "
             "Agent id %s moving to proposed coordinates (%s, %s) despite "
             "wall intersection.",
@@ -406,7 +436,7 @@ class Agent:
             msg += f" with progress {progress.value}."
             logger.error(msg)
             raise RuntimeError(msg)
-        return max(tasks, key=lambda t: t.priority.value)
+        return min(tasks, key=lambda t: (t.time_due, t.priority.value))
 
     def perform_in_progress_task(self, current_time: int) -> bool:
         """Perform an in-progress task and return True if a task was performed."""
@@ -441,6 +471,8 @@ class Agent:
         )
         if task is None:
             return False
+        if isinstance(task, TaskOccupyContent):
+            task.assign_content()
 
         task_move_time = (
             task.time_due
@@ -455,6 +487,11 @@ class Agent:
         )
 
         if current_time < task_move_time:
+            self.attempt_task_insertion(
+                next_task=task,
+                next_task_move_time=task_move_time,
+                current_time=current_time,
+            )
             return False
 
         task.update_progress(current_time=current_time, agent=self)
@@ -547,3 +584,74 @@ class Agent:
         """Estimate the time required to reach a target location."""
         distance = self.location.distance_to(target_location)
         return distance / self.movement_speed
+
+    def attempt_task_insertion(
+        self, next_task: Task, next_task_move_time: float, current_time: int
+    ) -> None:
+        """Attempt to insert a task to occupy an empty chair."""
+        if isinstance(next_task, TaskOccupyContent):
+            return
+        if self.stationary:
+            return
+
+        room = self.get_room()
+        if room is None:
+            logger.info(
+                "Agent id %s is not located in any room. Cannot check for "
+                "empty chairs for task %s.",
+                self.idx,
+                next_task.task_type.name,
+            )
+            return
+
+        empty_chairs = [
+            content
+            for content in room.contents
+            if content.content_type == ContentType.CHAIR and content.occupier_id is None
+        ]
+
+        logger.info(
+            "Agent id %s found %s empty chairs in room %s for task %s.",
+            self.idx,
+            len(empty_chairs),
+            room.name,
+            next_task.task_type.name,
+        )
+
+        if empty_chairs:
+            chair = empty_chairs[0]
+            estimated_time_to_chair = self.estimate_time_to_reach_location(
+                chair.location
+            )
+            if current_time + estimated_time_to_chair < next_task_move_time:
+                self.add_task(
+                    time=current_time,
+                    location=chair.location,
+                    event_type="occupy_content",
+                    additional_info={
+                        "content_type": ContentType.CHAIR,
+                        "room": room,
+                    },
+                )
+                logger.info(
+                    """
+                    Current time: %s
+                    Estimated time to chair: %s
+                    Next task move time: %s.
+                    Agent id %s inserted occupy_content task for chair at location %s
+                    to be performed before next task move time %s.
+                    """,
+                    current_time,
+                    estimated_time_to_chair,
+                    next_task_move_time,
+                    self.idx,
+                    chair.location,
+                    next_task_move_time,
+                )
+                logger.warning(
+                    """
+                    Length of task list %s at time %s.
+                    """,
+                    len(self.tasks),
+                    current_time,
+                )

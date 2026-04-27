@@ -73,10 +73,10 @@ def create_simulation(config_file: Path) -> Simulation:
     logger.debug(space_reader.buildings)
 
     start_time = pd.to_datetime(config_data["start_time"])
-    time_step_minutes = config_data["time_step_minutes"]
     end_time = pd.to_datetime(config_data["end_time"])
-    total_minutes = (end_time - start_time).total_seconds() / 60
-    total_steps = int(total_minutes // time_step_minutes)
+    total_seconds = (end_time - start_time).total_seconds()
+    time_step_length_seconds = config_data["length_of_timestep_in_seconds"]
+    total_steps = int(total_seconds // time_step_length_seconds)
     logger.info("Total simulation time steps: %d", total_steps)
 
     timeseries_data = read_location_timeseries(
@@ -87,8 +87,8 @@ def create_simulation(config_file: Path) -> Simulation:
         timeseries_data=timeseries_data,
         rooms=space_reader.rooms,
         start_time=start_time,
-        time_step_minutes=time_step_minutes,
         total_time_steps=total_steps,
+        time_scaling_factor=time_step_length_seconds,
         rng_generator=rng_generator,
     )
 
@@ -238,12 +238,12 @@ def read_location_timeseries(
     return pd.read_csv(file_path)
 
 
-def parse_location_timeseries(  # noqa: PLR0913, PLR0915
+def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
     timeseries_data: pd.DataFrame,
     rooms: list[Room],
     start_time: pd.Timestamp,
-    time_step_minutes: int,
     total_time_steps: int,
+    time_scaling_factor: int,
     rng_generator: np.random.Generator,
 ) -> list[Agent]:
     """
@@ -268,7 +268,9 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915
         door_id = int(row["door_id"]) if row["door_id"] != "-" else None
 
         timestep = pd.to_datetime(timestamp)
-        timestep_index = timestamp_to_timestep(timestep, start_time, time_step_minutes)
+        timestep_index = timestamp_to_timestep(
+            timestep, start_time, time_scaling_factor
+        )
         building, floor, room_str = parse_location_string(location_str)
         additional_info: dict[Any, Any] = {}
 
@@ -323,6 +325,11 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915
             point = (midpoint.x, midpoint.y)
             additional_info["door"] = door
 
+            destination = next(
+                idx for idx in door.connecting_rooms if idx != room.room_id
+            )
+            additional_info["destination"] = destination
+
             location = Location(
                 building=building,
                 floor=floor,
@@ -348,6 +355,22 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915
                 y=possible_locations[0][1],
             )
 
+        elif event_type == "occupy_content":
+            content_type = (
+                int(row["content_type"]) if row["content_type"] != "-" else None
+            )
+            if content_type is None:
+                msg = "Content type must be provided for 'occupy_content' events. "
+                msg += f"Row: {row}"
+                raise SimulationModeError(msg)
+
+            # Dummy location for task assignment; actual location will be determined by
+            # the content's location when the task is executed
+
+            location = Location(building=building, floor=floor, x=0, y=0)
+            additional_info["content_type"] = content_type
+            additional_info["room"] = room
+
         else:
             msg = f"Unknown event type: {event_type} in row: {row}"
             raise SimulationModeError(msg)
@@ -369,7 +392,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915
 def timestamp_to_timestep(
     timestamp: pd.Timestamp,
     start_time: pd.Timestamp,
-    time_step_minutes: int,
+    time_scaling_factor: int,
 ) -> int:
     """
     Convert a timestamp to a simulation time step index.
@@ -377,12 +400,11 @@ def timestamp_to_timestep(
     Args:
         timestamp (pd.Timestamp): The timestamp to convert.
         start_time (pd.Timestamp): The simulation start time.
-        time_step_minutes (int): The duration of each time step in minutes.
+        time_scaling_factor (int): The duration of timestep in seconds.
 
     Returns:
         int: The corresponding time step index.
 
     """
     delta = timestamp - start_time
-    total_minutes = delta.total_seconds() / 60
-    return int(total_minutes // time_step_minutes)
+    return int(delta.total_seconds() // time_scaling_factor)
