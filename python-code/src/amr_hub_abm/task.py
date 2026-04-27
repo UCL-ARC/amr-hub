@@ -29,7 +29,7 @@ def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
         if content.occupier_id == (agent.idx, agent.agent_type):
             content.occupier_id = None
             agent.stationary = False
-            logger.warning(
+            logger.info(
                 """
                 Agent id %s removed occupancy from content id %s of type %s
                 in room %s at time %d.
@@ -51,7 +51,7 @@ def add_agent_occupancy(agent: Agent, content: Content, current_time: int) -> No
     room = agent.get_room()
     room_name = "unknown" if room is None else room.name
 
-    logger.warning(
+    logger.info(
         """
         Agent id %s added occupancy to content id %s of type %s
         in room %s at time %d.

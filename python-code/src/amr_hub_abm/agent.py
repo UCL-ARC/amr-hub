@@ -611,11 +611,12 @@ class Agent:
         ]
 
         logger.info(
-            "Agent id %s found %s empty chairs in room %s for task %s.",
+            "Agent id %s found %s empty chairs in room %s for task %s at time %s.",
             self.idx,
             len(empty_chairs),
             room.name,
             next_task.task_type.name,
+            current_time,
         )
 
         if empty_chairs:
@@ -624,6 +625,7 @@ class Agent:
                 chair.location
             )
             if current_time + estimated_time_to_chair < next_task_move_time:
+                print(f"No. of empty chairs: {len(empty_chairs)} at time {current_time} in room {room.name}.")
                 self.add_task(
                     time=current_time,
                     location=chair.location,
