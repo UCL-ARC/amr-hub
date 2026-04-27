@@ -648,7 +648,7 @@ class Agent:
                     chair.location,
                     next_task_move_time,
                 )
-                logger.warning(
+                logger.info(
                     """
                     Length of task list %s at time %s.
                     """,
