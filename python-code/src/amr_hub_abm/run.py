@@ -6,6 +6,9 @@ from pathlib import Path
 from amr_hub_abm.simulation import Simulation
 from amr_hub_abm.simulation_factory import create_simulation
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -62,3 +65,7 @@ def run_steps(
             plot_path=plot_path,
             record=record,
         )
+
+
+if __name__ == "__main__":
+    simulate(plot=True, record=True)  # or whatever flags you want
