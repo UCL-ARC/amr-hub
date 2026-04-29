@@ -150,6 +150,16 @@ class Room:
                 s=content.marker_size,
                 label=f"{content.content_type.name} ({content.content_id})",
             )
+            ax.text(
+                content.position[0] + 0.05,
+                content.position[1] - 0.15,
+                content.content_type.name.lower(),  # "bed", "chair", "workstation"
+                fontsize=6,
+                ha="left",
+                va="top",
+                color="gray",
+                alpha=0.7,
+            )
 
         if agents is None:
             return
