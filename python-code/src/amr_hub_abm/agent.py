@@ -205,15 +205,51 @@ class Agent:
             color=ROLE_COLOUR_MAP[self.agent_type],
         )
 
-        if show_tags:
-            ax.text(
-                self.location.x + 0.05,
-                self.location.y + 0.05,
-                f"{self.agent_type.value} {self.idx}",
-                fontsize=8,
-                ha="left",
-                va="bottom",
-            )
+        if not show_tags:
+            return
+
+        # Build the multi-line label
+        role = self.agent_type.name.replace("_", " ").title()
+        lines = [f"{role} {self.idx}"]
+
+        # Find what to display: in-progress task takes priority, else next NOT_STARTED
+        in_progress = next(
+            (t for t in self.tasks if t.progress == TaskProgress.IN_PROGRESS),
+            None,
+        )
+        moving = next(
+            (t for t in self.tasks if t.progress == TaskProgress.MOVING_TO_LOCATION),
+            None,
+        )
+        upcoming = [t for t in self.tasks if t.progress == TaskProgress.NOT_STARTED]
+        next_upcoming = (
+            min(upcoming, key=lambda t: (t.time_due, t.priority.value))
+            if upcoming
+            else None
+        )
+
+        display_task = in_progress or moving or next_upcoming
+        if display_task is not None:
+            task_name = display_task.task_type.name.lower()
+            if isinstance(display_task, TaskAttendPatient):
+                task_name += f" → patient {display_task.patient.idx}"
+
+            if display_task.progress == TaskProgress.IN_PROGRESS:
+                prefix = "doing"
+            elif display_task.progress == TaskProgress.MOVING_TO_LOCATION:
+                prefix = "moving to"
+            else:
+                prefix = "next"
+            lines.append(f"[{prefix}: {task_name}]")
+
+        ax.text(
+            self.location.x + 0.1,
+            self.location.y + 0.05,
+            "\n".join(lines),
+            fontsize=7,
+            ha="left",
+            va="bottom",
+        )
 
     def plot_trajectory(self, ax: Axes, current_time: int | None = None) -> None:
         """Plot the agent's trajectory on the given axes."""
