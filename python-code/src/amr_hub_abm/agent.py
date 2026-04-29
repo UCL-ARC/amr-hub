@@ -64,6 +64,14 @@ class InfectionStatus(IntEnum):
     RECOVERED = 3
 
 
+INFECTION_RING_COLOUR = {
+    InfectionStatus.SUSCEPTIBLE: None,  # no ring
+    InfectionStatus.EXPOSED: "gold",
+    InfectionStatus.INFECTED: "darkred",
+    InfectionStatus.RECOVERED: "blue",
+}
+
+
 @dataclass(slots=True)
 class Record:
     """Representation of a record of an agent's state at a given time step."""
@@ -197,6 +205,19 @@ class Agent:
 
     def plot_agent(self, ax: Axes, *, show_tags: bool = True) -> None:
         """Plot the agent on the given axes."""
+        ring_colour = INFECTION_RING_COLOUR[self.infection_status]
+        if ring_colour is not None:
+            ax.plot(
+                self.location.x,
+                self.location.y,
+                marker="o",
+                markersize=12,  # bigger than the inner dot
+                markerfacecolor="none",  # hollow ring
+                markeredgecolor=ring_colour,
+                markeredgewidth=2,
+                zorder=2,
+            )
+
         ax.plot(
             self.location.x,
             self.location.y,
@@ -211,6 +232,9 @@ class Agent:
         # Build the multi-line label
         role = self.agent_type.name.replace("_", " ").title()
         lines = [f"{role} {self.idx}"]
+
+        if self.infection_status != InfectionStatus.SUSCEPTIBLE:
+            lines.append(f"({self.infection_status.name.lower()})")
 
         # Find what to display: in-progress task takes priority, else next NOT_STARTED
         in_progress = next(
