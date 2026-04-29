@@ -80,7 +80,7 @@ class Record:
         """Post-initialization to setup the record arrays."""
         self.building = np.empty(self.total_time, dtype=np.int8)
         self.floor = np.empty(self.total_time, dtype=np.int8)
-        self.position = np.empty((self.total_time, 2), dtype=np.float64)
+        self.position = np.full((self.total_time, 2), np.nan, dtype=np.float64)
         self.heading = np.empty((self.total_time, 1), dtype=np.float64)
         self.infection_status = np.empty(self.total_time, dtype=np.int8)
 
@@ -225,10 +225,9 @@ class Agent:
         if end <= 0:
             return
 
-        positions = self.trajectory.position[:end]
         ax.plot(
-            positions[:, 0],
-            positions[:, 1],
+            self.trajectory.position[:, 0],
+            self.trajectory.position[:, 1],
             linestyle="-",
             linewidth=1.5,
             color=ROLE_COLOUR_MAP[self.agent_type],
