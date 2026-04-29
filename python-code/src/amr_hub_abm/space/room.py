@@ -160,7 +160,7 @@ class Room:
                 and agent.location.floor == self.floor
             ) and self.contains_point((agent.location.x, agent.location.y)):
                 agent.plot_agent(ax)
-                if trajectory:
+                if trajectory and agent.agent_type.value == 2:  # HEALTHCARE_WORKER only
                     agent.plot_trajectory(ax)
 
     def contains_point(self, point: tuple[float, float]) -> bool:

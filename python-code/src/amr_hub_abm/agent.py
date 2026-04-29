@@ -215,15 +215,20 @@ class Agent:
                 va="bottom",
             )
 
-    def plot_trajectory(self, ax: Axes) -> None:
+    def plot_trajectory(self, ax: Axes, current_time: int | None = None) -> None:
         """Plot the agent's trajectory on the given axes."""
         if self.trajectory_length == 0:
             msg = "Cannot plot trajectory for agent with trajectory_length of 0."
             raise ValueError(msg)
 
+        end = current_time if current_time is not None else self.trajectory_length
+        if end <= 0:
+            return
+
+        positions = self.trajectory.position[:end]
         ax.plot(
-            self.trajectory.position[:, 0],
-            self.trajectory.position[:, 1],
+            positions[:, 0],
+            positions[:, 1],
             linestyle="-",
             linewidth=1.5,
             color=ROLE_COLOUR_MAP[self.agent_type],

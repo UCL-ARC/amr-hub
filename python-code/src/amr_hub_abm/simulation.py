@@ -90,6 +90,53 @@ class Simulation:
             plt.savefig(directory_path / filename)
             plt.close()
 
+    def plot_live(
+        self,
+        figures: list,
+        *,
+        pause: float = 0.05,
+        trajectory: bool = False,
+    ) -> None:
+        """Update existing figures in place with current agent positions."""
+        for building, fig, axes in figures:
+            for ax in axes:
+                ax.clear()
+
+            building.plot_building(
+                axes=axes,
+                agents=self.agents,
+                trajectory=trajectory,  # <- key change
+            )
+
+            title = (
+                f"Simulation: {self.name} | "
+                f"Time: {self.time}/{self.total_simulation_time}"
+            )
+            if trajectory:
+                title += " | Trajectories"
+
+            fig.suptitle(title)
+            fig.canvas.draw_idle()
+            fig.canvas.flush_events()
+
+        plt.pause(pause)
+
+    def setup_live_plot(self) -> list:
+        """Create reusable figures for live plotting. Call once before the run loop."""
+        plt.ion()
+        figures = []
+        for building in self.space:
+            fig, axes = plt.subplots(
+                nrows=len(building.floors),
+                ncols=1,
+                figsize=(10, 6 * len(building.floors)),
+            )
+            axes = [axes] if len(building.floors) == 1 else list(axes)
+
+            figures.append((building, fig, axes))
+        plt.show(block=False)
+        return figures
+
     def __repr__(self) -> str:
         """Representation of the simulation."""
         header = f"Simulation: {self.name}\nDescription: {self.description}\n"

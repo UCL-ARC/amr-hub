@@ -3,17 +3,20 @@
 import logging
 from pathlib import Path
 
+from matplotlib import pyplot as plt
+
 from amr_hub_abm.simulation import Simulation
 from amr_hub_abm.simulation_factory import create_simulation
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 
 def simulate(
-    *, plot: bool = False, record: bool = False, plot_trajectory: bool = False
+    *,
+    plot: bool = False,
+    record: bool = False,
+    live: bool = False,
+    plot_trajectory: bool = False,
 ) -> None:
     """Simulate the AMR Hub ABM based on a configuration file."""
     config_path = Path("tests/inputs/simulation_config.yml")
@@ -32,7 +35,15 @@ def simulate(
 
     plot_path = Path("../simulation_outputs") if plot else None
 
-    run_steps(simulation, plot_path, record=record)
+    figures = simulation.setup_live_plot() if live else None
+
+    run_steps(
+        simulation,
+        plot_path,
+        record=record,
+        figures=figures,
+        trajectory=plot_trajectory,  # <- reuse your existing flag
+    )
 
     if plot_trajectory:
         record = True
@@ -52,20 +63,22 @@ def simulate(
 
     logger.info("Simulation completed successfully...")
 
+    if live:
+        plt.ioff()  # turn interactive mode off
+        plt.show()  # final blocking show so window stays up after sim ends
+
 
 def run_steps(
     simulation: Simulation,
     plot_path: Path | None,
     *,
     record: bool,
+    figures: list | None = None,
+    trajectory: bool = False,  # NEW
 ) -> None:
-    """Run the simulation steps until completion."""
+    """Run the simulation loop until completion, optionally plotting live."""
     while simulation.time < simulation.total_simulation_time:
-        simulation.step(
-            plot_path=plot_path,
-            record=record,
-        )
+        simulation.step(plot_path=plot_path, record=record)
 
-
-if __name__ == "__main__":
-    simulate(plot=True, record=True)  # or whatever flags you want
+        if figures is not None and simulation.time % 100 == 0:
+            simulation.plot_live(figures, trajectory=trajectory)
