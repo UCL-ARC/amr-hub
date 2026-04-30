@@ -127,7 +127,7 @@ class Agent:
     trajectory_length: int = field(default=0)
     trajectory: Record = field(init=False)
 
-    stationary: bool = field(default=False, init=False)
+    stationary: bool = field(default=False)
 
     @property
     def heading_degrees(self) -> float:
@@ -264,7 +264,7 @@ class Agent:
                 raise SimulationModeError(msg)
 
             task = TaskAttendPatient(
-                time_needed=15,
+                time_needed=900,
                 time_due=time,
                 patient=patient,
             )
@@ -285,7 +285,7 @@ class Agent:
             task = TaskDoorAccess(
                 door=additional_info["door"],
                 destination_room=additional_info["destination"],
-                time_needed=1,
+                time_needed=10,
                 time_due=time,
                 building=location.building,
                 floor=location.floor,
@@ -294,7 +294,7 @@ class Agent:
         elif task_type == TaskType.WORKSTATION:
             task = TaskWorkstation(
                 workstation_location=location,
-                time_needed=30,
+                time_needed=1800,
                 time_due=time,
             )
 
@@ -625,7 +625,6 @@ class Agent:
                 chair.location
             )
             if current_time + estimated_time_to_chair < next_task_move_time:
-                print(f"No. of empty chairs: {len(empty_chairs)} at time {current_time} in room {room.name}.")
                 self.add_task(
                     time=current_time,
                     location=chair.location,
