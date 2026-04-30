@@ -407,5 +407,4 @@ def timestamp_to_timestep(
 
     """
     delta = timestamp - start_time
-    total_minutes = int(delta.total_seconds() // time_scaling_factor)
-    return int(total_minutes)
+    return int(delta.total_seconds() // time_scaling_factor)

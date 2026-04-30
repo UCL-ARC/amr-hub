@@ -1,7 +1,14 @@
 # -------- settings --------
 DOCKER        ?= docker
-COMPOSE       ?= docker compose
+COMPOSE       ?= docker compose --env-file config/oda.env
 BUILDER       ?= cadflow-builder
+
+# ODA File Converter package selection
+-include config/oda.env
+ODA_VER       ?=
+ODA_DEB_URL   ?=
+ODA_SHA256    ?=
+export ODA_VER ODA_DEB_URL ODA_SHA256
 
 # Images
 CONVERT_IMG   ?= cadflow-convert:oda-amd64
@@ -14,6 +21,7 @@ PLAT_PROCESS  ?= linux/amd64
 # Host user for file ownership on bind mounts
 UID           := $(shell id -u)
 GID           := $(shell id -g)
+export UID GID
 
 # Paths (relative to repo root)
 IN_DIR        ?= $(CURDIR)/in
@@ -22,12 +30,13 @@ OUT_DIR       ?= $(CURDIR)/out
 
 # -------- targets --------
 .PHONY: help builder-init builder-use build-converter build-processor build-all \
-        up down logs ps clean clean-builders clean-cache dirs up down \
+        up down logs ps clean clean-builders clean-cache dirs oda-config up down \
 		run-converter run-processor
 help:
 	@echo "Targets:"
 	@echo "  builder-init     Initialise QEMU and a docker-container Buildx builder"
 	@echo "  build-converter  Build converter image (DWG->DXF) locally"
+	@echo "  oda-config       Show ODA converter package configuration"
 	@echo "  build-processor  Build processor image (DXF->GPKG/SHP) locally"
 	@echo "  build-all        Build both images"
 	@echo "  up               Run full pipeline via docker compose"
@@ -59,6 +68,9 @@ builder-use:
 build-converter: dirs
 	$(DOCKER) buildx build \
 	  --platform $(PLAT_CONVERT) \
+	  --build-arg ODA_VER="$(ODA_VER)" \
+	  --build-arg ODA_DEB_URL="$(ODA_DEB_URL)" \
+	  --build-arg ODA_SHA256="$(ODA_SHA256)" \
 	  -t $(CONVERT_IMG) \
 	  --load \
 	  ./converter
@@ -84,6 +96,10 @@ logs:
 ps:
 	$(COMPOSE) ps
 
+oda-config:
+	@echo "ODA_VER=$(ODA_VER)"
+	@echo "ODA_DEB_URL=$(ODA_DEB_URL)"
+	@echo "ODA_SHA256=$(ODA_SHA256)"
 
 # Run only the converter stage
 run-converter: dirs

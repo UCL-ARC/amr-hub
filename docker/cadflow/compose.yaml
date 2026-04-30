@@ -2,6 +2,10 @@ services:
   convert:
     build:
       context: ./converter
+      args:
+        ODA_VER: ${ODA_VER}
+        ODA_DEB_URL: ${ODA_DEB_URL:-}
+        ODA_SHA256: ${ODA_SHA256:-}
     image: cadflow-convert:oda-amd64
     platform: linux/amd64
     environment:
