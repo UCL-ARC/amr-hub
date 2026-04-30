@@ -150,6 +150,16 @@ class Room:
                 s=content.marker_size,
                 label=f"{content.content_type.name} ({content.content_id})",
             )
+            ax.text(
+                content.position[0] + 0.05,
+                content.position[1] - 0.15,
+                content.content_type.name.lower(),  # "bed", "chair", "workstation"
+                fontsize=6,
+                ha="left",
+                va="top",
+                color="gray",
+                alpha=0.7,
+            )
 
         if agents is None:
             return
@@ -160,7 +170,7 @@ class Room:
                 and agent.location.floor == self.floor
             ) and self.contains_point((agent.location.x, agent.location.y)):
                 agent.plot_agent(ax)
-                if trajectory:
+                if trajectory and agent.agent_type.value == 2:  # HEALTHCARE_WORKER only
                     agent.plot_trajectory(ax)
 
     def contains_point(self, point: tuple[float, float]) -> bool:
