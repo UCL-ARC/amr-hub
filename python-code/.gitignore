@@ -169,4 +169,5 @@ _version.py
 
 
 simulation_outputs/
+../simulation_outputs/
 *.prof

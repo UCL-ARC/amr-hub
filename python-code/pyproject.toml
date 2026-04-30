@@ -43,9 +43,12 @@ classifiers = [
 dependencies = [
   "geopandas>=1.1.2",
   "matplotlib>=3.10.7",
+  "mesa[viz]>=3.5.1",
+  "networkx>=3.6.1",
   "pandas>=2.3.3",
   "pyyaml>=6.0.3",
   "shapely>=2.1.2",
+  "solara>=1.57.3",
   "types-pyyaml>=6.0.12.20250915"
 ]
 description = "An agent based model for spread of Anti Microbial Resistant infections in hospitals"
@@ -88,6 +91,7 @@ testpaths = [
 
 [tool.ruff]
 fix = true
+extend-exclude = ["examples"]
 force-exclude = true
 lint.ignore = [
   "COM812", # trailing commas (ruff-format recommended)

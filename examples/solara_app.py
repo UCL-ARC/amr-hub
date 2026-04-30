@@ -13,7 +13,8 @@ from amr_hub_abm.mesa_wrapper import HospitalABM
 def FloorplanComponent(model: HospitalABM) -> None:
     """Render the hospital floorplan with current agent positions."""
     update_counter.get()  # subscribe to step events
-    fig = Figure(figsize=(10, 6))
+    fig = Figure(figsize=(10, 10))
+
     n_floors = len(model.simulation.space[0].floors)
     axes = fig.subplots(nrows=n_floors, ncols=1)
     if not isinstance(axes, (list, tuple)):
@@ -26,7 +27,8 @@ def FloorplanComponent(model: HospitalABM) -> None:
     fig.suptitle(
         f"Time: {model.simulation.time}/{model.simulation.total_simulation_time}"
     )
-    solara.FigureMatplotlib(fig)
+    with solara.Card(margin=0):
+        solara.FigureMatplotlib(fig, format="png")
 
 
 page = SolaraViz(
