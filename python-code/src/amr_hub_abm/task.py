@@ -312,7 +312,12 @@ class TaskOccupyContent(Task):
     def assign_content(self) -> None:
         """Assign the content to be occupied based on the content type and room."""
         content = next(
-            (c for c in self.room.contents if c.content_type == self.content_type), None
+            (
+                c
+                for c in self.room.contents
+                if c.content_type == self.content_type and c.occupier_id is None
+            ),
+            None,
         )
 
         if content is None:
