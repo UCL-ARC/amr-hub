@@ -1,8 +1,10 @@
 """Tests for the agent module."""
 
+import math
 from dataclasses import replace
 from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 
 from amr_hub_abm.agent import ROLE_COLOUR_MAP, Agent, AgentType, InfectionStatus
@@ -21,7 +23,9 @@ def test_agent_creation() -> None:
         location=Location(
             x=0.0, y=0.0, floor=1, building=Building(name="Hospital", floors=[]).name
         ),
-        heading=90.0,
+        heading_rad=math.pi / 2,  # 90 degrees in radians
+        space=[],
+        rng_generator=np.random.default_rng(),
     )
 
     expected_location = Location(
@@ -33,7 +37,7 @@ def test_agent_creation() -> None:
     assert agent.agent_type == AgentType.PATIENT
     assert agent.infection_status == InfectionStatus.SUSCEPTIBLE
     assert agent.location == expected_location
-    assert agent.heading == expected_heading
+    assert agent.heading_degrees == expected_heading
 
 
 def test_heading_modulo() -> None:
@@ -45,11 +49,15 @@ def test_heading_modulo() -> None:
         location=Location(
             x=5.0, y=5.0, floor=2, building=Building(name="Hospital", floors=[]).name
         ),
-        heading=450.0,  # 450 degrees should wrap to 90 degrees
+        heading_rad=math.radians(
+            450
+        ),  # 450 degrees in radians, should wrap to 90 degrees
+        space=[],
+        rng_generator=np.random.default_rng(),
     )
     expected_heading = 90.0
 
-    assert agent.heading == expected_heading
+    assert agent.heading_degrees == expected_heading
 
 
 def test_agent_intersection_with_walls() -> None:
@@ -66,7 +74,9 @@ def test_agent_intersection_with_walls() -> None:
         agent_type=AgentType.HEALTHCARE_WORKER,
         infection_status=InfectionStatus.EXPOSED,
         location=Location(x=0.1, y=5.0, floor=1, building="Hospital"),
-        heading=180.0,
+        heading_rad=math.pi,  # 180 degrees in radians
+        space=[],
+        rng_generator=np.random.default_rng(),
     )
 
     agent_not_intersecting = Agent(
@@ -74,11 +84,30 @@ def test_agent_intersection_with_walls() -> None:
         agent_type=AgentType.GENERIC,
         infection_status=InfectionStatus.RECOVERED,
         location=Location(x=15.0, y=5.0, floor=1, building="Hospital"),
-        heading=0.0,
+        heading_rad=0.0,
+        space=[],
+        rng_generator=np.random.default_rng(),
     )
 
-    assert agent_intersecting.check_intersection_with_walls(walls) is True
-    assert agent_not_intersecting.check_intersection_with_walls(walls) is False
+    assert (
+        Location.check_intersection_with_walls(
+            agent_intersecting.location.x,
+            agent_intersecting.location.y,
+            agent_intersecting.interaction_radius,
+            walls,
+        )
+        is True
+    )
+
+    assert (
+        Location.check_intersection_with_walls(
+            agent_not_intersecting.location.x,
+            agent_not_intersecting.location.y,
+            agent_not_intersecting.interaction_radius,
+            walls,
+        )
+        is False
+    )
 
 
 def test_move_to_location() -> None:
@@ -91,7 +120,9 @@ def test_move_to_location() -> None:
         agent_type=AgentType.GENERIC,
         infection_status=InfectionStatus.SUSCEPTIBLE,
         location=initial_location,
-        heading=45.0,
+        heading_rad=math.pi / 4,
+        space=[],
+        rng_generator=np.random.default_rng(),
     )
 
     agent.move_to_location(new_location)
@@ -107,7 +138,9 @@ def test_plot_agent_without_tags() -> None:
         agent_type=AgentType.PATIENT,
         infection_status=InfectionStatus.SUSCEPTIBLE,
         location=Location(x=1.0, y=2.0, floor=1, building="Hospital"),
-        heading=0.0,
+        heading_rad=0.0,
+        space=[],
+        rng_generator=np.random.default_rng(),
     )
     ax = MagicMock()
 
@@ -130,7 +163,9 @@ def test_plot_agent_with_tags() -> None:
         agent_type=AgentType.HEALTHCARE_WORKER,
         infection_status=InfectionStatus.EXPOSED,
         location=Location(x=0.5, y=0.25, floor=1, building="Hospital"),
-        heading=0.0,
+        heading_rad=0.0,
+        space=[],
+        rng_generator=np.random.default_rng(),
     )
     ax = MagicMock()
 
@@ -172,7 +207,9 @@ def sample_agent(sample_location: Location) -> Agent:
         agent_type=AgentType.HEALTHCARE_WORKER,
         infection_status=InfectionStatus.INFECTED,
         location=sample_location,
-        heading=90.0,
+        heading_rad=math.pi / 4,  # 45 degrees in radians
+        space=[],
+        rng_generator=np.random.default_rng(),
     )
 
 
@@ -268,4 +305,4 @@ def test_add_task_with_not_implemented_task_type(
             event_type="generic",
         )
 
-    assert "Task type TaskType.GENERIC not implemented yet." in str(exc_info.value)
+    assert "Task type GENERIC not implemented yet." in str(exc_info.value)

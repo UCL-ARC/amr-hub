@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -11,11 +12,37 @@ from amr_hub_abm.agent import Agent, AgentType
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.read_space_input import SpaceInputReader
 from amr_hub_abm.simulation import Simulation, SimulationMode
+from amr_hub_abm.space.building import Building
+from amr_hub_abm.space.content import ContentType
+from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
+
+
+def create_space_from_rooms(rooms: list[Room]) -> list[Building]:
+    """Create a list of Building instances from a list of Room instances."""
+    building_dict: dict[str, Building] = {}
+
+    for room in rooms:
+        if room.building not in building_dict:
+            building_dict[room.building] = Building(name=room.building, floors=[])
+
+        if room.floor not in [
+            f.floor_number for f in building_dict[room.building].floors
+        ]:
+            building_dict[room.building].floors.append(
+                Floor(floor_number=room.floor, rooms=[room])
+            )
+        else:
+            for floor in building_dict[room.building].floors:
+                if floor.floor_number == room.floor:
+                    floor.rooms.append(room)
+                    break
+
+    raw_buildings = list(building_dict.values())
+    return Building.sort_and_number_buildings(raw_buildings)
 
 
 def create_simulation(config_file: Path) -> Simulation:
@@ -36,18 +63,20 @@ def create_simulation(config_file: Path) -> Simulation:
     with config_file.open(encoding="utf-8") as file:
         config_data = yaml.safe_load(file)
 
+    rng_generator = np.random.default_rng()
+
     buildings_path = Path(config_data["buildings_path"])
     msg = f"Buildings path from config: {buildings_path}"
     logger.debug(msg)
-    space_reader = SpaceInputReader(buildings_path)
+    space_reader = SpaceInputReader(buildings_path, rng_generator)
     logger.debug("Buildings loaded successfully.")
     logger.debug(space_reader.buildings)
 
     start_time = pd.to_datetime(config_data["start_time"])
-    time_step_minutes = config_data["time_step_minutes"]
     end_time = pd.to_datetime(config_data["end_time"])
-    total_minutes = (end_time - start_time).total_seconds() / 60
-    total_steps = int(total_minutes // time_step_minutes)
+    total_seconds = (end_time - start_time).total_seconds()
+    time_step_length_seconds = config_data["length_of_timestep_in_seconds"]
+    total_steps = int(total_seconds // time_step_length_seconds)
     logger.info("Total simulation time steps: %d", total_steps)
 
     timeseries_data = read_location_timeseries(
@@ -58,8 +87,11 @@ def create_simulation(config_file: Path) -> Simulation:
         timeseries_data=timeseries_data,
         rooms=space_reader.rooms,
         start_time=start_time,
-        time_step_minutes=time_step_minutes,
+        total_time_steps=total_steps,
+        time_scaling_factor=time_step_length_seconds,
+        rng_generator=rng_generator,
     )
+
     msg = f"Parsed {len(agents)} agents from location time series."
     logger.info(msg)
     logger.info("Simulation creation complete.")
@@ -71,6 +103,7 @@ def create_simulation(config_file: Path) -> Simulation:
         space=space_reader.buildings,
         agents=agents,
         total_simulation_time=total_steps,
+        rng_generator=rng_generator,
     )
 
 
@@ -101,30 +134,54 @@ def get_random_location(room: Room, building: str, floor: int) -> Location:
     )
 
 
-def update_patient(
+def update_patient(  # noqa: PLR0913
     patient_id: int,
     space_tuple: tuple[str, int, Room],
     patient_dict: dict[int, Agent],
+    total_time_steps: int,
+    space: list[Building],
+    rng_generator: np.random.Generator,
 ) -> None:
     """Update patient information from data."""
     building, floor, room = space_tuple
 
     if patient_id is not None and patient_id not in patient_dict:
-        location = get_random_location(room, building, floor)
+        available_beds = [
+            b
+            for b in room.contents
+            if b.content_type == ContentType.BED and not b.occupied
+        ]
+        if not available_beds:
+            msg = (
+                f"No available beds found in room {room.name} for patient {patient_id}."
+            )
+            msg += " Selecting random location in room instead."
+            logger.error(msg)
+            location = get_random_location(room, building, floor)
+        else:
+            bed = available_beds[0]
+            bed.occupier_id = (patient_id, AgentType.PATIENT)
+            location = bed.location
 
         patient_dict[patient_id] = Agent(
             idx=patient_id,
             location=location,
-            heading=0.0,
+            heading_rad=0.0,
             agent_type=AgentType.PATIENT,
+            trajectory_length=total_time_steps,
+            space=space,
+            rng_generator=rng_generator,
         )
 
 
-def update_hcw(
+def update_hcw(  # noqa: PLR0913
     hcw_id: int,
     space_tuple: tuple[str, int, Room],
     event_tuple: tuple[Location, int, str],
     hcw_dict: dict[int, Agent],
+    total_time_steps: int,
+    space: list[Building],
+    rng_generator: np.random.Generator,
     additional_info: dict | None = None,
 ) -> None:
     """Update healthcare worker information from data."""
@@ -132,12 +189,30 @@ def update_hcw(
     location, timestep_index, event_type = event_tuple
 
     if hcw_id not in hcw_dict:
-        hcw_location = get_random_location(room, building, floor)
+        available_chairs = [
+            c
+            for c in room.contents
+            if c.content_type == ContentType.CHAIR and not c.occupied
+        ]
+
+        if not available_chairs:
+            msg = f"No available chairs found in room {room.name} for HCW {hcw_id}."
+            msg += " Selecting random location in room instead."
+            logger.error(msg)
+            hcw_location = get_random_location(room, building, floor)
+        else:
+            chair = available_chairs[0]
+            chair.occupier_id = (hcw_id, AgentType.HEALTHCARE_WORKER)
+            hcw_location = chair.location
+
         hcw_dict[hcw_id] = Agent(
             idx=hcw_id,
             location=hcw_location,
-            heading=0.0,
+            heading_rad=0.0,
             agent_type=AgentType.HEALTHCARE_WORKER,
+            trajectory_length=total_time_steps,
+            space=space,
+            rng_generator=rng_generator,
         )
 
     hcw_dict[hcw_id].add_task(timestep_index, location, event_type, additional_info)
@@ -163,11 +238,13 @@ def read_location_timeseries(
     return pd.read_csv(file_path)
 
 
-def parse_location_timeseries(
+def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
     timeseries_data: pd.DataFrame,
     rooms: list[Room],
     start_time: pd.Timestamp,
-    time_step_minutes: int,
+    total_time_steps: int,
+    time_scaling_factor: int,
+    rng_generator: np.random.Generator,
 ) -> list[Agent]:
     """
     Parse a CSV file containing location time series data for agents.
@@ -191,7 +268,9 @@ def parse_location_timeseries(
         door_id = int(row["door_id"]) if row["door_id"] != "-" else None
 
         timestep = pd.to_datetime(timestamp)
-        timestep_index = timestamp_to_timestep(timestep, start_time, time_step_minutes)
+        timestep_index = timestamp_to_timestep(
+            timestep, start_time, time_scaling_factor
+        )
         building, floor, room_str = parse_location_string(location_str)
         additional_info: dict[Any, Any] = {}
 
@@ -217,6 +296,9 @@ def parse_location_timeseries(
                 patient_id=patient_id,
                 space_tuple=(building, floor, room),
                 patient_dict=patient_dict,
+                total_time_steps=total_time_steps,
+                space=create_space_from_rooms(rooms),
+                rng_generator=rng_generator,
             )
             patient = patient_dict[patient_id]
 
@@ -243,6 +325,11 @@ def parse_location_timeseries(
             point = (midpoint.x, midpoint.y)
             additional_info["door"] = door
 
+            destination = next(
+                idx for idx in door.connecting_rooms if idx != room.room_id
+            )
+            additional_info["destination"] = destination
+
             location = Location(
                 building=building,
                 floor=floor,
@@ -250,7 +337,39 @@ def parse_location_timeseries(
                 y=point[1],
             )
         elif event_type == "workstation":
-            location = get_random_location(room, building, floor)
+            possible_locations = [
+                c.position
+                for c in room.contents
+                if c.content_type == ContentType.WORKSTATION
+            ]
+            if not possible_locations:
+                msg = f"No workstation found in room {room.name} for 'workstation'"
+                msg += f" event. Row: {row}. Selecting random location in room instead."
+                logger.error(msg)
+                possible_locations = [room.get_random_point()]
+
+            location = Location(
+                building=building,
+                floor=floor,
+                x=possible_locations[0][0],
+                y=possible_locations[0][1],
+            )
+
+        elif event_type == "occupy_content":
+            content_type = (
+                int(row["content_type"]) if row["content_type"] != "-" else None
+            )
+            if content_type is None:
+                msg = "Content type must be provided for 'occupy_content' events. "
+                msg += f"Row: {row}"
+                raise SimulationModeError(msg)
+
+            # Dummy location for task assignment; actual location will be determined by
+            # the content's location when the task is executed
+
+            location = Location(building=building, floor=floor, x=0, y=0)
+            additional_info["content_type"] = content_type
+            additional_info["room"] = room
 
         else:
             msg = f"Unknown event type: {event_type} in row: {row}"
@@ -261,7 +380,10 @@ def parse_location_timeseries(
             space_tuple=(building, floor, room),
             event_tuple=(location, timestep_index, event_type),
             hcw_dict=hcw_dict,
-            additional_info=additional_info if additional_info else None,
+            additional_info=additional_info or None,
+            total_time_steps=total_time_steps,
+            space=create_space_from_rooms(rooms),
+            rng_generator=rng_generator,
         )
 
     return list(hcw_dict.values()) + list(patient_dict.values())
@@ -270,7 +392,7 @@ def parse_location_timeseries(
 def timestamp_to_timestep(
     timestamp: pd.Timestamp,
     start_time: pd.Timestamp,
-    time_step_minutes: int,
+    time_scaling_factor: int,
 ) -> int:
     """
     Convert a timestamp to a simulation time step index.
@@ -278,12 +400,11 @@ def timestamp_to_timestep(
     Args:
         timestamp (pd.Timestamp): The timestamp to convert.
         start_time (pd.Timestamp): The simulation start time.
-        time_step_minutes (int): The duration of each time step in minutes.
+        time_scaling_factor (int): The duration of timestep in seconds.
 
     Returns:
         int: The corresponding time step index.
 
     """
     delta = timestamp - start_time
-    total_minutes = delta.total_seconds() / 60
-    return int(total_minutes // time_step_minutes)
+    return int(delta.total_seconds() // time_scaling_factor)

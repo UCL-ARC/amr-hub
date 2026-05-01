@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from amr_hub_abm.agent import Agent, AgentType, InfectionStatus
@@ -45,6 +46,7 @@ def sample_rooms(sample_door: Door) -> list[Room]:
             Wall(start=(5.0, 1.0), end=(5.0, 0.0)),
             Wall(start=(5.0, 0.0), end=(0.0, 0.0)),
         ],
+        rng_generator=np.random.default_rng(),
     )
     room2 = Room(
         room_id=1,
@@ -60,6 +62,7 @@ def sample_rooms(sample_door: Door) -> list[Room]:
             Wall(start=(10.0, 0.0), end=(5.0, 0.0)),
             Wall(start=(5.0, 0.0), end=(5.0, 2.0)),
         ],
+        rng_generator=np.random.default_rng(),
     )
     return [room1, room2]
 
@@ -89,7 +92,9 @@ def sample_agent(sample_building: Building) -> Agent:
             floor=0,
             building=sample_building.name,
         ),
-        heading=0.0,
+        heading_rad=0.0,
+        space=[sample_building],
+        rng_generator=np.random.default_rng(),
     )
 
 
@@ -103,6 +108,7 @@ def sample_simulation(sample_building: Building, sample_agent: Agent) -> Simulat
         mode=SimulationMode.TOPOLOGICAL,
         space=[sample_building],
         agents=[sample_agent],
+        rng_generator=np.random.default_rng(),
     )
 
 
@@ -148,14 +154,12 @@ def test_simulation_excessive_current_time_raises(
 
 
 def test_agent_get_room(
-    sample_simulation: Simulation,
     sample_agent: Agent,
 ) -> None:
     """Test that the agent can get its current room."""
-    simulation = sample_simulation
     agent = sample_agent
 
-    room = agent.get_room(simulation.space)
+    room = agent.get_room()
 
     assert room is not None
     assert room.name == "Room1"
@@ -173,9 +177,11 @@ def test_agent_get_room_in_multiple_buildings(
 
     simulation_space = [building1, building2, building3]
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
 
-    assert room == sample_building.floors[0].rooms[0]
+    room = sample_agent.get_room()
+
+    assert room == simulation_space[2].floors[0].rooms[0]
 
 
 def test_agent_get_room_no_floors(
@@ -191,7 +197,8 @@ def test_agent_get_room_no_floors(
         ),
     ]
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
+    room = sample_agent.get_room()
 
     assert room is None
 
@@ -207,7 +214,8 @@ def test_agent_get_room_no_matching_floor(
         ),
     ]
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
+    room = sample_agent.get_room()
 
     assert room is None
 
@@ -221,7 +229,8 @@ def test_agent_get_room_no_matching_building(
         Building(name="BuildingB", floors=[Floor(floor_number=0, rooms=[])]),
     ]
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
+    room = sample_agent.get_room()
 
     assert room is None
 
@@ -232,7 +241,8 @@ def test_agent_get_room_no_buildings(
     """Test that the agent returns None when there are no buildings."""
     simulation_space: list[Building] = []
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
+    room = sample_agent.get_room()
 
     assert room is None
 
@@ -248,7 +258,8 @@ def test_agent_get_room_no_rooms(
         ),
     ]
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
+    room = sample_agent.get_room()
 
     assert room is None
 
@@ -262,7 +273,8 @@ def test_agent_get_room_not_found(
         Building(name="BuildingY", floors=[Floor(floor_number=0, rooms=[])]),
     ]
 
-    room = sample_agent.get_room(simulation_space)
+    sample_agent.space = simulation_space
+    room = sample_agent.get_room()
 
     assert room is None
 
@@ -277,7 +289,7 @@ def test_simulation_repr(
 
     assert "Simulation: TestSimulation" in repr_str
     assert "Description: A test simulation." in repr_str
-    assert "Mode: topological" in repr_str
+    assert "Mode: 1" in repr_str
     assert "Total Simulation Time: 10" in repr_str
     assert "Current Time: 0" in repr_str
     assert "Number of Buildings: 1" in repr_str
@@ -293,7 +305,7 @@ def test_plot_current_state(
 
     simulation.plot_current_state(tmp_path)
 
-    expected_file = tmp_path / "plot_TestSimulation_building_TestBuilding_time_0.png"
+    expected_file = tmp_path / "TestBuilding_time_0.png"
     assert expected_file.exists()
 
 

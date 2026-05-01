@@ -7,14 +7,15 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-import numpy as np
 import shapely.geometry
 import shapely.ops
 
 from amr_hub_abm.exceptions import InvalidRoomError, SimulationModeError
+from amr_hub_abm.space.location import Location
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
+    from numpy.random import Generator
 
     from amr_hub_abm.agent import Agent
     from amr_hub_abm.space.content import Content
@@ -35,6 +36,7 @@ class Room:
     floor: int
     contents: list[Content]
     doors: list[Door]
+    rng_generator: Generator
     walls: list[Wall] | None = field(default=None)
     area: float | None = field(default=None)
     region: shapely.geometry.Polygon = field(init=False)
@@ -74,6 +76,8 @@ class Room:
         self.room_hash = (
             self.create_polygon_hash() if self.walls else self.create_name_hash()
         )
+
+        self.validate_contents()
 
     def __hash__(self) -> int:
         """Generate a hash for the room based on its unique hash string."""
@@ -115,7 +119,14 @@ class Room:
 
         return polygon[0]
 
-    def plot(self, ax: Axes, agents: list[Agent] | None = None, **kwargs: dict) -> None:
+    def plot(
+        self,
+        ax: Axes,
+        agents: list[Agent] | None = None,
+        *,
+        trajectory: bool = False,
+        **kwargs: dict,
+    ) -> None:
         """Plot the room on a given matplotlib axis."""
         if not self.walls:
             msg = "Cannot plot room without walls."
@@ -133,6 +144,16 @@ class Room:
                 linewidth=kwargs.get("door_width", 2),
             )
 
+        for content in self.contents:
+            ax.scatter(
+                content.position[0],
+                content.position[1],
+                marker=content.marker_type,
+                color=content.color,
+                s=content.marker_size,
+                label=f"{content.content_type.name} ({content.content_id})",
+            )
+
         if agents is None:
             return
 
@@ -142,6 +163,8 @@ class Room:
                 and agent.location.floor == self.floor
             ) and self.contains_point((agent.location.x, agent.location.y)):
                 agent.plot_agent(ax)
+                if trajectory:
+                    agent.plot_trajectory(ax)
 
     def contains_point(self, point: tuple[float, float]) -> bool:
         """Check if a given point is inside the room."""
@@ -151,25 +174,25 @@ class Room:
 
         return self.region.contains(shapely.geometry.Point(point))
 
-    def get_random_point(
-        self, rng: np.random.Generator | None = None, max_attempts: int = 1000
-    ) -> tuple[float, float]:
+    def get_random_point(self, max_attempts: int = 1000) -> tuple[float, float]:
         """Get a random point within the room."""
         if not self.walls:
             msg = "Cannot get random point without walls."
             raise SimulationModeError(msg)
-
-        if rng is None:
-            rng = np.random.default_rng()
 
         minx, miny, maxx, maxy = self.region.bounds
 
         for _ in range(max_attempts):
             # If required later... Improve efficiency using batching or spatial indexing
             random_point = shapely.geometry.Point(
-                rng.uniform(minx, maxx), rng.uniform(miny, maxy)
+                self.rng_generator.uniform(minx, maxx),
+                self.rng_generator.uniform(miny, maxy),
             )
-            if self.region.contains(random_point):
+            if self.region.contains(
+                random_point
+            ) and not Location.check_intersection_with_walls(
+                random_point.x, random_point.y, 0.1, self.walls
+            ):
                 return (random_point.x, random_point.y)
 
         msg = f"""
@@ -192,3 +215,14 @@ class Room:
         door = self.doors[0]
         midpoint = door.line.interpolate(0.5, normalized=True)
         return (door, (midpoint.x, midpoint.y))
+
+    def validate_contents(self) -> None:
+        """Validate that all contents are located within the room."""
+        if not self.walls:
+            return
+
+        for content in self.contents:
+            if not self.contains_point(content.position):
+                msg = f"Content {content.content_id} of type {content.content_type} "
+                msg += f"is located at {content.position}, which is outside the room."
+                raise InvalidRoomError(msg)

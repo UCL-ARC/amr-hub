@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import IntEnum
 from typing import TYPE_CHECKING
 
+import numpy as np
 from matplotlib import pyplot as plt
 
 from amr_hub_abm.exceptions import TimeError
@@ -21,11 +21,11 @@ if TYPE_CHECKING:
     from amr_hub_abm.space.room import Room
 
 
-class SimulationMode(Enum):
+class SimulationMode(IntEnum):
     """Enumeration of simulation modes."""
 
-    SPATIAL = "spatial"
-    TOPOLOGICAL = "topological"
+    SPATIAL = 0
+    TOPOLOGICAL = 1
 
 
 # --8<--- [start:Simulation]
@@ -42,6 +42,8 @@ class Simulation:
 
     total_simulation_time: int
 
+    rng_generator: np.random.Generator
+
     time: int = field(default=0, init=False)
 
     # --8<--- [end:Simulation]
@@ -53,17 +55,19 @@ class Simulation:
             raise TimeError(msg)
 
         # randomize agent order each step to avoid bias
-        random.shuffle(self.agents)
+        self.rng_generator.shuffle(self.agents)
 
         for agent in self.agents:
-            agent.perform_task(current_time=self.time, rooms=self.rooms)
+            agent.perform_task(current_time=self.time, record=record)
 
         if plot_path is not None:
             self.plot_current_state(directory_path=plot_path)
 
         self.time += 1
 
-    def plot_current_state(self, directory_path: Path) -> None:
+    def plot_current_state(
+        self, directory_path: Path, *, trajectory: bool = False
+    ) -> None:
         """Plot the current state of the simulation."""
         if directory_path.suffix != "":
             msg = f"The path {directory_path} is not a directory."
@@ -72,14 +76,16 @@ class Simulation:
 
         for building in self.space:
             axes: list[Axes] = [plt.subplots(nrows=len(building.floors), ncols=1)[1]]
-            building.plot_building(axes=axes, agents=self.agents)
+            building.plot_building(axes=axes, agents=self.agents, trajectory=trajectory)
             simulation_name = f"Simulation: {self.name}"
-            time = f"Time: {self.time}/{self.total_simulation_time}"
-            plt.suptitle(f"{simulation_name} | {time}")
-            plt.savefig(
-                directory_path
-                / f"plot_{self.name}_building_{building.name}_time_{self.time}.png"
-            )
+            if trajectory:
+                simulation_name += " | Agent Trajectories"
+                filename = f"{building.name}_trajectories.png"
+            else:
+                simulation_name += f" | Time: {self.time}/{self.total_simulation_time}"
+                filename = f"{building.name}_time_{self.time}.png"
+            plt.suptitle(simulation_name)
+            plt.savefig(directory_path / filename)
             plt.close()
 
     def __repr__(self) -> str:
@@ -104,3 +110,32 @@ class Simulation:
             for floor in building.floors:
                 all_rooms.extend(floor.rooms)
         return all_rooms
+
+    def record_agent_states(self, file_path: Path) -> None:
+        """Record the states of all agents at the current time step to a CSV file."""
+        for agent in self.agents:
+            agent_filename = (
+                file_path.parent
+                / f"agent_{agent.agent_type.value}_{agent.idx}_trajectory.csv"
+            )
+
+            np.savetxt(
+                agent_filename,
+                np.column_stack(
+                    [
+                        np.arange(len(agent.trajectory.position)),
+                        agent.trajectory.building,
+                        agent.trajectory.floor,
+                        agent.trajectory.position,
+                        agent.trajectory.heading.T.flatten(),
+                        agent.trajectory.infection_status,
+                    ]
+                ),
+                delimiter=",",
+                header="time,building,floor,x,y,heading,infection_status",
+                comments="",
+            )
+
+    def plot_agent_trajectories(self, output_file: Path) -> None:
+        """Plot the trajectories of all agents from a recorded CSV file."""
+        self.plot_current_state(directory_path=output_file.parent, trajectory=True)

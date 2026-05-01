@@ -4,47 +4,95 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import IntEnum
 from typing import TYPE_CHECKING, ClassVar
 
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.location import Location
 
-logger = logging.getLogger(__name__)
-
 if TYPE_CHECKING:
     from amr_hub_abm.agent import Agent
+    from amr_hub_abm.space.content import Content
     from amr_hub_abm.space.door import Door
+    from amr_hub_abm.space.room import Room
 
 
-class TaskProgress(Enum):
+logger = logging.getLogger(__name__)
+
+
+def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
+    """Remove the agent's occupancy from any content they are currently occupying."""
+    room = agent.get_room()
+    if room is None:
+        return
+    for content in room.contents:
+        if content.occupier_id == (agent.idx, agent.agent_type):
+            content.occupier_id = None
+            agent.stationary = False
+            logger.info(
+                """
+                Agent id %s removed occupancy from content id %s of type %s
+                in room %s at time %d.
+                """,
+                agent.idx,
+                content.content_id,
+                content.content_type,
+                room.name,
+                current_time,
+            )
+            return
+
+
+def add_agent_occupancy(agent: Agent, content: Content, current_time: int) -> None:
+    """Add the agent's occupancy to the specified content."""
+    content.occupier_id = (agent.idx, agent.agent_type)
+    agent.stationary = True
+
+    room = agent.get_room()
+    room_name = "unknown" if room is None else room.name
+
+    logger.info(
+        """
+        Agent id %s added occupancy to content id %s of type %s
+        in room %s at time %d.
+        """,
+        agent.idx,
+        content.content_id,
+        content.content_type,
+        room_name,
+        current_time,
+    )
+
+
+class TaskProgress(IntEnum):
     """Enumeration of possible task progress states."""
 
-    NOT_STARTED = "not_started"
-    MOVING_TO_LOCATION = "moving_to_location"
-    SUSPENDED = "suspended"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
+    NOT_STARTED = 0
+    MOVING_TO_LOCATION = 1
+    SUSPENDED = 2
+    IN_PROGRESS = 3
+    COMPLETED = 4
 
 
-class TaskType(Enum):
+class TaskType(IntEnum):
     """Enumeration of possible task types."""
 
-    GENERIC = "generic"
-    OFFICE_WORK = "office_work"
-    NURSE_ROUND = "nurse_round"
-    ATTEND_PATIENT = "attend_patient"
-    GOTO_LOCATION = "goto_location"
-    GOTO_AGENT = "goto_agent"
-    ATTEND_BELL = "attend_bell"
-    STAY_IN_BED = "stay_in_bed"
-    STAY_IN_ROOM = "stay_in_room"
-    INTERACT_WITH_AGENT = "interact_with_agent"
-    DOOR_ACCESS = "door_access"
-    WORKSTATION = "workstation"
+    GENERIC = 0
+    OFFICE_WORK = 1
+    NURSE_ROUND = 2
+    ATTEND_PATIENT = 3
+    GOTO_LOCATION = 4
+    GOTO_AGENT = 5
+    ATTEND_BELL = 6
+    STAY_IN_BED = 7
+    STAY_IN_ROOM = 8
+    INTERACT_WITH_AGENT = 9
+    DOOR_ACCESS = 10
+    WORKSTATION = 11
+    OCCUPY_CONTENT = 12
 
 
-class TaskPriority(Enum):
+class TaskPriority(IntEnum):
     """Enumeration of possible task priority levels."""
 
     LOW = 1
@@ -98,7 +146,15 @@ class Task:
 
         if time_spent >= self.time_needed:
             self.progress = TaskProgress.COMPLETED
+            logger.info(
+                "Task %s completed for Agent id %s at time %d.",
+                self.task_type.name,
+                agent.idx,
+                current_time,
+            )
             self.time_completed = current_time
+            if isinstance(self, TaskOccupyContent):
+                add_agent_occupancy(agent, self.content, current_time=current_time)
             return
 
         if self.progress == TaskProgress.IN_PROGRESS:
@@ -112,12 +168,17 @@ class Task:
 
         if not agent.check_if_location_reached(self.location):
             self.progress = TaskProgress.MOVING_TO_LOCATION
+            if isinstance(self, TaskDoorAccess):
+                self.modify_location(agent)
+            remove_agent_occupancy(agent, current_time=current_time)
             logger.info(
                 "Agent id %s moving to task location %s.", agent.idx, self.location
             )
             agent.head_to_point((self.location.x, self.location.y))
             agent.move_one_step()
             return
+        self.progress = TaskProgress.IN_PROGRESS
+        self.time_started = current_time
 
         if self.progress == TaskProgress.MOVING_TO_LOCATION:
             self.progress = TaskProgress.IN_PROGRESS
@@ -166,6 +227,8 @@ class TaskDoorAccess(Task):
     door: Door
     building: str
     floor: int
+    destination_room: int
+    buffer_distance: float = 0.05
 
     def __post_init__(self) -> None:
         """Post-initialization to set the task location."""
@@ -182,6 +245,43 @@ class TaskDoorAccess(Task):
             y=(self.door.start[1] + self.door.end[1]) / 2,
         )
 
+    def modify_location(self, agent: Agent) -> None:
+        """Modify the location of the task to account for buffer."""
+        if self.door.start is None:
+            msg = "Door coords needed"
+            raise SimulationModeError(msg)
+
+        if self.door.end is None:
+            msg = "Door coords needed"
+            raise SimulationModeError(msg)
+
+        proposed_location1 = Location(
+            building=self.building,
+            floor=self.floor,
+            x=(self.door.start[0] + self.door.end[0]) / 2,
+            y=(self.door.start[1] + self.door.end[1]) / 2 + self.buffer_distance,
+        )
+
+        proposed_location2 = Location(
+            building=self.building,
+            floor=self.floor,
+            x=(self.door.start[0] + self.door.end[0]) / 2,
+            y=(self.door.start[1] + self.door.end[1]) / 2 - self.buffer_distance,
+        )
+
+        proposed_location1_room = agent.get_room(
+            (proposed_location1.x, proposed_location1.y)
+        )
+
+        if proposed_location1_room is None:
+            msg = "Proposed location 1 does not correspond to a valid room."
+            raise SimulationModeError(msg)
+
+        if proposed_location1_room.room_id == self.destination_room:
+            self.location = proposed_location1
+        else:
+            self.location = proposed_location2
+
 
 @dataclass
 class TaskWorkstation(Task):
@@ -194,3 +294,39 @@ class TaskWorkstation(Task):
         """Post-initialization to set the task location."""
         super().__post_init__()
         self.location = self.workstation_location
+
+
+@dataclass
+class TaskOccupyContent(Task):
+    """Representation of an 'occupy content' task."""
+
+    task_type: ClassVar[TaskType] = TaskType.OCCUPY_CONTENT
+    content_type: int
+    room: Room
+    content: Content = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Post-initialization to set the task location."""
+        super().__post_init__()
+
+    def assign_content(self) -> None:
+        """Assign the content to be occupied based on the content type and room."""
+        content = next(
+            (c for c in self.room.contents if c.content_type == self.content_type), None
+        )
+
+        if content is None:
+            msg = (
+                f"No content of type {self.content_type} found in {self.room.name} "
+                f"for 'occupy_content' task."
+            )
+            raise SimulationModeError(msg)
+
+        self.content = content
+
+        self.location = Location(
+            building=self.content.location.building,
+            floor=self.content.location.floor,
+            x=self.content.location.x,
+            y=self.content.location.y,
+        )
