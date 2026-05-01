@@ -48,7 +48,7 @@ class Simulation:
 
     # --8<--- [end:Simulation]
 
-    def step(self, plot_path: Path | None = None) -> None:
+    def step(self, plot_path: Path | None = None, *, record: bool = False) -> None:
         """Advance the simulation by one time step."""
         if self.time >= self.total_simulation_time:
             msg = "Simulation has already reached its total simulation time."
