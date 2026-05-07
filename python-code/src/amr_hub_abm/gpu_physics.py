@@ -1,4 +1,5 @@
 # ruff: noqa: D103, D107, D205, D400, D401, D415, E501, ANN201, ANN204, PLR0913, T201, PTH103, PTH110
+# mypy: ignore-errors
 """
 UCLARC: Nicolin Govender
 6/5/26

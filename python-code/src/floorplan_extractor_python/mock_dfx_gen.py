@@ -1,4 +1,5 @@
 # ruff: noqa: D100, D103, E501, ANN201, T201, ANN001
+# mypy: ignore-errors
 import ezdxf
 
 

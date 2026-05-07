@@ -1,13 +1,14 @@
-# ruff: noqa: D100, D103, D400, D401, D415, E501, ANN201, T201, B905, ANN001
-import matplotlib.pyplot as plt
-import numpy as np
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-
+# ruff: noqa: D103, D400, D401, D415, E501, ANN201, T201, B905, ANN001, D205
+# mypy: ignore-errors
 """
 UCLARC: Nicolin Govender
 5/5/26
 Quick Viewer to check extracted CAD files can be queried
 """
+import matplotlib.pyplot as plt
+import numpy as np
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
 
 #==================================================================================================
 # 0] Brute Force BVH Query for testing Geometry

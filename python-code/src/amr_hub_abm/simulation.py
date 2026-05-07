@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -45,7 +45,7 @@ class Simulation:
 
     # NG Added Flag for GPU Acceleration
     use_gpu: bool = field(default=False)
-    gpu_engine: object = field(default=None, init=False)
+    gpu_engine: Any = field(default=None, init=False)
 
     def step(
         self,
@@ -69,7 +69,9 @@ class Simulation:
         # Take GPU Path
             if self.gpu_engine is None:
                 # ruff: noqa: PLC0415
-                from amr_hub_abm.gpu_physics import GPUPhysicsEngine
+                from amr_hub_abm.gpu_physics import (
+                    GPUPhysicsEngine,
+                )
                 self.gpu_engine = GPUPhysicsEngine() # Loads npz floor plan
 
             self.gpu_engine.step_physics(self.agents) # Takes the step and query

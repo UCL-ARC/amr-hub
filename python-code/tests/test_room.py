@@ -648,7 +648,7 @@ def test_get_random_point_raises_after_max_attempts(
         walls=square_4x4_walls,
         doors=[],
         contents=[],
-        rng_generator=AlwaysLowRNG(),  # type: ignore[assignment]
+        rng_generator=AlwaysLowRNG(),  # type: ignore[arg-type]
     )
 
     with pytest.raises(SimulationModeError) as exc_info:

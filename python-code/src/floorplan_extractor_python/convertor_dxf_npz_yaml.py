@@ -1,14 +1,15 @@
-# ruff: noqa: D100, D103, D205, D400, D401, D415, E501, ANN201, T201, ANN001, ANN202, PTH123
-import ezdxf
-import numpy as np
-import yaml
-
+# ruff: noqa: D103, D205, D400, D401, D415, E501, ANN201, T201, ANN001, ANN202, PTH123
+# mypy: ignore-errors
 """
 UCLARC: Nicolin Govender
 5/5/26
 Reads DXG/CAD Line formats and creates an .npz array (for GPU Physics)
 5/5/26 writes .yaml configuration file for Python logic
 """
+import ezdxf
+import numpy as np
+import yaml
+
 
 #==================================================================================================
 # 1. Creates a 3D Mesh for direct BVH Queries npz

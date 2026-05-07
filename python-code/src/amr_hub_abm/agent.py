@@ -128,11 +128,10 @@ class Agent:
     trajectory: Record = field(init=False)
 
     stationary: bool = field(default=False, init=False)
-
     # NG Added for GPU
     use_gpu:   bool = field(default=False)
-    target_x: float = field(init=0.0)
-    target_y: float = field(init=0.0)
+    target_x: float = field(default=0.0)
+    target_y: float = field(default=0.0)
 
     @property
     def heading_degrees(self) -> float:
