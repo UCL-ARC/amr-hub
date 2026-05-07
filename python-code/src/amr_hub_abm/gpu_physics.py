@@ -1,3 +1,4 @@
+# ruff: noqa: D103, D107, D205, D400, D401, D415, E501, ANN201, ANN204, PLR0913, T201, PTH103, PTH110
 """
 UCLARC: Nicolin Govender
 6/5/26
@@ -7,11 +8,11 @@ Calculates HashGrid transmission, executes BVH spatial queries,
 and records telemetry for the HTML dashboard
 """
 
-import warp as wp
+import os
+
 import numpy as np
 import pandas as pd
-import os
-from pathlib import Path
+import warp as wp
 
 #==================================================================================================
 # Call the GPU Driver
@@ -74,7 +75,7 @@ def cuda_warp_kernel_agent_proximity(
         my_floor = floor_ids[tid]
 
         query = wp.hash_grid_query(grid, pos, search_radius)
-        neighbor = int(0)
+        neighbor = wp.int32(0)
 
         while wp.hash_grid_query_next(query, neighbor):
             # Same floor and INFECTED
@@ -103,8 +104,8 @@ class GPUPhysicsEngine:
         geom = np.load(cad_path, allow_pickle=True)
 
         self.mesh = wp.Mesh(
-            points=wp.array(geom['wall_vertices'], dtype=wp.vec3),
-            indices=wp.array(geom['wall_indices'], dtype=wp.int32)
+            points=wp.array(geom["wall_vertices"], dtype=wp.vec3),
+            indices=wp.array(geom["wall_indices"], dtype=wp.int32)
         )
         self.grid = wp.HashGrid(dim_x=128, dim_y=128, dim_z=128)
         self.search_radius = 2.0
@@ -115,7 +116,7 @@ class GPUPhysicsEngine:
 
     #==============================================================================
     def step_physics(self, agents: list):
-        """Sync with CPU """
+        """Sync with CPU"""
         num_agents = len(agents)
         if num_agents == 0:
             return

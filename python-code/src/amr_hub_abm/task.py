@@ -177,7 +177,7 @@ class Task:
             )
 
             # Feature Flag Logic
-            if getattr(agent, 'use_gpu', False):
+            if getattr(agent, "use_gpu", False):
                 # GPU Engine: Just set the intent, do not move the agent
                 agent.target_x = self.location.x
                 agent.target_y = self.location.y

@@ -1,18 +1,17 @@
 """Module to run the AMR Hub ABM simulation."""
 
 import logging
-
 from pathlib import Path
 
 from amr_hub_abm.simulation import Simulation
 from amr_hub_abm.simulation_factory import create_simulation
 
-#logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
 
 def simulate(
-    *, plot: bool = False, record: bool = False, plot_trajectory: bool = False, use_gpu: bool = False
+    *, plot: bool = False, record: bool = False, plot_trajectory: bool = False,
+       use_gpu: bool = False
 ) -> None:
     """Simulate the AMR Hub ABM based on a configuration file."""
     config_path = Path("tests/inputs/simulation_config.yml")
@@ -31,7 +30,7 @@ def simulate(
     if use_gpu:
         logger.info("GPU Acceleration Enabled: Routing physics to NVIDIA Warp")
         if plot or plot_trajectory:
-            logger.warning("Overriding plot flags: Legacy PNG generation is disabled in GPU mode")
+            logger.warning("PNG generation is disabled in GPU mode")
         plot            = False
         plot_trajectory = False
     else:
@@ -77,7 +76,7 @@ def simulate(
     #--------------------------------------------------------------------------
 
     # NG: Writes Results to Disk
-    if getattr(simulation, 'use_gpu', False) and simulation.gpu_engine is not None:
+    if getattr(simulation, "use_gpu", False) and simulation.gpu_engine is not None:
       logger.info("Exporting GPU Telemetry to disk")
       simulation.gpu_engine.export_data(output_dir="simulation_outputs")
 

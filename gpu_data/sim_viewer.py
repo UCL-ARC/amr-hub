@@ -1,3 +1,4 @@
+# ruff: noqa: D100, D103, D400, D401, D415, E501, ANN201, T201, B905, ANN001
 """
 UCLARC: Nicolin Govender
 Updated for GPU-Accelerated AMR-Hub Test Output
@@ -221,7 +222,9 @@ def update_time(n_intervals, selected_event_time, current_time):
     if trigger == 'event-dropdown' and selected_event_time is not None:
         return selected_event_time
 
-    if not times: return 0
+    if not times:
+        return 0
+
     closest_time = min(times, key=lambda x: abs(x - current_time))
     idx = times.index(closest_time)
     next_idx = (idx + 500) % len(times)
