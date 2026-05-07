@@ -47,8 +47,14 @@ class Room:
             msg = "Either walls or area must be provided to define a room."
             raise SimulationModeError(msg)
 
-        if self.walls and len(self.walls) < 3:
-            msg = "A room must have at least 3 walls to form a closed region."
+        # NG Added since you need to count doors ( Emergency, sliding etc)
+        #if self.walls and len(self.walls) < 3:
+        #    msg = "A room must have at least 3 walls to form a closed region."
+        #    raise InvalidRoomError(msg)
+
+        total_boundaries = len(self.walls) + len(self.doors)
+        if total_boundaries < 3:
+            msg = f"Invalid room definition for '{self.name}': A room must have at least 3 boundaries to form a closed region. Found {len(self.walls)} walls and {len(self.doors)} doors."
             raise InvalidRoomError(msg)
 
         if self.walls and self.area:
@@ -98,23 +104,43 @@ class Room:
         """Create a unique hash for the room based on its name."""
         return hashlib.sha256(self.name.encode("utf-8")).hexdigest()
 
-    def form_region(self) -> shapely.geometry.Polygon:
-        """Get the polygonal region of the room based on its walls."""
-        if self.walls is None:
-            msg = "Cannot form region without walls."
-            raise InvalidRoomError(msg)
+    # NG Updated to be general and more robust
+    def form_region(self):
+        """Forms a closed polygon region from the room's boundaries."""
+        from shapely.ops import polygonize, unary_union
+        from shapely.geometry import MultiLineString
+        import logging
 
-        merged_lines = shapely.ops.linemerge(
-            [wall.line for wall in self.walls] + [door.line for door in self.doors]
+        boundary_lines = [wall.line for wall in self.walls] + [door.line for door in self.doors]
+
+        if not boundary_lines:
+            raise InvalidRoomError(f"Room '{self.name}' has no physical boundaries.")
+
+        # 1. Try the strict approach: Node the lines together and polygonize
+        merged_lines = unary_union(boundary_lines)
+        polygons = list(polygonize(merged_lines))
+
+        if polygons:
+            # Sort by area in case it found multiple small fragments, grab the biggest one
+            polygons.sort(key=lambda p: p.area, reverse=True)
+            return polygons[0]
+
+        # 2. The Convex Hull
+        # If the CAD lines have tiny gaps or missing shared walls, wrap a polygon around the extents
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            f"⚠Room '{self.name}' boundaries do not perfectly connect"
+            "Approximating floor area using Convex Hull"
         )
 
-        polygon = shapely.ops.polygonize(merged_lines)
+        fallback_polygon = MultiLineString(boundary_lines).convex_hull
 
-        if len(polygon) == 0:
-            msg = "The walls do not form a valid closed region."
+        # If it's a perfectly flat line, it can't be a room
+        if fallback_polygon.geom_type != 'Polygon' or fallback_polygon.is_empty:
+            msg = f"Invalid room definition for '{self.name}': The lines do not enclose any space"
             raise InvalidRoomError(msg)
 
-        return polygon[0]
+        return fallback_polygon
 
     def plot(
         self,
