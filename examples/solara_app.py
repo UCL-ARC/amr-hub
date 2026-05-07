@@ -33,7 +33,7 @@ def FloorplanComponent(model: HospitalABM) -> None:
 
 page = SolaraViz(
     HospitalABM(),
-    components=[FloorplanComponent],
+    components=[FloorplanComponent], # pyright: ignore[reportArgumentType]
     name="AMR-HUB Hospital Simulation",
     play_interval=50,
     render_interval=1000,
