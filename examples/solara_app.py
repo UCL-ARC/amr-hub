@@ -9,7 +9,7 @@ from mesa.visualization.utils import update_counter
 from amr_hub_abm.mesa_wrapper import HospitalABM
 
 
-@solara.component
+@solara.component # pyright: ignore[reportPrivateImportUsage]
 def FloorplanComponent(model: HospitalABM) -> None:
     """Render the hospital floorplan with current agent positions."""
     update_counter.get()  # subscribe to step events
