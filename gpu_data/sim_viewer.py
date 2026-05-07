@@ -49,8 +49,8 @@ if len(dup_agents) > 0:
         mask = df['agent_id'] == aid
         subset = df[mask].sort_values('time')
 
-        last_pos = {}
-        resolved_ids = []
+        last_pos: dict[str, tuple[float, float]] = {}
+        resolved_ids: list[str] = []
 
         # 1. Map physical paths via Nearest-Neighbor
         for t, group in subset.groupby('time'):
