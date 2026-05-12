@@ -41,10 +41,14 @@ classifiers = [
   "Typing :: Typed"
 ]
 dependencies = [
+  "flax>=0.12.7",
   "geopandas>=1.1.2",
+  "jax>=0.10.0",
   "matplotlib>=3.10.7",
   "mesa[viz]>=3.5.1",
   "networkx>=3.6.1",
+  "numpy>=2.4.3",
+  "optax>=0.2.8",
   "pandas>=2.3.3",
   "pyyaml>=6.0.3",
   "shapely>=2.1.2",
