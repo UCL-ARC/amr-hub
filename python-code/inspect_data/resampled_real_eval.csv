@@ -1,0 +1,18 @@
+source,shift_idx,step_idx,time,zone,event_type,time_bucket
+real_eval,0,0,2024-01-01T17:00:00,Corridor,door_access,2
+real_eval,0,1,2024-01-01T17:15:00,Corridor,none,2
+real_eval,0,2,2024-01-01T17:30:00,Corridor,none,2
+real_eval,0,3,2024-01-01T17:45:00,Corridor,none,2
+real_eval,0,4,2024-01-01T18:00:00,Ward,attend_patient,3
+real_eval,0,5,2024-01-01T18:15:00,Ward,attend_patient,3
+real_eval,0,6,2024-01-01T18:30:00,Ward,attend_patient,3
+real_eval,0,7,2024-01-01T18:45:00,Ward,attend_patient,3
+real_eval,0,8,2024-01-01T19:00:00,Ward,attend_patient,3
+real_eval,0,9,2024-01-01T19:15:00,Ward,attend_patient,3
+real_eval,0,10,2024-01-01T19:30:00,Ward,door_access,3
+real_eval,0,11,2024-01-01T19:45:00,Ward,none,3
+real_eval,0,12,2024-01-01T20:00:00,Corridor,door_access,3
+real_eval,0,13,2024-01-01T20:15:00,Corridor,none,3
+real_eval,0,14,2024-01-01T20:30:00,Corridor,none,3
+real_eval,0,15,2024-01-01T20:45:00,Corridor,none,3
+real_eval,0,16,2024-01-01T21:00:00,Staff Room,none,3
