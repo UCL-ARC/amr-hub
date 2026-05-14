@@ -1,9 +1,7 @@
 // .devcontainer/devcontainer.json
 {
   "name": "AMR Hub",
-
   "image": "mcr.microsoft.com/devcontainers/python:3.13",
-
   "customizations": {
     "vscode": {
       "extensions": [
@@ -15,15 +13,12 @@
         "GitHub.copilot",
         "GitHub.vscode-github-actions"
       ],
-
       "settings": {
         "python.defaultInterpreterPath": "python-code/.venv/bin/python",
         "editor.formatOnSave": true,
-
         "[python]": {
           "editor.defaultFormatter": "charliermarsh.ruff"
         },
-
         "editor.codeActionsOnSave": {
           "source.fixAll.ruff": "explicit",
           "source.organizeImports.ruff": "explicit"
@@ -31,6 +26,5 @@
       }
     }
   },
-
   "postCreateCommand": "bash .devcontainer/postCreate.sh"
 }
