@@ -15,7 +15,7 @@
       ],
       "settings": {
         "python.defaultInterpreterPath": "python-code/.venv/bin/python",
-        "editor.formatOnSave": true,
+        "python.formatOnSave": true,
         "[python]": {
           "editor.defaultFormatter": "charliermarsh.ruff"
         },
