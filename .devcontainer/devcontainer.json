@@ -14,7 +14,7 @@
         "GitHub.vscode-github-actions"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "python-code/.venv/bin/python",
+        "python.defaultInterpreterPath": "/workspaces/amr-hub/python-code/.venv/bin/python",
         "python.formatOnSave": true,
         "[python]": {
           "editor.defaultFormatter": "charliermarsh.ruff"
