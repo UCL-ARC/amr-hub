@@ -6,6 +6,7 @@
     "ms-toolsai.jupyter",
     "tamasfe.even-better-toml",
     "GitHub.copilot",
-    "GitHub.vscode-github-actions"
+    "GitHub.vscode-github-actions",
+    "njpwerner.autodocstring"
   ]
 }
