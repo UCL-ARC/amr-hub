@@ -72,7 +72,7 @@ Issue -> Pull Request -> Review -> Merge into main
 
 Very Important:
 
-> [!DANGER]
+> [!CAUTION]
 > This project works with sensitive patient data. Do not ever push data, secrets, or large files to the repository. If you need to share data or secrets for development purposes, please use secure channels outside of the repository. Sharing data or secrets in the repository is a serious breach of security and privacy protocols and will not be tolerated.
 
 ---
@@ -110,7 +110,7 @@ Avoid:
 - combining large refactors with feature additions,
 - and “catch-all” PRs.
 
-> [!NOTE]
+> [!IMPORTANT]
 > Smaller PRs are easier to review, test, and maintain.
 
 ---
