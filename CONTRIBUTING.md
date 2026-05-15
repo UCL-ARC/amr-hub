@@ -27,8 +27,8 @@ This repository prioritises:
 - 🏗️ modular design,
 - and 🕰️ long-term maintainability over short-term convenience.
 
-!!! note
-Passing `ruff`, `mypy`, and tests is a **necessary but not sufficient** condition for merging code.
+> [!NOTE]
+> Passing `ruff`, `mypy`, and tests is a **necessary but not sufficient** condition for merging code.
 
 Code should also be:
 
@@ -37,8 +37,8 @@ Code should also be:
 - scientifically justifiable,
 - and maintainable by future contributors.
 
-!!! tip
-Most linting, formatting, code-quality, typing, and docstring requirements can be automatically handled by extensions and tooling available in modern IDEs.
+> [!TIP]
+> Most linting, formatting, code-quality, typing, and docstring requirements can be automatically handled by extensions and tooling available in modern IDEs.
 
 ```text id="0h8l7s"
 Recommended setups for :contentReference[oaicite:0]{index=0} are provided in the `.devcontainer/` and `workspace_settings/` folders of this repository.
@@ -65,8 +65,8 @@ Issue -> Pull Request -> Review -> Merge into main
   - the implementation approach,
   - and the testing strategy.
 
-!!! tip
-If you are unsure whether something deserves an issue first, the answer is usually "yes" 🙂
+> [!TIP]
+> If you are unsure whether something deserves an issue first, the answer is usually "yes" 🙂
 
 ---
 
@@ -79,8 +79,8 @@ For larger features or architectural changes:
 3. Break large work into smaller sub-issues where appropriate.
 4. Submit focused PRs linked to those issues.
 
-!!! warning
-Large architectural changes submitted without prior discussion may require substantial revision before merging.
+> [!WARNING]
+> Large architectural changes submitted without prior discussion may require substantial revision before merging.
 
 ---
 
@@ -103,8 +103,8 @@ Avoid:
 - combining large refactors with feature additions,
 - and “catch-all” PRs.
 
-!!! note
-Smaller PRs are easier to review, test, and maintain.
+> [!NOTE]
+> Smaller PRs are easier to review, test, and maintain.
 
 ---
 
@@ -114,8 +114,8 @@ Draft/WIP PRs are completely acceptable and encouraged.
 
 WIP commits are also acceptable.
 
-!!! tip
-Early feedback is usually better than late feedback.
+> [!TIP]
+> Early feedback is usually better than late feedback.
 
 ---
 
@@ -166,11 +166,13 @@ make pre-commit
 make tests
 ```
 
-!!! danger
-PRs with failing tests or failing pre-commit checks should not be merged.
+> [!DANGER]
+> PRs with failing tests or failing pre-commit checks should not be merged.
 
-!!! note
-If you are unsure how to resolve failures, please ask for help in the issue or PR discussion.
+Also,
+
+> [!NOTE]
+> If you are unsure how to resolve failures, please ask for help in the issue or PR discussion.
 
 ---
 
@@ -187,8 +189,8 @@ Where practical:
 - random behaviour should be controllable,
 - and scientific assumptions should be explicit.
 
-!!! tip
-Good tests are part of the scientific reliability of the project.
+> [!TIP]
+> Good tests are part of the scientific reliability of the project.
 
 ---
 
@@ -204,8 +206,8 @@ Contributors are expected to:
 - avoid unnecessary `Any`,
 - and write code that passes `mypy`.
 
-!!! warning
-Untyped code will usually require strong justification.
+> [!WARNING]
+> Untyped code will usually require strong justification.
 
 ---
 
@@ -224,8 +226,8 @@ Avoid:
 - deeply nested logic,
 - and premature optimisation.
 
-!!! note
-Readability is a feature.
+> [!NOTE]
+> Readability is a feature.
 
 ---
 
@@ -287,8 +289,8 @@ def move_agent(agent: Agent, step_size: float) -> Coordinates:
     """
 ```
 
-!!! tip
-Good docstrings help both developers and researchers understand modelling assumptions and simulation behaviour.
+> [!TIP]
+> Good docstrings help both developers and researchers understand modelling assumptions and simulation behaviour.
 
 ---
 
@@ -340,8 +342,8 @@ When implementing modelling behaviour:
 - stochastic behaviour should be controlled where practical,
 - and limitations should be acknowledged clearly.
 
-!!! warning
-Scientific correctness takes priority over convenience.
+> [!WARNING]
+> Scientific correctness takes priority over convenience.
 
 ---
 
@@ -359,8 +361,8 @@ If you are unsure about:
 
 please open an issue or start a discussion before investing significant development effort.
 
-!!! tip
-We would much rather discuss early than rewrite large PRs later 🙂
+> [!TIP]
+> We would much rather discuss early than rewrite large PRs later 🙂
 
 ---
 
