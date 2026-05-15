@@ -25,7 +25,7 @@ This repository prioritises:
 - 🧪 extensive testing,
 - 📚 clear documentation,
 - 🏗️ modular design,
-- and 🕰️ long-term maintainability over short-term convenience.
+- 🕰️ long-term maintainability over short-term convenience.
 
 > [!NOTE]
 > Passing `ruff`, `mypy`, and tests is a **necessary but not sufficient** condition for merging code.
@@ -40,9 +40,10 @@ Code should also be:
 > [!TIP]
 > Most linting, formatting, code-quality, typing, and docstring requirements can be automatically handled by extensions and tooling available in modern IDEs.
 
-```text id="0h8l7s"
-Recommended setups for :contentReference[oaicite:0]{index=0} are provided in the `.devcontainer/` and `workspace_settings/` folders of this repository.
-```
+Want an easy setup?
+
+> [!TIP]
+> Recommended setups for development in VS Code are provided in the `.devcontainer/` and `workspace_settings/` folders of this repository.
 
 ---
 
@@ -59,6 +60,7 @@ Issue -> Pull Request -> Review -> Merge into main
 - 🔒 `main` is protected.
 - 🚫 Direct pushes to `main` are not allowed.
 - 🚫 Force pushes are not allowed.
+- 🚫 Never ever push data, secrets, or large files to the repository.
 - 🔗 Every PR should link to an issue.
 - 📝 Either the issue or the PR description must contain sufficient detail for reviewers to understand:
   - the motivation,
@@ -67,6 +69,11 @@ Issue -> Pull Request -> Review -> Merge into main
 
 > [!TIP]
 > If you are unsure whether something deserves an issue first, the answer is usually "yes" 🙂
+
+Very Important:
+
+> [!DANGER]
+> This project works with sensitive patient data. Do not ever push data, secrets, or large files to the repository. If you need to share data or secrets for development purposes, please use secure channels outside of the repository. Sharing data or secrets in the repository is a serious breach of security and privacy protocols and will not be tolerated.
 
 ---
 
