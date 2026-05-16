@@ -1,4 +1,13 @@
-"""Module to represent an agent in the AMR Hub ABM simulation."""
+"""
+Module to represent an agent in the AMR Hub ABM simulation.
+
+This module defines the `Agent` class, which represents an individual agent in the
+simulation. The `Agent` class includes attributes for the agent's location, heading,
+tasks, and infection status, as well as methods for moving the agent, performing
+tasks, and recording the agent's state over time. The module also defines related
+classes and enumerations, such as `AgentType`, `InfectionStatus`, and `Record`, to
+support the functionality of the `Agent` class.
+"""
 
 from __future__ import annotations
 
