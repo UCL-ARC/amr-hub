@@ -6,7 +6,6 @@ import logging
 import math
 from dataclasses import dataclass, field, replace
 from enum import IntEnum
-from logging import getLogger
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -37,7 +36,7 @@ if TYPE_CHECKING:
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
 
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class AgentType(IntEnum):
