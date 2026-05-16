@@ -4,7 +4,7 @@
 [![Tests status][tests-badge]][tests-link]
 [![Linting status][linting-badge]][linting-link]
 [![Documentation status][documentation-badge]][documentation-link]
-[![License][license-badge]](./LICENSE.md)
+[![License][license-badge]][license-link]
 
 <!-- prettier-ignore-start -->
 [tests-badge]:              https://github.com/UCL-ARC/amr-hub/actions/workflows/tests.yml/badge.svg
@@ -14,6 +14,7 @@
 [documentation-badge]:      https://github.com/UCL-ARC/amr-hub/actions/workflows/docs.yml/badge.svg
 [documentation-link]:       https://github.com/UCL-ARC/amr-hub/actions/workflows/docs.yml
 [license-badge]:            https://img.shields.io/badge/License-MIT-yellow.svg
+[license-link]:             https://github.com/UCL-ARC/amr-hub/blob/main/LICENSE
 <!-- prettier-ignore-end -->
 
 An agent-based model (ABM) for simulating the spread of Antimicrobial Resistant (AMR) infections in hospital settings.
@@ -201,7 +202,7 @@ Please make sure to:
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the MIT License.
 
 ## Acknowledgments
 
