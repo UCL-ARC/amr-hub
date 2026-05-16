@@ -167,10 +167,8 @@ uv sync --group dev --group test
 Contributors should run:
 
 ```bash id="1qujlwm"
-cd python-code
-
 make pre-commit
-make tests
+make test
 ```
 
 > [!DANGER]
