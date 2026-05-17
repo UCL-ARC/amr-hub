@@ -77,10 +77,10 @@ class Record:
     """
     Representation of a record of an agent's state at a given time step.
 
-    Attributes
+    Parameters
     ----------
-        total_time: int
-            The total number of time steps for which to record the agent's state.
+    total_time: int
+        The total number of time steps for which to record the agent's state.
 
     """
 
@@ -278,7 +278,7 @@ class Agent:
         Parameters
         ----------
         target_location : Location
-                The target location to check against the agent's current location.
+            The target location to check against the agent's current location.
 
         Returns
         -------

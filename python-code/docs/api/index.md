@@ -4,3 +4,4 @@ This section provides a comprehensive reference for the AMR-Hub API, detailing t
 
 [Agent Dataclass](agent.md)
 [Exceptions](exceptions.md)
+[Space Input Reader](space_input_reader.md)
