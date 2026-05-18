@@ -130,7 +130,7 @@ class Agent:
     infection_status: InfectionStatus = field(default=InfectionStatus.SUSCEPTIBLE)
     infection_details: dict = field(default_factory=dict)
 
-    movement_speed: float = field(default=0.1)  # units per time step
+    movement_speed: float = field(default=0.001)  # units per time step
 
     trajectory_length: int = field(default=0)
     trajectory: Record = field(init=False)

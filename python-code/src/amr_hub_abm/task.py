@@ -114,15 +114,27 @@ class Task:
 
     location: Location = field(init=False)
 
-    time_started: int = field(init=False)
-    time_completed: int = field(init=False)
+    time_started: int | None = field(init=False, default=None)
+    time_completed: int | None = field(init=False, default=None)
 
     def time_spent(self, current_time: int) -> int:
         """Calculate the time spent on the task so far."""
         if self.progress == TaskProgress.COMPLETED:
+            if self.time_started is None:
+                msg = "Task marked as completed but start time is None."
+                raise TimeError(msg)
+
+            if self.time_completed is None:
+                msg = "Task marked as completed but completion time is None."
+                raise TimeError(msg)
+
             return self.time_completed - self.time_started
 
         if self.progress == TaskProgress.IN_PROGRESS:
+            if self.time_started is None:
+                msg = "Task marked as in progress but start time is None."
+                raise TimeError(msg)
+
             return current_time - self.time_started
 
         return 0
