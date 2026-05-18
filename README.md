@@ -1,4 +1,6 @@
-# amr-hub
+# AMR-Hub Project
+
+Welcome to the AMR-Hub Project. We aim to model the transmission of Anti-Microbial Resistance in Hospitals.
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 

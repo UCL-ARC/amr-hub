@@ -114,6 +114,7 @@ class Record:
         self.infection_status[time] = infection_status.value
 
 
+# --8<--- [start:Agent]
 @dataclass
 class Agent:
     """Representation of an agent in the AMR Hub ABM simulation."""
@@ -132,6 +133,7 @@ class Agent:
 
     movement_speed: float = field(default=0.001)  # units per time step
 
+    # --8<--- [end:Agent]
     trajectory_length: int = field(default=0)
     trajectory: Record = field(init=False)
 

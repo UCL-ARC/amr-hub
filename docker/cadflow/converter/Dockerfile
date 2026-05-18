@@ -1,7 +1,7 @@
 FROM debian:stable-slim
 
-ARG ODA_VER=26.10
-ARG ODA_DEB_URL="https://www.opendesign.com/guestfiles/get?filename=ODAFileConverter_QT6_lnxX64_8.3dll_${ODA_VER}.deb"
+ARG ODA_VER
+ARG ODA_DEB_URL=""
 ARG ODA_SHA256=""
 
 # Runtime deps: Xvfb headless X, OpenGL/X11/XCB stack, Mesa software GL, image libs, fonts
@@ -19,17 +19,35 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-dejavu-core \
  && rm -rf /var/lib/apt/lists/*
 
-# Fetch and lay out ODA File Converter
+# Fetch and lay out ODA File Converter.
+#
+# ODA_VER is normally supplied from config/oda.env via the Makefile/Compose.
+# ODA_DEB_URL can be supplied to override the standard ODA guestfiles URL.
 RUN set -eux; \
-    curl -fsSL "$ODA_DEB_URL" -o /tmp/odafc.deb; \
+    if [ -z "$ODA_DEB_URL" ]; then \
+      if [ -z "$ODA_VER" ]; then \
+        echo "Either ODA_VER or ODA_DEB_URL must be supplied." >&2; \
+        echo "Set ODA_VER in config/oda.env, or pass ODA_DEB_URL as a build argument." >&2; \
+        exit 1; \
+      fi; \
+      ODA_DEB_URL="https://www.opendesign.com/guestfiles/get?filename=ODAFileConverter_QT6_lnxX64_8.3dll_${ODA_VER}.deb"; \
+    fi; \
+    echo "Downloading ODA File Converter from: $ODA_DEB_URL"; \
+    curl -fL "$ODA_DEB_URL" -o /tmp/odafc.deb; \
     if [ -n "$ODA_SHA256" ]; then echo "${ODA_SHA256}  /tmp/odafc.deb" | sha256sum -c -; fi; \
-    dpkg-deb -x /tmp/odafc.deb /opt/odafc-unpack; \
-    install -d /opt/oda-file-converter; \
-    srcdir="$(dirname "$(find /opt/odafc-unpack -type f -name ODAFileConverter -print -quit)")"; \
-    cp -a "${srcdir}/." /opt/oda-file-converter/; \
-    ln -sf /opt/oda-file-converter/ODAFileConverter /usr/local/bin/oda-file-converter; \
-    ln -sf /usr/local/bin/oda-file-converter /usr/local/bin/TeighaFileConverter; \
-    rm -rf /opt/odafc-unpack /tmp/odafc.deb
+    dpkg-deb -x /tmp/odafc.deb /; \
+    real_bin="$(find /usr/bin -type f -path '*/ODAFileConverter_*/*' -name ODAFileConverter -print -quit)"; \
+    if [ -z "$real_bin" ]; then \
+      echo "Could not find real ODAFileConverter binary under /usr/bin/ODAFileConverter_*" >&2; \
+      echo "Found candidates:" >&2; \
+      find /usr -name ODAFileConverter -o -name 'ODAFileConverter_*' >&2; \
+      exit 1; \
+    fi; \
+    chmod +x "$real_bin"; \
+    ln -sf "$real_bin" /usr/local/bin/oda-file-converter; \
+    ln -sf "$real_bin" /usr/local/bin/TeighaFileConverter; \
+    rm -f /tmp/odafc.deb; \
+    ls -l /usr/local/bin/oda-file-converter
 
 # TIFF compatibility shim (Qt plugin expects .5, Debian ships .6)
 RUN set -eux; \
