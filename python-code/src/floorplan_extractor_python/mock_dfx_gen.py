@@ -1,11 +1,33 @@
-# ruff: noqa: D100, D103, E501, ANN201, T201, ANN001
-# mypy: ignore-errors
+"""
+Mock DXF Floor Plan Generator for AMR-Hub.
+
+UCLARC: Nicolin Govender (5/5/26)
+Generates a synthetic hospital layout DXF file for testing.
+"""
+
+import logging
+from pathlib import Path
+
 import ezdxf
 
+# Setup standard logger
+logger = logging.getLogger(__name__)
 
-#==================================================================================================
-def generate_complex_hospital(filename="../../../gpu_data/FloorPlan.dxf"):
-    print("Generating FloorPlan")
+# Type Aliases for Strong Typing
+Point2D = tuple[float, float]
+LineSegment = tuple[Point2D, Point2D]
+
+
+# =============================================================================
+def generate_complex_hospital(
+    filename: str = "../../../gpu_data/FloorPlan.dxf",
+) -> None:
+    """
+    Generate a complex mock hospital layout with semantic layers.
+
+    Creates walls, doors, beds, and room labels for validation testing.
+    """
+    logger.info("Generating FloorPlan")
     doc = ezdxf.new("R2010")
     msp = doc.modelspace()
 
@@ -16,59 +38,78 @@ def generate_complex_hospital(filename="../../../gpu_data/FloorPlan.dxf"):
     doc.layers.add("ROOM_LABELS", color=5)
 
     # 1. Walls (Segmented to prevent "Wall Stealing")
-    walls = [
-        # Corridor
-        # (Only the bottom wall remains solid. The open sides will be closed by doors below)
-        ((0, 0), (10, 0)), ((10, 0), (20, 0)),       # Bottom Wall (Segmented for better midpoints)
-
+    walls: list[LineSegment] = [
+        # Corridor bottom wall
+        ((0, 0), (10, 0)),
+        ((10, 0), (20, 0)),
         # ICU Ward
-        ((0, 5), (0, 15)),                           # Left Wall
-        ((0, 15), (10, 15)),                         # Top Wall
-        ((10, 15), (10, 5)),                         # Right Wall (Shared with STD)
-        ((0, 5), (2, 5)), ((3, 5), (10, 5)),         # Bottom Walls (Segmented, leaving 1m gap for Door)
-
+        ((0, 5), (0, 15)),
+        ((0, 15), (10, 15)),
+        ((10, 15), (10, 5)),
+        ((0, 5), (2, 5)),
+        ((3, 5), (10, 5)),
         # Standard Ward
-        ((10, 15), (20, 15)),                        # Top Wall
-        ((20, 15), (20, 5)),                         # Right Wall
-        ((10, 5), (12, 5)), ((13, 5), (20, 5))       # Bottom Walls (Segmented, leaving 1m gap for Door)
+        ((10, 15), (20, 15)),
+        ((20, 15), (20, 5)),
+        ((10, 5), (12, 5)),
+        ((13, 5), (20, 5)),
     ]
     for start, end in walls:
         msp.add_line(start, end, dxfattribs={"layer": "WALLS"})
 
-    # 2. Doors (Closing gaps in wards and closing the open sides of the corridor)
-    doors = [
+    # 2. Doors (Closing gaps in wards and closing corridor open sides)
+    doors: list[LineSegment] = [
         # Internal Ward Doors
-        ((2, 5), (3, 5)),    # ICU Door
-        ((12, 5), (13, 5)),  # Standard Ward Door
-
-        # Exterior Corridor Doors (Closing the open sides)
-        ((0, 0), (0, 5)),    # West Exit Double Doors
-        ((20, 0), (20, 5))   # East Exit Double Doors
+        ((2, 5), (3, 5)),
+        ((12, 5), (13, 5)),
+        # Exterior Corridor Doors
+        ((0, 0), (0, 5)),
+        ((20, 0), (20, 5)),
     ]
     for start, end in doors:
         msp.add_line(start, end, dxfattribs={"layer": "DOORS"})
 
     # 3. Beds (Rectangles represented as 4 lines)
-    beds = [
+    beds: list[list[LineSegment]] = [
         # ICU Bed 1
-        [((1, 12), (3, 12)), ((3, 12), (3, 14)), ((3, 14), (1, 14)), ((1, 14), (1, 12))],
+        [
+            ((1, 12), (3, 12)),
+            ((3, 12), (3, 14)),
+            ((3, 14), (1, 14)),
+            ((1, 14), (1, 12)),
+        ],
         # Standard Bed 1
-        [((11, 12), (13, 12)), ((13, 12), (13, 14)), ((13, 14), (11, 14)), ((11, 14), (11, 12))]
+        [
+            ((11, 12), (13, 12)),
+            ((13, 12), (13, 14)),
+            ((13, 14), (11, 14)),
+            ((11, 14), (11, 12)),
+        ],
     ]
     for bed_lines in beds:
         for start, end in bed_lines:
             msp.add_line(start, end, dxfattribs={"layer": "BEDS"})
 
-    # 4. Room Labels (Placed perfectly in the center of their respective bounding boxes)
-    msp.add_text("CORRIDOR", dxfattribs={"layer": "ROOM_LABELS", "height": 0.5}).set_placement((10, 2.5))
-    msp.add_text("ICU_WARD", dxfattribs={"layer": "ROOM_LABELS", "height": 0.5}).set_placement((5, 10))
-    msp.add_text("STD_WARD", dxfattribs={"layer": "ROOM_LABELS", "height": 0.5}).set_placement((15, 10))
+    # 4. Room Labels (Placed perfectly in the center of their bounding boxes)
+    txt_attribs: dict[str, str | float] = {
+        "layer": "ROOM_LABELS",
+        "height": 0.5,
+    }
+    msp.add_text("CORRIDOR", dxfattribs=txt_attribs).set_placement((10, 2.5))
+    msp.add_text("ICU_WARD", dxfattribs=txt_attribs).set_placement((5, 10))
+    msp.add_text("STD_WARD", dxfattribs=txt_attribs).set_placement((15, 10))
 
-    doc.saveas(filename)
-    print(f" Saved to {filename}")
-#==================================================================================================
+    # Handle paths safely using pathlib and save the document
+    out_path: Path = Path(filename)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    doc.saveas(str(out_path))
+    logger.info("Saved to %s", out_path)
 
-#==================================================================================================
+
+# =============================================================================
 if __name__ == "__main__":
+    # Configure logging context for standalone script runtime
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
     generate_complex_hospital()
-#==================================================================================================
