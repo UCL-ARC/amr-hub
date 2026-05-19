@@ -133,7 +133,7 @@ overrides."tool.tox.env_run_base.commands".inline_arrays = false
 
 [tool.tox]
 env_list = [
-  "py313"
+  "py313" # Python 3.13, because MkDocs is having issues with 3.14.
 ]
 env_run_base = {commands = [
   [
@@ -149,6 +149,14 @@ env.docs = {commands = [
     "mkdocs",
     "build",
     "--strict"
+  ]
+], dependency_groups = [
+  "docs"
+]}
+env.docs-serve = {commands = [
+  [
+    "mkdocs",
+    "serve"
   ]
 ], dependency_groups = [
   "docs"
