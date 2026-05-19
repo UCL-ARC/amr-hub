@@ -64,7 +64,7 @@ urls.homepage = "https://github.com/UCL-ARC/amr-hub"
 test-all = [
   "ezdxf",
   "plotly",
-  "warp"
+  "warp-lang"
 ]
 
 [tool.coverage]
