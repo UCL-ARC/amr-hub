@@ -724,15 +724,7 @@ class Agent:
         return new_x, new_y
 
     def move_one_step(self) -> None:
-        """
-        Move the agent one step in the direction of its heading.
-
-        Parameters
-        ----------
-        stochasticity : float, optional
-            The level of randomness to apply to the movement.
-
-        """
+        """Move the agent one step in the direction of its heading."""
         new_x, new_y = self.try_move_one_step(self.stochasticity)
         self.move_to_location(replace(self.location, x=new_x, y=new_y))
 
