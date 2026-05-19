@@ -64,17 +64,18 @@ class Simulation:
         for agent in self.agents:
             agent.perform_task(current_time=self.time, record=record)
 
-         # NG Added Physics Solver
+        # NG Added Physics Solver
         if self.use_gpu:
-        # Take GPU Path
+            # Take GPU Path
             if self.gpu_engine is None:
                 # ruff: noqa: PLC0415
                 from amr_hub_abm.gpu_physics import (
                     GPUPhysicsEngine,
                 )
-                self.gpu_engine = GPUPhysicsEngine() # Loads npz floor plan
 
-            self.gpu_engine.step_physics(self.agents) # Takes the step and query
+                self.gpu_engine = GPUPhysicsEngine()  # Loads npz floor plan
+
+            self.gpu_engine.step_physics(self.agents)  # Takes the step and query
         # Take CPU Path writing all the pngs
         elif plot_path is not None:
             self.plot_current_state(directory_path=plot_path)

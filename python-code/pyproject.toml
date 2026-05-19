@@ -13,9 +13,9 @@ dev = [
   "pytest-cov>=7.0.0",
   "pytest>=8.4.2",
   "ruff",
+  "snakeviz>=2.2.2",
   "tox",
-  "twine",
-  "snakeviz>=2.2.2"
+  "twine"
 ]
 docs = [
   "mkdocs",
@@ -25,6 +25,7 @@ docs = [
   "mkdocstrings-python"
 ]
 test = [
+  "amr-hub-abm[test-all]",
   "pytest",
   "pytest-cov"
 ]
@@ -54,14 +55,17 @@ dynamic = [
 ]
 keywords = [
 ]
-license = "MIT"
-license-files = [
-  "LICENSE.md"
-]
 name = "amr-hub-abm"
 readme = "README.md"
 requires-python = ">=3.13"
 urls.homepage = "https://github.com/UCL-ARC/amr-hub"
+
+[project.optional-dependencies]
+test-all = [
+  "ezdxf",
+  "plotly",
+  "warp"
+]
 
 [tool.coverage]
 report = {sort = "cover"}
@@ -75,7 +79,6 @@ paths.source = [
 
 [tool.mypy]
 explicit_package_bases = true
-ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = [
@@ -85,6 +88,10 @@ addopts = [
 ]
 testpaths = [
   "tests"
+]
+filterwarnings = [
+  "ignore::pyparsing.PyparsingDeprecationWarning",
+  "ignore::DeprecationWarning:ezdxf.*"
 ]
 
 [tool.ruff]
@@ -151,3 +158,11 @@ env.docs = {commands = [
   "docs"
 ]}
 gh.python."3.13" = ["py313"]
+
+[[tool.mypy.overrides]]
+module = [
+  "plotly.*",
+  "mpl_toolkits.*",
+  "matplotlib.*"
+]
+ignore_missing_imports = true

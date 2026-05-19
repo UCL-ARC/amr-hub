@@ -129,7 +129,7 @@ class Agent:
 
     stationary: bool = field(default=False, init=False)
     # NG Added for GPU
-    use_gpu:   bool = field(default=False)
+    use_gpu: bool = field(default=False)
     target_x: float = field(default=0.0)
     target_y: float = field(default=0.0)
 

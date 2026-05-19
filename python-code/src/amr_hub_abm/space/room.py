@@ -116,8 +116,8 @@ class Room:
         return hashlib.sha256(self.name.encode("utf-8")).hexdigest()
 
     def form_region(
-            self,
-        ) -> shapely.geometry.Polygon | shapely.geometry.MultiLineString:
+        self,
+    ) -> shapely.geometry.Polygon | shapely.geometry.MultiLineString:
         """Forms a closed polygon region from the room's boundaries."""
         if not self.walls:
             msg = "Cannot form region without walls."
@@ -145,9 +145,7 @@ class Room:
             self.name,
         )
 
-        fallback_polygon = shapely.geometry.MultiLineString(
-            boundary_lines
-        ).convex_hull
+        fallback_polygon = shapely.geometry.MultiLineString(boundary_lines).convex_hull
 
         if fallback_polygon.geom_type != "Polygon" or fallback_polygon.is_empty:
             msg = f"Invalid room '{self.name}': The lines do not enclose any space."
