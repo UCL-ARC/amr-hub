@@ -45,12 +45,16 @@ def create_space_from_rooms(rooms: list[Room]) -> list[Building]:
     return Building.sort_and_number_buildings(raw_buildings)
 
 
-def create_simulation(config_file: Path) -> Simulation:
+def create_simulation(
+    config_file: Path, agent_speed: float = 0.001, agent_stochasticity: float = 5.0
+) -> Simulation:
     """
     Create a simulation instance from a configuration file.
 
     Args:
         config_file (Path): Path to the configuration file.
+        agent_speed (float): The speed at which agents move.
+        agent_stochasticity (float): The degree of randomness in agent movement.
 
     Returns:
         Simulation: An instance of the Simulation class.
@@ -90,6 +94,8 @@ def create_simulation(config_file: Path) -> Simulation:
         total_time_steps=total_steps,
         time_scaling_factor=time_step_length_seconds,
         rng_generator=rng_generator,
+        agent_speed=agent_speed,
+        agent_stochasticity=agent_stochasticity,
     )
 
     msg = f"Parsed {len(agents)} agents from location time series."
@@ -141,6 +147,8 @@ def update_patient(  # noqa: PLR0913
     total_time_steps: int,
     space: list[Building],
     rng_generator: np.random.Generator,
+    agent_speed: float = 0.001,
+    agent_stochasticity: float = 5.0,
 ) -> None:
     """Update patient information from data."""
     building, floor, room = space_tuple
@@ -171,6 +179,8 @@ def update_patient(  # noqa: PLR0913
             trajectory_length=total_time_steps,
             space=space,
             rng_generator=rng_generator,
+            movement_speed=agent_speed,
+            stochasticity=agent_stochasticity,
         )
 
 
@@ -183,6 +193,8 @@ def update_hcw(  # noqa: PLR0913
     space: list[Building],
     rng_generator: np.random.Generator,
     additional_info: dict | None = None,
+    agent_speed: float = 0.001,
+    agent_stochasticity: float = 5.0,
 ) -> None:
     """Update healthcare worker information from data."""
     building, floor, room = space_tuple
@@ -213,6 +225,8 @@ def update_hcw(  # noqa: PLR0913
             trajectory_length=total_time_steps,
             space=space,
             rng_generator=rng_generator,
+            movement_speed=agent_speed,
+            stochasticity=agent_stochasticity,
         )
 
     hcw_dict[hcw_id].add_task(timestep_index, location, event_type, additional_info)
@@ -245,15 +259,36 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
     total_time_steps: int,
     time_scaling_factor: int,
     rng_generator: np.random.Generator,
+    agent_speed: float,
+    agent_stochasticity: float,
 ) -> list[Agent]:
     """
     Parse a CSV file containing location time series data for agents.
 
-    Args:
-        timeseries_data (pd.DataFrame): DataFrame containing the location time series.
+    Parameters
+    ----------
+    timeseries_data : pd.DataFrame
+        DataFrame containing the location time series.
+    rooms : list[Room]
+        List of Room instances representing the simulation space.
+    start_time : pd.Timestamp
+        The start time of the simulation.
+    total_time_steps : int
+        The total number of time steps in the simulation.
+    time_scaling_factor : int
+        The duration of each time step in seconds.
+    rng_generator : np.random.Generator
+        Random number generator for reproducibility.
+    agent_speed : float | None
+        The speed at which agents move. If None, a default value will be used.
+    agent_stochasticity : float | None
+        The degree of randomness in agent movement. If None, a default value will
+        be used.
 
-    Returns:
-        list[Agent]: A list of Agent instances with populated location time series.
+    Returns
+    -------
+    list[Agent]
+        A list of Agent instances with populated location time series.
 
     """
     hcw_dict: dict[int, Agent] = {}
@@ -299,6 +334,8 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
                 total_time_steps=total_time_steps,
                 space=create_space_from_rooms(rooms),
                 rng_generator=rng_generator,
+                agent_speed=agent_speed,
+                agent_stochasticity=agent_stochasticity,
             )
             patient = patient_dict[patient_id]
 
@@ -384,6 +421,8 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
             total_time_steps=total_time_steps,
             space=create_space_from_rooms(rooms),
             rng_generator=rng_generator,
+            agent_speed=agent_speed,
+            agent_stochasticity=agent_stochasticity,
         )
 
     return list(hcw_dict.values()) + list(patient_dict.values())
