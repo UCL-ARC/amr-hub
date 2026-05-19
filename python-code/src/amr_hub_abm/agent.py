@@ -132,6 +132,7 @@ class Agent:
     infection_details: dict = field(default_factory=dict)
 
     movement_speed: float = field(default=0.001)  # units per time step
+    stochasticity: float = field(default=5.0)  # degrees of randomness in movement
 
     # --8<--- [end:Agent]
     trajectory_length: int = field(default=0)
@@ -411,8 +412,11 @@ class Agent:
         rng_generator: Generator,
     ) -> tuple[float, float]:
         """Propose a new location for agent movement."""
-        delta_x = movement_speed * math.cos(heading_rad)
-        delta_y = movement_speed * math.sin(heading_rad)
+        stochastic_heading_rad = heading_rad + rng_generator.normal(
+            0, math.radians(stochasticity)
+        )
+        delta_x = movement_speed * math.cos(stochastic_heading_rad)
+        delta_y = movement_speed * math.sin(stochastic_heading_rad)
 
         delta_x = (1 + rng_generator.normal(0, stochasticity)) * delta_x
         delta_y = (1 + rng_generator.normal(0, stochasticity)) * delta_y
@@ -485,9 +489,9 @@ class Agent:
 
         return new_x, new_y
 
-    def move_one_step(self, stochasticity: float = 0.2) -> None:
+    def move_one_step(self) -> None:
         """Move the agent one step in the direction of its heading."""
-        new_x, new_y = self.try_move_one_step(stochasticity)
+        new_x, new_y = self.try_move_one_step(self.stochasticity)
         self.move_to_location(replace(self.location, x=new_x, y=new_y))
 
     def select_task_based_on_progress(

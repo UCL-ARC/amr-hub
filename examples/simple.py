@@ -10,7 +10,7 @@ logger.setLevel(logging.INFO)
 if __name__ == "__main__":
     time_start = time.perf_counter()
     simulate(
-        live=True,
+        live=False,
         plot_trajectory=True,
         plot=False,
         record=True,
