@@ -13,9 +13,9 @@ dev = [
   "pytest-cov>=7.0.0",
   "pytest>=8.4.2",
   "ruff",
-  "snakeviz>=2.2.2",
   "tox",
-  "twine"
+  "twine",
+  "snakeviz>=2.2.2"
 ]
 docs = [
   "mkdocs",
@@ -25,7 +25,6 @@ docs = [
   "mkdocstrings-python"
 ]
 test = [
-  "amr-hub-abm[test-all]",
   "pytest",
   "pytest-cov"
 ]
@@ -42,12 +41,19 @@ classifiers = [
   "Typing :: Typed"
 ]
 dependencies = [
+  "dash>=4.1.0",
+  "ezdxf>=1.4.4",
   "geopandas>=1.1.2",
   "matplotlib>=3.10.7",
+  "mesa[viz]>=3.5.1",
+  "networkx>=3.6.1",
   "pandas>=2.3.3",
+  "plotly>=6.7.0",
   "pyyaml>=6.0.3",
   "shapely>=2.1.2",
-  "types-pyyaml>=6.0.12.20250915"
+  "solara>=1.57.3",
+  "types-pyyaml>=6.0.12.20250915",
+  "warp-lang>=1.13.0"
 ]
 description = "An agent based model for spread of Anti Microbial Resistant infections in hospitals"
 dynamic = [
@@ -55,23 +61,19 @@ dynamic = [
 ]
 keywords = [
 ]
-name = "amr-hub-abm"
+license = "MIT"
+license-files = [
+  "LICENSE.md"
+]
+name = "amr_hub_abm"
 readme = "README.md"
 requires-python = ">=3.13"
 urls.homepage = "https://github.com/UCL-ARC/amr-hub"
 
-[project.optional-dependencies]
-test-all = [
-  "ezdxf",
-  "plotly",
-  "dash",
-  "warp-lang"
-]
-
 [tool.coverage]
 report = {sort = "cover"}
 run = {branch = true, parallel = true, source = [
-  "amr-hub-abm"
+  "amr_hub_abm"
 ]}
 paths.source = [
   "src",
@@ -90,13 +92,10 @@ addopts = [
 testpaths = [
   "tests"
 ]
-filterwarnings = [
-  "ignore::pyparsing.PyparsingDeprecationWarning",
-  "ignore::DeprecationWarning:ezdxf.*"
-]
 
 [tool.ruff]
 fix = true
+extend-exclude = ["examples"]
 force-exclude = true
 lint.ignore = [
   "COM812", # trailing commas (ruff-format recommended)
@@ -138,7 +137,7 @@ overrides."tool.tox.env_run_base.commands".inline_arrays = false
 
 [tool.tox]
 env_list = [
-  "py313"
+  "py313" # Python 3.13, because MkDocs is having issues with 3.14.
 ]
 env_run_base = {commands = [
   [
@@ -158,12 +157,12 @@ env.docs = {commands = [
 ], dependency_groups = [
   "docs"
 ]}
+env.docs-serve = {commands = [
+  [
+    "mkdocs",
+    "serve"
+  ]
+], dependency_groups = [
+  "docs"
+]}
 gh.python."3.13" = ["py313"]
-
-[[tool.mypy.overrides]]
-module = [
-  "plotly.*",
-  "mpl_toolkits.*",
-  "matplotlib.*"
-]
-ignore_missing_imports = true
