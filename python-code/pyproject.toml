@@ -41,15 +41,21 @@ classifiers = [
   "Typing :: Typed"
 ]
 dependencies = [
+  "dash>=4.1.0",
+  "ezdxf>=1.4.4",
   "geopandas>=1.1.2",
   "matplotlib>=3.10.7",
   "mesa[viz]>=3.5.1",
   "networkx>=3.6.1",
+  "mesa[viz]>=3.5.1",
+  "networkx>=3.6.1",
   "pandas>=2.3.3",
+  "plotly>=6.7.0",
   "pyyaml>=6.0.3",
   "shapely>=2.1.2",
   "solara>=1.57.3",
-  "types-pyyaml>=6.0.12.20250915"
+  "types-pyyaml>=6.0.12.20250915",
+  "warp-lang>=1.13.0"
 ]
 description = "An agent based model for spread of Anti Microbial Resistant infections in hospitals"
 dynamic = [

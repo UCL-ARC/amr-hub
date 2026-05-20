@@ -178,6 +178,7 @@ class Task:
             )
             return
 
+        # NG Added GPU
         if not agent.check_if_location_reached(self.location):
             self.progress = TaskProgress.MOVING_TO_LOCATION
             if isinstance(self, TaskDoorAccess):
@@ -186,9 +187,19 @@ class Task:
             logger.info(
                 "Agent id %s moving to task location %s.", agent.idx, self.location
             )
-            agent.head_to_point((self.location.x, self.location.y))
-            agent.move_one_step()
+
+            # Feature Flag Logic
+            if getattr(agent, "use_gpu", False):
+                # GPU Engine: Just set the intent, do not move the agent
+                agent.target_x = self.location.x
+                agent.target_y = self.location.y
+            else:
+                # Current Engine: Calculate heading and step physically
+                agent.head_to_point((self.location.x, self.location.y))
+                agent.move_one_step()
+
             return
+
         self.progress = TaskProgress.IN_PROGRESS
         self.time_started = current_time
 

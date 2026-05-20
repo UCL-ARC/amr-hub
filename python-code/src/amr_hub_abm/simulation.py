@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -41,14 +41,19 @@ class Simulation:
     agents: list[Agent]
 
     total_simulation_time: int
-
     rng_generator: np.random.Generator
-
     time: int = field(default=0, init=False)
 
-    # --8<--- [end:Simulation]
+    # NG Added Flag for GPU Acceleration
+    use_gpu: bool = field(default=False)
+    gpu_engine: Any = field(default=None, init=False)
 
-    def step(self, plot_path: Path | None = None, *, record: bool = False) -> None:
+    def step(
+        self,
+        plot_path: Path | None = None,
+        *,
+        record: bool = False,
+    ) -> None:
         """Advance the simulation by one time step."""
         if self.time >= self.total_simulation_time:
             msg = "Simulation has already reached its total simulation time."
@@ -60,7 +65,20 @@ class Simulation:
         for agent in self.agents:
             agent.perform_task(current_time=self.time, record=record)
 
-        if plot_path is not None:
+        # NG Added Physics Solver
+        if self.use_gpu:
+            # Take GPU Path
+            if self.gpu_engine is None:
+                # ruff: noqa: PLC0415
+                from amr_hub_abm.gpu_physics import (
+                    GPUPhysicsEngine,
+                )
+
+                self.gpu_engine = GPUPhysicsEngine()  # Loads npz floor plan
+
+            self.gpu_engine.step_physics(self.agents)  # Takes the step and query
+        # Take CPU Path writing all the pngs
+        elif plot_path is not None:
             self.plot_current_state(directory_path=plot_path)
 
         self.time += 1

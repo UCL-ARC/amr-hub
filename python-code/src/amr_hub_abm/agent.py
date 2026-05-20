@@ -138,6 +138,10 @@ class Agent:
     trajectory: Record = field(init=False)
 
     stationary: bool = field(default=False, init=False)
+    # NG Added for GPU
+    use_gpu: bool = field(default=False)
+    target_x: float = field(default=0.0)
+    target_y: float = field(default=0.0)
 
     @property
     def heading_degrees(self) -> float:
@@ -167,6 +171,10 @@ class Agent:
 
         if self.trajectory_length > 0:
             self.trajectory = Record(total_time=self.trajectory_length)
+
+        # NG Added for GPU
+        self.target_x = self.location.x
+        self.target_y = self.location.y
 
     def get_room(self, coords: tuple[float, float] | None = None) -> Room | None:
         """
