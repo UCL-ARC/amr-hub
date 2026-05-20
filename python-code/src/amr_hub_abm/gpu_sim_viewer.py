@@ -9,6 +9,7 @@ and records telemetry for the HTML dashboard.
 
 import logging
 from enum import IntEnum
+from functools import cache
 from pathlib import Path
 from typing import Any, cast
 
@@ -35,28 +36,10 @@ class InfectionStatus(IntEnum):
 
 
 # =============================================================================
-# A] Load Telemetry and Events
+# A & B] Lazy Load Helpers
 # =============================================================================
-logger.info("Loading Simulation Results")
-
-telemetry_path: Path = Path("../python-code/simulation_outputs/gpu_sim_telemetry.csv")
-events_path: Path = Path("../python-code/simulation_outputs/gpu_sim_events.csv")
-cad_path: Path = Path("../python-code/tests/inputs/GPU_floorplan_simple_a.npz")
-
-# Load Telemetry
-df: pd.DataFrame = pd.read_csv(str(telemetry_path))
-if "status" in df.columns:
-    df = df.rename(columns={"status": "infection_status"})
-
-# 0. Separate Agent (A) and Patient (P) IDs
-df["agent_id"] = df["agent_id"].astype(str)
-
-# Pre-format all standalone IDs to start with 'A'
-df["agent_id"] = df["agent_id"].apply(lambda x: x if x.startswith("A") else f"A{x}")
-
-dup_agents: np.ndarray = df[df.duplicated(["time", "agent_id"])]["agent_id"].unique()
-
-if len(dup_agents) > 0:
+def _resolve_duplicate_paths(df: pd.DataFrame, dup_agents: np.ndarray) -> pd.DataFrame:
+    """Resolve physical paths via Nearest-Neighbor tracking."""
     logger.info("Resolving duplicate paths")
     for aid in dup_agents:
         mask = df["agent_id"] == aid
@@ -65,7 +48,7 @@ if len(dup_agents) > 0:
         last_pos: dict[str, tuple[float, float]] = {}
         resolved_ids: list[str] = []
 
-        # 1. Map physical paths via Nearest-Neighbor
+        # Map physical paths via Nearest-Neighbor
         for _t, group in subset.groupby("time"):
             if not last_pos:
                 for i, row in enumerate(group.itertuples()):
@@ -96,194 +79,304 @@ if len(dup_agents) > 0:
 
         subset["temp_id"] = resolved_ids
 
-        # 2. Assign A (moving track) and P (stationary track)
+        # Assign A (moving track) and P (stationary track)
         track_variances: pd.Series = (
             subset.groupby("temp_id")[["pos_x", "pos_y"]].var().sum(axis=1)
         )
         hcw_trk: str = str(track_variances.idxmax())
 
-        num: str = aid.replace("A", "")  # Strip 'A' to get raw number
+        num: str = str(aid).replace("A", "")
 
-        # Avoid loop-closure binding risks by using list comprehension
         subset["final_id"] = [
             f"A{num}" if trk == hcw_trk else f"P{num}" for trk in subset["temp_id"]
         ]
         df.loc[subset.index, "agent_id"] = subset["final_id"]
-
-# 1. Add to html
-times: list[int] = sorted(df["time"].unique())
-max_time: int = times[-1] if times else 0
-
-# Load Events and Build Dropdown Options
-event_options: list[dict[str, Any]] = []
-df_events: pd.DataFrame = pd.DataFrame()
-
-try:
-    df_events = pd.read_csv(str(events_path))
-    df_events = df_events.rename(
-        columns={
-            "source_id": "infector",
-            "target_id": "infectee",
-            "location_x": "pos_x",
-            "location_y": "pos_y",
-        }
-    )
-
-    unique_events: list[int] = sorted(df_events["time"].unique())
-    event_options = [
-        {"label": f"Transmission at t={t}s", "value": t} for t in unique_events
-    ]
-    if not event_options:
-        event_options = [
-            {"label": "No Transmissions Occurred", "value": 0, "disabled": True}
-        ]
-
-except FileNotFoundError:
-    logger.warning("Events file not found. Proceeding without event markers.")
-    df_events = pd.DataFrame(columns=["time", "infector", "infectee", "pos_x", "pos_y"])
-    event_options = [{"label": "❌ Event File Missing", "value": 0, "disabled": True}]
+    return df
 
 
 # =============================================================================
-# B] Load Semantic CAD Geometry
-# =============================================================================
-logger.info("Loading CAD Asset")
-geom: np.lib.npyio.NpzFile = np.load(str(cad_path), allow_pickle=True)
-
-wall_v: np.ndarray = geom["wall_vertices"]
-wall_x: list[float | None] = []
-wall_y: list[float | None] = []
-
-for i in range(0, len(wall_v), 4):
-    p1 = wall_v[i]
-    p2 = wall_v[i + 1]
-    wall_x.extend([float(p1[0]), float(p2[0]), None])
-    wall_y.extend([float(p1[1]), float(p2[1]), None])
-
-room_x: list[float] = []
-room_y: list[float] = []
-room_names: list[str] = []
-
-if "room_coords" in geom and "room_names" in geom:
-    room_coords: np.ndarray = geom["room_coords"]
-    room_names = [str(name) for name in geom["room_names"]]
-    room_x = [float(c[0]) for c in room_coords]
-    room_y = [float(c[1]) for c in room_coords]
-
-beds: np.ndarray = geom["beds"] if "beds" in geom else np.array([])
-
-door_coords: dict[int, dict[str, list[float]]] = {}
-if "doors" in geom:
-    for i, door_pts in enumerate(geom["doors"]):
-        door_id: int = i + 1
-        door_coords[door_id] = {
-            "x": [float(door_pts[0][0]), float(door_pts[1][0])],
-            "y": [float(door_pts[0][1]), float(door_pts[1][1])],
-        }
-logger.info("Data and Geometry Loaded successfully!")
 
 
 # =============================================================================
-# C] Build Dash Layout
+def _load_telemetry(path: Path) -> tuple[pd.DataFrame, list[int], int]:
+    """Load and format the agent telemetry dataframe."""
+    try:
+        df = pd.read_csv(str(path))
+        if "status" in df.columns:
+            df = df.rename(columns={"status": "infection_status"})
+
+        # Separate Agent (A) and Patient (P) IDs
+        df["agent_id"] = df["agent_id"].astype(str)
+        df["agent_id"] = df["agent_id"].apply(
+            lambda x: x if x.startswith("A") else f"A{x}"
+        )
+
+        dup_agents: np.ndarray = df[df.duplicated(["time", "agent_id"])][
+            "agent_id"
+        ].unique()
+        if len(dup_agents) > 0:
+            df = _resolve_duplicate_paths(df, dup_agents)
+
+        times = sorted(df["time"].unique())
+        max_time = times[-1] if times else 0
+        return df, times, max_time  # noqa: TRY300
+
+    except FileNotFoundError:
+        logger.warning("Telemetry file not found. Booting with defaults.")
+        return (
+            pd.DataFrame(
+                columns=["time", "agent_id", "pos_x", "pos_y", "infection_status"]
+            ),
+            [0],
+            0,
+        )
+
+
+# =============================================================================
+
+
+# =============================================================================
+def _load_events(path: Path) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
+    """Load transmission events and dropdown options."""
+    try:
+        df_events = pd.read_csv(str(path))
+        df_events = df_events.rename(
+            columns={
+                "source_id": "infector",
+                "target_id": "infectee",
+                "location_x": "pos_x",
+                "location_y": "pos_y",
+            }
+        )
+
+        unique_events: list[int] = sorted(df_events["time"].unique())
+        if unique_events:
+            options = [
+                {"label": f"Transmission at t={t}s", "value": t} for t in unique_events
+            ]
+        else:
+            options = [
+                {"label": "No Transmissions Occurred", "value": 0, "disabled": True}
+            ]
+        return df_events, options  # noqa: TRY300
+
+    except FileNotFoundError:
+        logger.warning("Events file not found. Booting without markers.")
+        return (
+            pd.DataFrame(columns=["time", "infector", "infectee", "pos_x", "pos_y"]),
+            [{"label": "❌ Event File Missing", "value": 0, "disabled": True}],
+        )
+
+
+# =============================================================================
+
+
+# =============================================================================
+def _load_cad_geometry(path: Path) -> dict[str, Any]:
+    """Load and structure layout arrays."""
+    data: dict[str, Any] = {
+        "wall_x": [],
+        "wall_y": [],
+        "room_x": [],
+        "room_y": [],
+        "room_names": [],
+        "beds": np.array([]),
+        "door_coords": {},
+    }
+    try:
+        geom = np.load(str(path), allow_pickle=True)
+
+        wall_v = geom["wall_vertices"]
+        wall_x, wall_y = [], []
+
+        for i in range(0, len(wall_v), 4):
+            p1 = wall_v[i]
+            p2 = wall_v[i + 1]
+            wall_x.extend([float(p1[0]), float(p2[0]), None])
+            wall_y.extend([float(p1[1]), float(p2[1]), None])
+        data["wall_x"] = wall_x
+        data["wall_y"] = wall_y
+
+        if "room_coords" in geom and "room_names" in geom:
+            data["room_coords"] = geom["room_coords"]
+            data["room_names"] = [str(name) for name in geom["room_names"]]
+            data["room_x"] = [float(c[0]) for c in geom["room_coords"]]
+            data["room_y"] = [float(c[1]) for c in geom["room_coords"]]
+
+        if "beds" in geom:
+            data["beds"] = geom["beds"]
+
+        if "doors" in geom:
+            door_coords = {}
+            for i, door_pts in enumerate(geom["doors"]):
+                door_coords[i + 1] = {
+                    "x": [float(door_pts[0][0]), float(door_pts[1][0])],
+                    "y": [float(door_pts[0][1]), float(door_pts[1][1])],
+                }
+            data["door_coords"] = door_coords
+        return data  # noqa: TRY300
+
+    except FileNotFoundError:
+        logger.warning("CAD Geometry not found. Booting without walls.")
+        return data
+
+
+# =============================================================================
+
+
+# =============================================================================
+@cache
+def get_simulation_data() -> dict[str, Any]:
+    """
+    Lazy load simulation telemetry, events, and geometry strictly when requested.
+
+    Uses caching so heavy CSV and duplicate path resolution runs only once.
+    """
+    logger.info("Loading Simulation Results")
+
+    # Define paths
+    telemetry_path = Path("../python-code/simulation_outputs/gpu_sim_telemetry.csv")
+    events_path = Path("../python-code/simulation_outputs/gpu_sim_events.csv")
+    cad_path = Path("../python-code/tests/inputs/GPU_floorplan_simple_a.npz")
+
+    # 1. Load Telemetry
+    df, times, max_time = _load_telemetry(telemetry_path)
+
+    # 2. Load Events
+    df_events, event_options = _load_events(events_path)
+
+    # 3. Load Geometry
+    cad_data = _load_cad_geometry(cad_path)
+
+    logger.info("Data and Geometry loaded/defaulted successfully!")
+    return {
+        "df": df,
+        "times": times,
+        "max_time": max_time,
+        "df_events": df_events,
+        "event_options": event_options,
+        **cad_data,
+    }
+
+
+# =============================================================================
+
+# =============================================================================
+# C] Build Dash Layout (Deferred)
 # =============================================================================
 app = dash.Dash(__name__)
 app.title = "GPU Sim Test Viewer"
 
-slider_marks: dict[str, dict[str, Any]] = {
-    str(t): {"label": str(t), "style": {"color": "#495057"}}
-    for t in times
-    if t % 10000 == 0 or t == max_time
-}
 
-layout_style: dict[str, str] = {
-    "backgroundColor": "#F8F9FA",
-    "color": "#212529",
-    "padding": "20px",
-    "fontFamily": "sans-serif",
-    "minHeight": "100vh",
-}
+def serve_layout() -> html.Div:
+    """Evaluate layout components at runtime so module scope stays clean."""
+    sim_data = get_simulation_data()
+    times = sim_data["times"]
+    max_time = sim_data["max_time"]
+    event_options = sim_data["event_options"]
 
-controls_style: dict[str, str] = {
-    "display": "flex",
-    "alignItems": "center",
-    "gap": "20px",
-    "padding": "15px",
-    "backgroundColor": "#E9ECEF",
-    "borderRadius": "10px",
-    "border": "1px solid #DEE2E6",
-}
+    slider_marks: dict[str, dict[str, Any]] = {
+        str(t): {"label": str(t), "style": {"color": "#495057"}}
+        for t in times
+        if t % 10000 == 0 or t == max_time
+    }
 
-btn_style: dict[str, str] = {
-    "padding": "10px 20px",
-    "fontSize": "16px",
-    "cursor": "pointer",
-    "backgroundColor": "#007BFF",
-    "color": "white",
-    "border": "none",
-    "borderRadius": "5px",
-    "fontWeight": "bold",
-}
+    layout_style: dict[str, str] = {
+        "backgroundColor": "#F8F9FA",
+        "color": "#212529",
+        "padding": "20px",
+        "fontFamily": "sans-serif",
+        "minHeight": "100vh",
+    }
 
-app.layout = html.Div(
-    style=layout_style,
-    children=[
-        html.H2(
-            "Simulation Viewer",
-            style={
-                "textAlign": "center",
-                "marginBottom": "0px",
-                "color": "#212529",
-            },
-        ),
-        dcc.Graph(id="live-map", style={"height": "750px"}),
-        html.Div(
-            style=controls_style,
-            children=[
-                html.Button(
-                    "▶ Play / Pause",
-                    id="play-button",
-                    n_clicks=0,
-                    style=btn_style,
-                ),
-                html.Div(
-                    style={"flexGrow": "1"},
-                    children=[
-                        dcc.Slider(
-                            id="time-slider",
-                            min=times[0] if times else 0,
-                            max=max_time,
-                            step=500,
-                            marks=slider_marks,
-                            value=times[0] if times else 0,
-                        )
-                    ],
-                ),
-                html.Div(
-                    id="time-display",
-                    style={
-                        "fontSize": "24px",
-                        "fontWeight": "bold",
-                        "color": "#007BFF",
-                        "minWidth": "150px",
-                        "textAlign": "right",
-                    },
-                ),
-                html.Div(
-                    style={"minWidth": "300px"},
-                    children=[
-                        dcc.Dropdown(
-                            id="event-dropdown",
-                            options=event_options,
-                            placeholder="🔍 Jump to Transmission",
-                            style={"color": "#212529"},
-                        )
-                    ],
-                ),
-            ],
-        ),
-        dcc.Interval(id="anim-interval", interval=800, n_intervals=0, disabled=True),
-    ],
-)
+    controls_style: dict[str, str] = {
+        "display": "flex",
+        "alignItems": "center",
+        "gap": "20px",
+        "padding": "15px",
+        "backgroundColor": "#E9ECEF",
+        "borderRadius": "10px",
+        "border": "1px solid #DEE2E6",
+    }
+
+    btn_style: dict[str, str] = {
+        "padding": "10px 20px",
+        "fontSize": "16px",
+        "cursor": "pointer",
+        "backgroundColor": "#007BFF",
+        "color": "white",
+        "border": "none",
+        "borderRadius": "5px",
+        "fontWeight": "bold",
+    }
+
+    return html.Div(
+        style=layout_style,
+        children=[
+            html.H2(
+                "Simulation Viewer",
+                style={
+                    "textAlign": "center",
+                    "marginBottom": "0px",
+                    "color": "#212529",
+                },
+            ),
+            dcc.Graph(id="live-map", style={"height": "750px"}),
+            html.Div(
+                style=controls_style,
+                children=[
+                    html.Button(
+                        "▶ Play / Pause",
+                        id="play-button",
+                        n_clicks=0,
+                        style=btn_style,
+                    ),
+                    html.Div(
+                        style={"flexGrow": "1"},
+                        children=[
+                            dcc.Slider(
+                                id="time-slider",
+                                min=times[0] if times else 0,
+                                max=max_time,
+                                step=500,
+                                marks=slider_marks,
+                                value=times[0] if times else 0,
+                            )
+                        ],
+                    ),
+                    html.Div(
+                        id="time-display",
+                        style={
+                            "fontSize": "24px",
+                            "fontWeight": "bold",
+                            "color": "#007BFF",
+                            "minWidth": "150px",
+                            "textAlign": "right",
+                        },
+                    ),
+                    html.Div(
+                        style={"minWidth": "300px"},
+                        children=[
+                            dcc.Dropdown(
+                                id="event-dropdown",
+                                options=event_options,
+                                placeholder="🔍 Jump to Transmission",
+                                style={"color": "#212529"},
+                            )
+                        ],
+                    ),
+                ],
+            ),
+            dcc.Interval(
+                id="anim-interval", interval=800, n_intervals=0, disabled=True
+            ),
+        ],
+    )
+
+
+# Attach layout as a dynamic function
+app.layout = serve_layout
+# =============================================================================
 
 
 # =============================================================================
@@ -308,6 +401,8 @@ def update_time(
     _n_intervals: int, selected_event_time: int | None, current_time: int
 ) -> int:
     """Increment step time or jump directly to a chosen event timestamp."""
+    sim_data = get_simulation_data()
+    times = sim_data["times"]
     trigger: str | None = ctx.triggered_id
 
     if trigger == "event-dropdown" and selected_event_time is not None:
@@ -328,6 +423,19 @@ def update_time(
 )
 def update_map(current_time: int) -> tuple[go.Figure, str]:
     """Render layout geometry and agent positions for the current timestep."""
+    # Pull dependencies cleanly from cache
+    sim_data = get_simulation_data()
+    times = sim_data["times"]
+    df = sim_data["df"]
+    df_events = sim_data["df_events"]
+    wall_x = sim_data["wall_x"]
+    wall_y = sim_data["wall_y"]
+    room_x = sim_data["room_x"]
+    room_y = sim_data["room_y"]
+    room_names = sim_data["room_names"]
+    beds = sim_data["beds"]
+    door_coords = sim_data["door_coords"]
+
     if times:
         current_time = min(times, key=lambda x: abs(x - current_time))
     fig = go.Figure()
@@ -390,7 +498,6 @@ def update_map(current_time: int) -> tuple[go.Figure, str]:
     for aid in history_df["agent_id"].unique():
         adata: pd.DataFrame = history_df[history_df["agent_id"] == aid].iloc[::50]
 
-        # Patients get a subtle purple trail, Staff get standard grey
         if aid.startswith("P"):
             trail_color: str = "rgba(156, 39, 176, 0.4)"
         else:
@@ -490,6 +597,8 @@ def update_map(current_time: int) -> tuple[go.Figure, str]:
 
     return fig, f"Time: {current_time}s"
 
+
+# =============================================================================
 
 # =============================================================================
 # Launch Server
