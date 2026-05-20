@@ -3,18 +3,23 @@
 import logging
 from pathlib import Path
 
+from matplotlib import pyplot as plt
+
+from amr_hub_abm.agent import InfectionStatus
 from amr_hub_abm.simulation import Simulation
 from amr_hub_abm.simulation_factory import create_simulation
 
 logger = logging.getLogger(__name__)
 
 
-def simulate(
+def simulate(  # noqa: PLR0912, PLR0913
     *,
     plot: bool = False,
     record: bool = False,
+    live: bool = False,
     plot_trajectory: bool = False,
     use_gpu: bool = False,
+    seed_infections: bool = False,
 ) -> None:
     """Simulate the AMR Hub ABM based on a configuration file."""
     config_path = Path("tests/inputs/simulation_config.yml")
@@ -40,6 +45,10 @@ def simulate(
         logger.info("CPU Mode Enabled: Using legacy Python movement logic")
     # --------------------------------------------------------------------------
 
+    if seed_infections:
+        simulation.agents[0].infection_status = InfectionStatus.INFECTED
+        simulation.agents[1].infection_status = InfectionStatus.EXPOSED
+
     if plot:
         output_dir = Path("../simulation_outputs")
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -56,8 +65,6 @@ def simulate(
 
     run_steps(simulation, plot_path, record=record)
 
-    # --------------------------------------------------------------------------
-    # NG: This should be reconsidered to create files rather than images
     if plot_trajectory:
         record = True
         plot_path = Path("../simulation_outputs")
@@ -85,19 +92,25 @@ def simulate(
 
     logger.info("Simulation completed successfully...")
 
+    if live:
+        plt.ioff()  # turn interactive mode off
+        plt.show()  # final blocking show so window stays up after sim ends
+
 
 def run_steps(
     simulation: Simulation,
     plot_path: Path | None,
     *,
     record: bool,
+    figures: list | None = None,
+    trajectory: bool = False,  # NEW
 ) -> None:
-    """Run the simulation steps until completion."""
+    """Run the simulation loop until completion, optionally plotting live."""
     while simulation.time < simulation.total_simulation_time:
-        simulation.step(
-            plot_path=plot_path,
-            record=record,
-        )
+        simulation.step(plot_path=plot_path, record=record)
+
+        if figures is not None and simulation.time % 100 == 0:
+            simulation.plot_live(figures, trajectory=trajectory)
 
 
 # Make True for GPU

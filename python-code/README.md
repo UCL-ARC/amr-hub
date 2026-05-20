@@ -81,21 +81,70 @@ pip install -e ".[test]"
 
 ## Usage
 
-Basic example of using the package:
+### Running the simulation
 
-```python
-from amr_hub_abm import __version__
-from amr_hub_abm.space import Location, Building
-from amr_hub_abm.agent import Agent
-from amr_hub_abm.task import Task, TaskType, TaskPriority
+The simulation is driven by `simulate()` in `src/amr_hub_abm/run.py`, which is called by example driver scripts in `examples/`.
 
-# Create a location
-location = Location(x=10.0, y=20.0, floor=1)
+#### Configuration
 
-# Additional usage examples coming soon...
+Simulation parameters are defined in `tests/inputs/simulation_config.yml`:
+
+```yaml
+mode: data driven # "data driven" or "rule based"
+location_timeseries_path: tests/inputs/location_timeseries.csv # HCW location events
+buildings_path: tests/inputs/buildings.yml # building/floor/room layout
+start_time: 2024-01-01 00:00:00
+end_time: 2024-01-02 00:00:00
+length_of_timestep_in_seconds: 1
 ```
 
-For more detailed examples and API documentation, please refer to the [documentation](https://ucl-arc.github.io/amr-hub/).
+The location timeseries CSV defines the schedule of events for each healthcare worker (HCW): which patient to attend, when, which doors to access, and where to sit. See `tests/inputs/location_timeseries.csv` for an example.
+
+#### Running from the terminal
+
+The simplest way to run a simulation is via `examples/simple.py`:
+
+```bash
+uv run python examples/simple.py
+```
+
+This calls `simulate()` with default flags. To customize, edit `simple.py` and pass arguments to `simulate()`:
+
+| Flag                   | What it does                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `live=True`            | Opens a matplotlib window that updates every step. Blocks until window closed. |
+| `plot=True`            | Saves a PNG of the floorplan to `simulation_outputs/` every step.              |
+| `record=True`          | Records each agent's position trajectory at every step.                        |
+| `plot_trajectory=True` | At end of run, saves a PNG showing all agent trajectories overlaid.            |
+| `seed_infections=True` | Manually set agent[0] to INFECTED and agent[1] to EXPOSED for viz testing.     |
+
+For example, to record trajectories and produce a final overlay PNG:
+
+```python
+simulate(record=True, plot_trajectory=True)
+```
+
+### Output files
+
+Running with `record=True` and/or `plot_trajectory=True` produces files in `simulation_outputs/` (relative to repo root):
+
+- `agent_<type>_<id>_trajectory.csv` — per-agent positions over time
+- `Sample Hospital_time_<N>.png` — per-step floorplan snapshots (with `plot=True`)
+- `Sample Hospital_trajectories.png` — overlay of all agent paths (with `plot_trajectory=True`)
+
+These are gitignored — they're generated artifacts.
+
+### Browser-based visualization (SolaraViz)
+
+For an interactive browser-based view with play/pause/step controls, use the Solara app:
+
+```bash
+uv run solara run /full/path/to/examples/solara_app.py
+```
+
+This opens a web page at `http://localhost:8765` showing the floorplan, agents, and infection status updating in real time. Use the controls panel to play, pause, step, or reset the simulation, and adjust the render interval to balance speed and smoothness.
+
+The Solara app currently seeds two agents with infection status (one INFECTED, one EXPOSED) for visualization testing. Disease dynamics are not yet implemented in the simulation itself.
 
 ## Development
 
