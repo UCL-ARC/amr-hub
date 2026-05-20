@@ -39,16 +39,20 @@ help:
 	@echo "Maintenance:"
 	@echo "  make clean            Remove build artifacts and cache files"
 
-install:
+
+install-uv:
+	curl -LsSf https://astral.sh/uv/install.sh | sh
+
+install: install-uv
 	$(CD) uv sync --no-dev
 
-install-dev:
+install-dev: install-uv
 	$(CD) uv sync --group dev
 
-install-docs:
+install-docs: install-uv
 	$(CD) uv sync --group docs
 
-install-all:
+install-all: install-uv
 	$(CD) uv sync --group dev --group docs --group test
 
 test:
