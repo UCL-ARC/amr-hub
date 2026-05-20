@@ -1,12 +1,30 @@
 # AMR-Hub Project
 
+[![pre-commit]][pre-commit]
+[![Tests status][tests-badge]][tests-link]
+[![Linting status][linting-badge]][linting-link]
+[![Documentation status][documentation-badge]][documentation-link]
+[![License][license-badge]][license-link]
+
+<!-- prettier-ignore-start -->
+[pre-commit]:              https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white
+[tests-badge]:              https://github.com/UCL-ARC/amr-hub/actions/workflows/tests.yml/badge.svg
+[tests-link]:               https://github.com/UCL-ARC/amr-hub/actions/workflows/tests.yml
+[linting-badge]:            https://github.com/UCL-ARC/amr-hub/actions/workflows/linting.yml/badge.svg
+[linting-link]:             https://github.com/UCL-ARC/amr-hub/actions/workflows/linting.yml
+[documentation-badge]:      https://github.com/UCL-ARC/amr-hub/actions/workflows/docs.yml/badge.svg
+[documentation-link]:       https://github.com/UCL-ARC/amr-hub/actions/workflows/docs.yml
+[license-badge]:            https://img.shields.io/badge/License-MIT-yellow.svg
+[license-link]:             https://github.com/UCL-ARC/amr-hub/blob/main/LICENSE
+<!-- prettier-ignore-end -->
+
 AMR-HUB is an open-source agent-based modelling (ABM) framework for simulating hospital workflows, human movement, and antimicrobial resistance (AMR) transmission dynamics within healthcare environments. The project is designed around a Trusted Research Environment (TRE)-centric workflow that separates sensitive healthcare data from publicly distributable simulation software and anonymised outputs.
 
 The framework combines hospital geometry modelling, task scheduling, infection propagation, movement simulation, and interactive visualisation into a modular research software platform. It is intended both as a scientific modelling framework and as a reusable infrastructure for future epidemiological and operational healthcare simulations.
 
 ## Official documentation
 
-- [AMR-HUB Documentation](https://amr-hub.readthedocs.io/)
+- [AMR-HUB Technical Documentation](https://amr-hub.readthedocs.io/)
 - [AMR-HUB GitHub Repository](https://github.com/amr-hub/amr-hub)
 
 ## Overall Workflow
@@ -60,15 +78,15 @@ See the [contributing guidelines](CONTRIBUTING.md) for more information on how t
 This project is licensed under the MIT License.
 Welcome to the AMR-Hub Project. We aim to model the transmission of Anti-Microbial Resistance in Hospitals.
 
+## Contributors ✨
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 
 [![All Contributors](https://img.shields.io/badge/all_contributors-13-orange.svg?style=flat-square)](#contributors-)
 
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
-
-## Contributors ✨
-
-Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
