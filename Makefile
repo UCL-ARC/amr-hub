@@ -1,4 +1,4 @@
-.PHONY: help install install-dev install-docs install-all test test-cov lint format type-check docs docs-serve clean pre-commit pre-commit-install
+.PHONY: help install install-dev install-docs install-all test test-cov lint format type-check docs docs-serve clean pre-commit pre-commit-install simple-example dashboard
 
 # Determine if we're in the repo root or python-code directory
 PYTHON_CODE_DIR := $(shell if [ -d "python-code" ]; then echo "python-code"; else echo "."; fi)
@@ -19,6 +19,11 @@ help:
 	@echo "  make install-dev      Install with development dependencies"
 	@echo "  make install-docs     Install with documentation dependencies"
 	@echo ""
+	@echo ""
+	@echo "Example Usage:"
+	@echo "  make simple-example   Run the simple example script"
+	@echo "  make dashboard        Run the Solara dashboard example"
+	@echo ""
 	@echo "Development:"
 	@echo "  make test             Run tests with pytest"
 	@echo "  make test-cov         Run tests with coverage report"
@@ -34,16 +39,20 @@ help:
 	@echo "Maintenance:"
 	@echo "  make clean            Remove build artifacts and cache files"
 
-install:
+
+install-uv:
+	curl -LsSf https://astral.sh/uv/install.sh | sh
+
+install: install-uv
 	$(CD) uv sync --no-dev
 
-install-dev:
+install-dev: install-uv
 	$(CD) uv sync --group dev
 
-install-docs:
+install-docs: install-uv
 	$(CD) uv sync --group docs
 
-install-all:
+install-all: install-uv
 	$(CD) uv sync --group dev --group docs --group test
 
 test:
@@ -92,3 +101,9 @@ clean:
 	$(CD) find . -type d -name "site" -exec rm -rf {} + 2>/dev/null || true
 	$(CD) find . -type d -name ".tox" -exec rm -rf {} + 2>/dev/null || true
 	$(CD) find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
+
+simple-example:
+	$(CD) uv run python ../examples/simple.py
+
+dashboard:
+	$(CD) uv run solara run ../examples/solara_app.py

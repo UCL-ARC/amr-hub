@@ -1,11 +1,14 @@
 """Thin Mesa wrapper around the existing Simulation for SolaraViz."""
 
+import logging
 from pathlib import Path
 
 import mesa
 
 from amr_hub_abm.agent import InfectionStatus
 from amr_hub_abm.simulation_factory import create_simulation
+
+logger = logging.getLogger(__name__)
 
 
 class HospitalABM(mesa.Model):
@@ -20,6 +23,7 @@ class HospitalABM(mesa.Model):
         """Initialize the model and seed infections for demo purposes."""
         super().__init__()
 
+        self.config_path = config_path
         self.agent_speed = agent_speed
         self.agent_stochasticity = agent_stochasticity
 
@@ -33,9 +37,18 @@ class HospitalABM(mesa.Model):
         self.simulation.agents[0].infection_status = InfectionStatus.INFECTED
         self.simulation.agents[1].infection_status = InfectionStatus.EXPOSED
 
+    def create_new_simulation(self) -> None:
+        """Create a new simulation."""
+        self.simulation = create_simulation(
+            Path(self.config_path),
+            agent_speed=self.agent_speed,
+            agent_stochasticity=self.agent_stochasticity,
+        )
+
     def step(self) -> None:
         """Advance the wrapped simulation by one time step."""
-        if self.simulation.time < self.simulation.total_simulation_time:
-            self.simulation.step(record=True)
-        else:
-            self.running = False
+        if self.simulation.time >= self.simulation.total_simulation_time:
+            self.create_new_simulation()
+            return
+
+        self.simulation.step(record=True)
