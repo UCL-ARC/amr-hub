@@ -1,4 +1,11 @@
-"""Thin Mesa wrapper around the existing Simulation for SolaraViz."""
+"""
+Thin Mesa wrapper around the existing Simulation for SolaraViz.
+
+This module defines the `HospitalABM` class, which serves as a wrapper around the
+existing AMR Hub simulation to enable integration with SolaraViz for visualization
+purposes. The functionality mirrors the existing simulation, defined in `run.py`, but is
+adapted to fit the Mesa framework for easier visualization.
+"""
 
 import logging
 from pathlib import Path
