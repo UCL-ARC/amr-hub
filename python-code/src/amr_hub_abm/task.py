@@ -21,7 +21,17 @@ logger = logging.getLogger(__name__)
 
 
 def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
-    """Remove the agent's occupancy from any content they are currently occupying."""
+    """
+    Remove the agent's occupancy from any content they are currently occupying.
+
+    Parameters
+    ----------
+    agent : Agent
+        The agent whose occupancy is to be removed.
+    current_time : int
+        The current time in the simulation, used for logging purposes.
+
+    """
     room = agent.get_room()
     if room is None:
         return
@@ -44,7 +54,19 @@ def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
 
 
 def add_agent_occupancy(agent: Agent, content: Content, current_time: int) -> None:
-    """Add the agent's occupancy to the specified content."""
+    """
+    Add the agent's occupancy to the specified content.
+
+    Parameters
+    ----------
+    agent : Agent
+        The agent whose occupancy is to be added.
+    content : Content
+        The content to which the agent will occupy.
+    current_time : int
+        The current time in the simulation, used for logging purposes.
+
+    """
     content.occupier_id = (agent.idx, agent.agent_type)
     agent.stationary = True
 
@@ -102,7 +124,21 @@ class TaskPriority(IntEnum):
 
 @dataclass
 class Task:
-    """Representation of a task assigned to an agent."""
+    """
+    Representation of a task assigned to an agent.
+
+    Parameters
+    ----------
+    time_needed : int
+        The time required to complete the task.
+    time_due : int
+        The time by which the task should be completed.
+    progress : TaskProgress, optional
+        The current progress of the task. Defaults to TaskProgress.NOT_STARTED.
+    priority : TaskPriority, optional
+        The priority level of the task. Defaults to TaskPriority.MEDIUM.
+
+    """
 
     task_type: ClassVar[TaskType] = TaskType.GENERIC
 
@@ -118,7 +154,26 @@ class Task:
     time_completed: int | None = field(init=False, default=None)
 
     def time_spent(self, current_time: int) -> int:
-        """Calculate the time spent on the task so far."""
+        """
+        Calculate the time spent on the task so far.
+
+        Parameters
+        ----------
+        current_time : int
+            The current time in the simulation.
+
+        Returns
+        -------
+        int
+            The time spent on the task so far.
+
+        Raises
+        ------
+        TimeError
+            If the task is marked as completed but start time or completion time is
+            None, or if the task is marked as in progress but start time is None.
+
+        """
         if self.progress == TaskProgress.COMPLETED:
             if self.time_started is None:
                 msg = "Task marked as completed but start time is None."
@@ -140,7 +195,15 @@ class Task:
         return 0
 
     def __post_init__(self) -> None:
-        """Post-initialization to validate task attributes."""
+        """
+        Post-initialization to validate task attributes.
+
+        Raises
+        ------
+        TimeError
+            If time_needed or time_due is negative.
+
+        """
         if self.time_needed < 0:
             msg = "Time needed for a task cannot be negative."
             raise TimeError(msg)
@@ -150,7 +213,17 @@ class Task:
             raise TimeError(msg)
 
     def update_progress(self, current_time: int, agent: Agent) -> None:
-        """Update the progress of the task based on time spent."""
+        """
+        Update the progress of the task based on time spent.
+
+        Parameters
+        ----------
+        current_time : int
+            The current time in the simulation.
+        agent : Agent
+            The agent performing the task.
+
+        """
         if self.progress == TaskProgress.COMPLETED:
             return
 
@@ -258,7 +331,16 @@ class TaskDoorAccess(Task):
         )
 
     def modify_location(self, agent: Agent) -> None:
-        """Modify the location of the task to account for buffer."""
+        """
+        Modify the location of the task to account for buffer.
+
+        Parameters
+        ----------
+        agent : Agent
+            The agent performing the task, used to determine which side of the door to
+            position on.
+
+        """
         if self.door.start is None:
             msg = "Door coords needed"
             raise SimulationModeError(msg)
@@ -322,7 +404,20 @@ class TaskOccupyContent(Task):
         super().__post_init__()
 
     def assign_content(self) -> None:
-        """Assign the content to be occupied based on the content type and room."""
+        """
+        Assign the content to be occupied based on the content type and room.
+
+        The method searches for content in the specified room that matches the required
+        content type. If found, it assigns the content to the task and sets the task
+        location to the content's location. If no matching content is found, it raises a
+        SimulationModeError.
+
+        Raises
+        ------
+        SimulationModeError
+            If no content of the specified type is found in the room.
+
+        """
         content = next(
             (c for c in self.room.contents if c.content_type == self.content_type), None
         )
