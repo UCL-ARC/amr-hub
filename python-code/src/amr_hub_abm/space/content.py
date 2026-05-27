@@ -1,4 +1,12 @@
-"""Module defining room content types for the rooms of the AMR Hub ABM simulation."""
+"""
+Module defining room content types for the rooms of the AMR Hub ABM simulation.
+
+This module defines the `Content` class, which represents the contents of rooms in the
+AMR Hub ABM simulation. The `Content` class includes attributes for content type,
+location, size, and occupancy status, as well as methods for calculating the polygon
+representation of the content and checking if it is occupied.
+
+"""
 
 from __future__ import annotations
 
@@ -36,7 +44,20 @@ CONTENT_COLORS = {
 
 @dataclass
 class Content:
-    """Enumeration of possible room contents."""
+    """
+    Representation of content within a room in the AMR Hub ABM simulation.
+
+    Parameters
+    ----------
+    content_type : ContentType
+        The type of content (e.g., bed, workstation, chair).
+    location : Location
+        The location of the content within the room.
+    occupier_id : tuple[int, AgentType] | None, optional
+        The ID and type of the agent currently occupying the content, if any.
+        Defaults to None.
+
+    """
 
     content_id: int = field(init=False)
     content_type: ContentType

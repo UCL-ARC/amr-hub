@@ -89,16 +89,25 @@ class Floor:
         """
         Create a spatial room from a pseudo-room based on area.
 
-        Args:
-            room (Room): The pseudo-room to convert.
+        Parameters
+        ----------
+        room : Room
+            A pseudo-room with defined area and doors but no walls.
 
-        Returns:
-            Room: A spatial room with walls and doors based on the pseudo-room's area.
+        Returns
+        -------
+        Room
+            A spatial room with walls and doors positioned based on the area of the
+            pseudo-room.
 
-        Raises:
-            InvalidRoomError: If the pseudo-room does not have a valid positive area.
 
-        Note:
+        Raises
+        ------
+        InvalidRoomError
+            If the pseudo-room does not have a valid positive area.
+
+        Note
+        ----
             This method generates a rectangular room layout based on the area of the
             pseudo-room. The doors are positioned along one side of the rectangle. This
             function is not complete. Currently it only creates single simple
@@ -143,7 +152,20 @@ class Floor:
         )
 
     def find_room_by_location(self, location: tuple[float, float]) -> Room | None:
-        """Find the room that contains the given location."""
+        """
+        Find the room that contains the given location.
+
+        Parameters
+        ----------
+        location : tuple[float, float]
+            The (x, y) coordinates of the location to search for.
+
+        Returns
+        -------
+        Room | None
+            The room that contains the location, or None if no such room exists.
+
+        """
         for room in self.rooms:
             if room.walls and room.contains_point(location):
                 return room
