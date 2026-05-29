@@ -8,7 +8,19 @@ from matplotlib.axes import Axes
 
 @dataclass
 class Wall:
-    """Representation of a wall in the AMR Hub ABM simulation."""
+    """
+    Representation of a wall in the AMR Hub ABM simulation.
+
+    Parameters
+    ----------
+    start : tuple[float, float]
+        The starting coordinates of the wall as a tuple (x, y).
+    end : tuple[float, float]
+        The ending coordinates of the wall as a tuple (x, y).
+    thickness : float, optional
+        The thickness of the wall. Defaults to 0.2 units.
+
+    """
 
     start: tuple[float, float]
     end: tuple[float, float]
