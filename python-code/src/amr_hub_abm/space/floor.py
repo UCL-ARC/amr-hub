@@ -19,14 +19,37 @@ if TYPE_CHECKING:
 
 @dataclass
 class Floor:
-    """Representation of a floor in a building."""
+    """
+    Representation of a floor in a building.
+
+    Parameters
+    ----------
+    floor_number : int
+        The number of the floor within the building.
+    rooms : list[Room]
+        The list of rooms on the floor.
+    pseudo_rooms : list[Room], optional
+        The list of pseudo-rooms on the floor, which are rooms that are defined by area
+        and doors but do not have defined walls. These are used to represent spaces that
+        are not fully defined in the input data and need to be converted to spatial
+        rooms based on their area and door locations. Defaults to an empty list.
+
+    """
 
     floor_number: int
     rooms: list[Room]
     pseudo_rooms: list[Room] = field(init=False, default_factory=list)
 
     def __post_init__(self) -> None:
-        """Post-initialization to validate floor attributes."""
+        """
+        Post-initialization to validate floor attributes.
+
+        Raises
+        ------
+        InvalidRoomError
+            If there are duplicate room IDs on the floor.
+
+        """
         room_ids = [room.room_id for room in self.rooms]
         if len(room_ids) != len(set(room_ids)):
             msg = f"Duplicate room IDs found on floor {self.floor_number}."
@@ -73,7 +96,19 @@ class Floor:
     def plot(
         self, ax: Axes, agents: list[Agent] | None = None, *, trajectory: bool = False
     ) -> None:
-        """Plot the floor layout including rooms and doors."""
+        """
+        Plot the floor layout including rooms and doors.
+
+        Parameters
+        ----------
+        ax : Axes
+            The matplotlib Axes object to plot on.
+        agents : list[Agent] | None, optional
+            A list of agents to plot on the floor. Defaults to None.
+        trajectory : bool, optional
+            Whether to plot the trajectories of the agents. Defaults to False.
+
+        """
         for room in self.rooms:
             room.plot(ax=ax, agents=agents, trajectory=trajectory)
 
