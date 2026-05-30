@@ -65,6 +65,38 @@ The dashboard layer provides interactive visualisation and reporting capabilitie
 
 The dashboard can provide live floorplan visualisation, task monitoring, infection summaries, occupancy statistics, movement replay, animations, and interactive reports. The visualisation layer is designed to be configurable according to end-user requirements while preserving privacy and governance constraints.
 
+## Repository Structure
+
+The repository is organised to separate simulation code, documentation, examples, and development infrastructure.
+
+```text
+amr-hub/
+├── .devcontainer/        # Development container configuration
+├── .github/              # GitHub Actions and repository automation
+├── docker/               # Docker configurations and supporting
+|
+├── docs/                 # Documentation source files
+├── examples/             # Example simulations and demonstrations
+├── python-code/          # Core AMR-Hub simulation package
+├── schemas/              # Configuration and data schemas
+├── static/               # Static assets for documentation and
+|
+├── workspace_settings/   # Shared development environment settings
+├── README.md
+├── CONTRIBUTING.md
+├── Makefile
+└── LICENSE
+```
+
+### Key Directories
+
+- **`python-code/`** contains the core simulation framework, including agent definitions, environment models, infection dynamics, task scheduling, visualisation components, and tests. The core agent-based model is implemented in `python-code/src/amr_hub_abm/`, while `python-code/src/floorplan_extractor/` contains logic to convert floorplan data into the simulation format.
+- **`docs/`** contains the source files used to build the project documentation website.
+- **`examples/`** provides example configurations, demonstrations, and tutorials for users and developers.
+- **`schemas/`** defines the validation rules and schemas used for simulation input files.
+- **`static/`** stores images, diagrams, and other static assets referenced throughout the documentation.
+- **`.github/`**, **`.devcontainer/`**, and **`workspace_settings/`** provide the tooling required for continuous integration, reproducible development environments, and containerised workflows.
+
 ## Development Philosophy
 
 The project emphasises modularity, reproducibility, extensibility, testing, and documentation. The architecture is intentionally designed so that preprocessing pipelines, simulation logic, visualisation layers, and TRE infrastructure remain independently maintainable and replaceable.
