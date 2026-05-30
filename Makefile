@@ -19,7 +19,6 @@ help:
 	@echo "  make install-dev      Install with development dependencies"
 	@echo "  make install-docs     Install with documentation dependencies"
 	@echo ""
-	@echo ""
 	@echo "Example Usage:"
 	@echo "  make simple-example   Run the simple example script"
 	@echo "  make dashboard        Run the Solara dashboard example"

@@ -28,11 +28,6 @@ class Floor:
         The number of the floor within the building.
     rooms : list[Room]
         The list of rooms on the floor.
-    pseudo_rooms : list[Room], optional
-        The list of pseudo-rooms on the floor, which are rooms that are defined by area
-        and doors but do not have defined walls. These are used to represent spaces that
-        are not fully defined in the input data and need to be converted to spatial
-        rooms based on their area and door locations. Defaults to an empty list.
 
     """
 
