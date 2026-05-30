@@ -38,6 +38,17 @@ class Wall:
         return line.buffer(self.thickness / 2, cap_style="square")
 
     def plot(self, ax: Axes, **kwargs: dict) -> None:
-        """Plot the wall on a given matplotlib axis."""
+        """
+        Plot the wall on a given matplotlib axis.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            The axis on which to plot the wall.
+        **kwargs : dict
+            Additional keyword arguments to pass to the fill
+            method for styling the wall (e.g., color, alpha).
+
+        """
         x, y = self.polygon.exterior.xy
         ax.fill(x, y, **kwargs)  # pyright: ignore[reportArgumentType]
