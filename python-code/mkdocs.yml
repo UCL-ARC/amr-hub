@@ -35,11 +35,24 @@ theme:
 
 nav:
   - Overview: index.md
-  - API reference: api.md
-  - License: LICENSE.md
-
-markdown_extensions:
-  - pymdownx.tasklist
+  - The Toy Problem: toy_problem.md
+  - API reference:
+      - Overview: api/index.md
+      - Agent: api/agent.md
+      - Exceptions: api/exceptions.md
+      - Space Input Reader: api/space_input_reader.md
+      - Location: api/location.md
+      - Building: api/building.md
+      - Floor: api/floor.md
+      - Room: api/room.md
+      - Door: api/door.md
+      - Wall: api/wall.md
+      - Content: api/content.md
+      - Mesa Wrapper: api/mesa_wrapper.md
+      - Run Function: api/run.md
+      - Simulation: api/simulation.md
+      - Simulation Factory: api/simulation_factory.md
+      - Task: api/task.md
 
 plugins:
   - search
@@ -50,7 +63,7 @@ plugins:
           inventories:
             - "https://docs.python.org/3/objects.inv"
           options:
-            docstring_style: google
+            docstring_style: numpy
             show_submodules: true
           paths: [src]
   - include-markdown:
@@ -61,3 +74,17 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: "https://github.com/UCL-ARC"
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.snippets
+  - pymdownx.tasklist
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+
+watch:
+  - docs/

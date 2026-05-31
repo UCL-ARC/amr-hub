@@ -567,16 +567,9 @@ def extract_polygons(
     ----------
     input_dxf_path : pathlib.Path
         Path to the input DXF file.
-    polygon_layer_name : str
-        Name of the DXF layer containing polygon boundary linework.
-    label_layer_name : str
-        Name of the DXF layer containing room label points.
-    polygon_label_column : str
-        Column containing room label text.
-    polygon_label_target : str
-        Name of the output column for polygon labels.
-    floor_filter : str
-        Prefix used to select labels for a specific floor.
+    config : ExtractionConfig
+        Configuration object controlling layer names, label filtering, and output column
+        names.
 
     Returns
     -------

@@ -1,4 +1,4 @@
-.PHONY: help install install-dev install-docs test lint format type-check docs clean pre-commit tox
+.PHONY: help install install-dev install-docs install-all test test-cov lint format type-check docs docs-serve clean pre-commit pre-commit-install simple-example dashboard
 
 # Determine if we're in the repo root or python-code directory
 PYTHON_CODE_DIR := $(shell if [ -d "python-code" ]; then echo "python-code"; else echo "."; fi)
@@ -19,6 +19,10 @@ help:
 	@echo "  make install-dev      Install with development dependencies"
 	@echo "  make install-docs     Install with documentation dependencies"
 	@echo ""
+	@echo "Example Usage:"
+	@echo "  make simple-example   Run the simple example script"
+	@echo "  make dashboard        Run the Solara dashboard example"
+	@echo ""
 	@echo "Development:"
 	@echo "  make test             Run tests with pytest"
 	@echo "  make test-cov         Run tests with coverage report"
@@ -33,18 +37,25 @@ help:
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean            Remove build artifacts and cache files"
-	@echo "  make tox              Run tests across all Python versions"
 
-install:
-	$(CD) uv sync
 
-install-dev:
-	$(CD) uv sync --extra dev
+install-uv:
+	curl -LsSf https://astral.sh/uv/install.sh | sh
 
-install-docs:
-	$(CD) uv sync --extra docs
+install: install-uv
+	$(CD) uv sync --no-dev
+
+install-dev: install-uv
+	$(CD) uv sync --group dev
+
+install-docs: install-uv
+	$(CD) uv sync --group docs
+
+install-all: install-uv
+	$(CD) uv sync --group dev --group docs --group test
 
 test:
+	$(CD) uv sync --group test
 	$(CD) uv run pytest tests --cov=src --cov-report=term-missing
 
 test-cov:
@@ -68,11 +79,16 @@ pre-commit-install: ## Install pre-commit hooks
 	@$(CD) uv run pre-commit install --hook-type pre-push
 	@echo "✅ Pre-commit hooks installed!"
 
+# Documentation commands
+# For documentation, we use MkDocs, but using the tox environment to ensure all dependencies are correctly handled
+
 docs:
-	$(CD) uv run mkdocs build
+	$(CD) uv run tox -e docs
 
 docs-serve:
-	$(CD) uv run mkdocs serve
+	$(CD) uv run tox -e docs-serve
+
+# Clean command to remove build artifacts and cache files
 
 clean:
 	$(CD) find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
@@ -85,9 +101,8 @@ clean:
 	$(CD) find . -type d -name ".tox" -exec rm -rf {} + 2>/dev/null || true
 	$(CD) find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
 
-tox:
-	$(CD) uv run tox
+simple-example:
+	$(CD) uv run python ../examples/simple.py
 
-profile:
-	$(CD) uv run python -m cProfile -o profile.prof ../examples/simple.py
-	$(CD) uv run snakeviz profile.prof
+dashboard:
+	$(CD) uv run solara run ../examples/solara_app.py

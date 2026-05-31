@@ -153,6 +153,7 @@ def test_plot_agent_without_tags() -> None:
         markersize=5,
         color=ROLE_COLOUR_MAP[agent.agent_type],
     )
+
     ax.text.assert_not_called()
 
 
@@ -171,7 +172,20 @@ def test_plot_agent_with_tags() -> None:
 
     agent.plot_agent(ax=ax, show_tags=True)
 
-    ax.plot.assert_called_once_with(
+    assert ax.plot.call_count == 2
+
+    ax.plot.assert_any_call(
+        agent.location.x,
+        agent.location.y,
+        marker="o",
+        markersize=12,
+        markerfacecolor="none",
+        markeredgecolor="gold",
+        markeredgewidth=2,
+        zorder=2,
+    )
+
+    ax.plot.assert_any_call(
         agent.location.x,
         agent.location.y,
         marker="o",
@@ -179,10 +193,10 @@ def test_plot_agent_with_tags() -> None:
         color=ROLE_COLOUR_MAP[agent.agent_type],
     )
     ax.text.assert_called_once_with(
-        agent.location.x + 0.05,
+        agent.location.x + 0.1,
         agent.location.y + 0.05,
-        f"{agent.agent_type.value} {agent.idx}",
-        fontsize=8,
+        "Healthcare Worker 8\n(exposed)",
+        fontsize=7,
         ha="left",
         va="bottom",
     )

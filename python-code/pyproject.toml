@@ -43,9 +43,13 @@ classifiers = [
 dependencies = [
   "geopandas>=1.1.2",
   "matplotlib>=3.10.7",
+  "mesa[viz]>=3.5.1",
+  "networkx>=3.6.1",
   "pandas>=2.3.3",
   "pyyaml>=6.0.3",
+  "qrcode[pil]>=8.2",
   "shapely>=2.1.2",
+  "solara>=1.57.3",
   "types-pyyaml>=6.0.12.20250915"
 ]
 description = "An agent based model for spread of Anti Microbial Resistant infections in hospitals"
@@ -58,7 +62,7 @@ license = "MIT"
 license-files = [
   "LICENSE.md"
 ]
-name = "amr-hub-abm"
+name = "amr_hub_abm"
 readme = "README.md"
 requires-python = ">=3.13"
 urls.homepage = "https://github.com/UCL-ARC/amr-hub"
@@ -66,7 +70,7 @@ urls.homepage = "https://github.com/UCL-ARC/amr-hub"
 [tool.coverage]
 report = {sort = "cover"}
 run = {branch = true, parallel = true, source = [
-  "amr-hub-abm"
+  "amr_hub_abm"
 ]}
 paths.source = [
   "src",
@@ -88,6 +92,7 @@ testpaths = [
 
 [tool.ruff]
 fix = true
+extend-exclude = ["examples"]
 force-exclude = true
 lint.ignore = [
   "COM812", # trailing commas (ruff-format recommended)
@@ -129,7 +134,7 @@ overrides."tool.tox.env_run_base.commands".inline_arrays = false
 
 [tool.tox]
 env_list = [
-  "py313"
+  "py313" # Python 3.13, because MkDocs is having issues with 3.14.
 ]
 env_run_base = {commands = [
   [
@@ -145,6 +150,14 @@ env.docs = {commands = [
     "mkdocs",
     "build",
     "--strict"
+  ]
+], dependency_groups = [
+  "docs"
+]}
+env.docs-serve = {commands = [
+  [
+    "mkdocs",
+    "serve"
   ]
 ], dependency_groups = [
   "docs"

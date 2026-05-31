@@ -3,6 +3,9 @@
 import logging
 from pathlib import Path
 
+from matplotlib import pyplot as plt
+
+from amr_hub_abm.agent import InfectionStatus
 from amr_hub_abm.simulation import Simulation
 from amr_hub_abm.simulation_factory import create_simulation
 
@@ -10,11 +13,36 @@ logger = logging.getLogger(__name__)
 
 
 def simulate(
-    *, plot: bool = False, record: bool = False, plot_trajectory: bool = False
+    *,
+    plot: bool = False,
+    record: bool = False,
+    live: bool = False,
+    plot_trajectory: bool = False,
+    seed_infections: bool = False,
 ) -> None:
-    """Simulate the AMR Hub ABM based on a configuration file."""
+    """
+    Simulate the AMR Hub ABM based on a configuration file.
+
+    Parameters
+    ----------
+    plot : bool, optional
+        Whether to save plots of the simulation at regular intervals, by default False
+    record : bool, optional
+        Whether to record agent states to a CSV file, by default False
+    live : bool, optional
+        Whether to display a live plot of the simulation, by default False
+    plot_trajectory : bool, optional
+        Whether to plot agent trajectories at the end of simulation, by default False
+    seed_infections : bool, optional
+        Whether to seed initial infections for demonstration purposes, by default False
+
+    """
     config_path = Path("tests/inputs/simulation_config.yml")
     simulation = create_simulation(config_path)
+    if seed_infections:
+        simulation.agents[0].infection_status = InfectionStatus.INFECTED
+        simulation.agents[1].infection_status = InfectionStatus.EXPOSED
+
     if plot:
         output_dir = Path("../simulation_outputs")
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -29,7 +57,15 @@ def simulate(
 
     plot_path = Path("../simulation_outputs") if plot else None
 
-    run_steps(simulation, plot_path, record=record)
+    figures = simulation.setup_live_plot() if live else None
+
+    run_steps(
+        simulation,
+        plot_path,
+        record=record,
+        figures=figures,
+        trajectory=plot_trajectory,  # <- reuse your existing flag
+    )
 
     if plot_trajectory:
         record = True
@@ -49,16 +85,38 @@ def simulate(
 
     logger.info("Simulation completed successfully...")
 
+    if live:
+        plt.ioff()  # turn interactive mode off
+        plt.show()  # final blocking show so window stays up after sim ends
+
 
 def run_steps(
     simulation: Simulation,
     plot_path: Path | None,
     *,
     record: bool,
+    figures: list | None = None,
+    trajectory: bool = False,  # NEW
 ) -> None:
-    """Run the simulation steps until completion."""
+    """
+    Run the simulation loop until completion, optionally plotting live.
+
+    Parameters
+    ----------
+    simulation : Simulation
+        The simulation instance to run.
+    plot_path : Path | None
+        Directory to save plots if plotting is enabled, otherwise None.
+    record : bool
+        Whether to record agent states to a CSV file at the end of simulation.
+    figures : list | None, optional
+        List of Matplotlib figure objects for live plotting, by default None
+    trajectory : bool, optional
+        Whether to plot agent trajectories at the end of simulation, by default False
+
+    """
     while simulation.time < simulation.total_simulation_time:
-        simulation.step(
-            plot_path=plot_path,
-            record=record,
-        )
+        simulation.step(plot_path=plot_path, record=record)
+
+        if figures is not None and simulation.time % 100 == 0:
+            simulation.plot_live(figures, trajectory=trajectory)
