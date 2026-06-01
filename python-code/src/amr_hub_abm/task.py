@@ -390,7 +390,9 @@ class TaskWorkstation(Task):
         super().__post_init__()
         self.location = self.workstation_location
 
-    def assign_workstation(self, agent: Agent) -> None:
+    def assign_workstation(
+        self, agent_id: int, agent_type: int, workstation_room: Room
+    ) -> None:
         """
         Assign a workstation to the task based on the agent's location.
 
@@ -410,36 +412,42 @@ class TaskWorkstation(Task):
             If no unoccupied workstations are found in the agent's current room.
 
         """
-        room = agent.get_room()
-        if room is None:
-            msg = "Agent is not currently located in any room."
-            raise SimulationModeError(msg)
-
         unoccupied_workstations = [
             content
-            for content in room.contents
+            for content in workstation_room.contents
             if content.content_type == ContentType.WORKSTATION
             and content.occupier_id is None
         ]
 
         if not unoccupied_workstations:
             msg = (
-                f"No unoccupied workstations found in {room.name} for TaskWorkstation."
+                f"No unoccupied workstations found in "
+                f"{workstation_room.name} for TaskWorkstation."
             )
             raise SimulationModeError(msg)
 
-        closest_workstation = min(
-            unoccupied_workstations,
-            key=lambda ws: (
-                (
-                    (ws.location.x - agent.location.x) ** 2
-                    + (ws.location.y - agent.location.y) ** 2
-                )
-                ** 0.5
+        own_workstation = next(
+            (
+                content
+                for content in unoccupied_workstations
+                if content.owner_id == (agent_id, agent_type)
             ),
+            None,
         )
 
-        self.workstation_location = closest_workstation.location
+        if own_workstation is not None:
+            self.workstation_location = own_workstation.location
+            self.location = self.workstation_location
+            return
+
+        msg = (
+            f"No workstation owned by agent id {agent_id} found in "
+            f"{workstation_room.name} for TaskWorkstation. Assigning default "
+            "workstation instead."
+        )
+        logger.warning(msg)
+
+        self.workstation_location = unoccupied_workstations[agent_id - 1].location
         self.location = self.workstation_location
 
 

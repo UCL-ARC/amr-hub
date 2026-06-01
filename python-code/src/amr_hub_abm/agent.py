@@ -838,6 +838,16 @@ class Agent:
             return False
         if isinstance(task, TaskOccupyContent):
             task.assign_content()
+        if isinstance(task, TaskWorkstation):
+            room = self.get_room()
+            if room is None:
+                msg = (
+                    f"Agent id {self.idx} cannot be assigned to workstation task "
+                    "because they are not located in any room."
+                )
+                logger.error(msg)
+                raise RuntimeError(msg)
+            task.assign_workstation(self.idx, self.agent_type, room)
 
         task_move_time = (
             task.time_due
