@@ -402,9 +402,16 @@ class TaskWorkstation(Task):
 
         Parameters
         ----------
-        agent : Agent
-            The agent performing the task, used to determine the current room and assign
-            the workstation.
+        agent_id : int
+            The ID of the agent performing the task, used to determine the current room
+            and assign the workstation.
+
+        agent_type : int
+            The type of the agent performing the task, used to determine the current
+            room and assign the workstation.
+
+        workstation_room : Room
+            The room in which to search for unoccupied workstations.
 
         Raises
         ------
