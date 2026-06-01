@@ -8,6 +8,7 @@ from enum import IntEnum
 from typing import TYPE_CHECKING, ClassVar
 
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
+from amr_hub_abm.space.content import ContentType
 from amr_hub_abm.space.location import Location
 
 if TYPE_CHECKING:
@@ -387,6 +388,58 @@ class TaskWorkstation(Task):
     def __post_init__(self) -> None:
         """Post-initialization to set the task location."""
         super().__post_init__()
+        self.location = self.workstation_location
+
+    def assign_workstation(self, agent: Agent) -> None:
+        """
+        Assign a workstation to the task based on the agent's location.
+
+        The method searches for unoccupied workstations in the agent's current room and
+        assigns the closest one to the task. If no unoccupied workstations are found, it
+        raises a SimulationModeError.
+
+        Parameters
+        ----------
+        agent : Agent
+            The agent performing the task, used to determine the current room and assign
+            the workstation.
+
+        Raises
+        ------
+        SimulationModeError
+            If no unoccupied workstations are found in the agent's current room.
+
+        """
+        room = agent.get_room()
+        if room is None:
+            msg = "Agent is not currently located in any room."
+            raise SimulationModeError(msg)
+
+        unoccupied_workstations = [
+            content
+            for content in room.contents
+            if content.content_type == ContentType.WORKSTATION
+            and content.occupier_id is None
+        ]
+
+        if not unoccupied_workstations:
+            msg = (
+                f"No unoccupied workstations found in {room.name} for TaskWorkstation."
+            )
+            raise SimulationModeError(msg)
+
+        closest_workstation = min(
+            unoccupied_workstations,
+            key=lambda ws: (
+                (
+                    (ws.location.x - agent.location.x) ** 2
+                    + (ws.location.y - agent.location.y) ** 2
+                )
+                ** 0.5
+            ),
+        )
+
+        self.workstation_location = closest_workstation.location
         self.location = self.workstation_location
 
 
