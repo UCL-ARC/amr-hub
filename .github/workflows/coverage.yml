@@ -19,7 +19,9 @@ jobs:
         run: pip install pytest pytest-cov
 
       - name: Install package
-        run: pip install -e .
+        run: |
+          cd python-code
+          pip install -e .
 
       - name: Run tests
         run: pytest --cov --cov-branch --cov-report=xml
