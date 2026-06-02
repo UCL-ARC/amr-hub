@@ -6,6 +6,10 @@ jobs:
   test:
     name: Run tests and collect coverage
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: python-code
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,9 +25,7 @@ jobs:
         run: pip install pytest pytest-cov
 
       - name: Install package
-        run: |
-          cd python-code
-          pip install -e .
+        run: pip install -e .
 
       - name: Run tests
         run: pytest --cov --cov-branch --cov-report=xml
@@ -32,3 +34,4 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: python-code/coverage.xml
