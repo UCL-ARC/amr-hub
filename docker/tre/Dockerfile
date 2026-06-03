@@ -16,5 +16,11 @@ COPY python-code/src ./src
 COPY python-code/tests ./tests
 COPY python-code/README.md ./README.md
 
+# Copy examples (if needed for testing or demonstration purposes)
+COPY examples /app/examples
+
+# Create a directory for simulation outputs
+RUN mkdir -p /app/simulation_outputs
+
 # Default command
 CMD ["uv", "run", "python"]
