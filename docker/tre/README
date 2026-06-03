@@ -47,7 +47,7 @@ docker build \
 To verify that the image has been built correctly:
 
 ```bash
-docker run --rm amr-hub-tre:latest uv run pytest
+docker run --rm amr-hub-tre:latest -m pytest
 ```
 
 All tests should pass successfully.
@@ -110,7 +110,7 @@ docker load -i amr-hub-tre.tar
 Verify the installation:
 
 ```bash
-docker run --rm amr-hub-tre:latest uv run pytest
+docker run --rm amr-hub-tre:latest -m pytest
 ```
 
 ## Simulation Outputs
@@ -129,7 +129,7 @@ In production deployments, this directory may be replaced by a mounted host dire
 docker run \
   -v /path/to/output:/app/simulation_outputs \
   amr-hub-tre:latest \
-  uv run python /app/examples/<example_file>.py
+  /app/examples/<example_file>.py
 ```
 
 This allows simulation results to persist outside the container.
