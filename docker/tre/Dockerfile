@@ -22,5 +22,8 @@ COPY examples /app/examples
 # Create a directory for simulation outputs
 RUN mkdir -p /app/simulation_outputs
 
-# Default command
-CMD ["uv", "run", "python"]
+# In TRE, run scripts directly with the prebuilt venv Python
+ENTRYPOINT ["/app/python-code/.venv/bin/python3"]
+
+# Default action if no script is provided
+CMD ["--version"]
