@@ -5,6 +5,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app/python-code
 
+# Make source importable when running external scripts/examples
+ENV PYTHONPATH=/app/python-code/src
+
 # Copy dependency files first for better Docker caching
 COPY python-code/pyproject.toml python-code/uv.lock ./
 
