@@ -111,6 +111,12 @@ See the [contributing guidelines](CONTRIBUTING.md) for more information on how t
 This project is licensed under the MIT License.
 Welcome to the AMR-Hub Project. We aim to model the transmission of Anti-Microbial Resistance in Hospitals.
 
+## Funding
+
+This work is being undertaken as part of the Digital Health Hub for
+Antimicrobial Resistance (AMR), which is funded by the EPSRC (EP/X031276/1).
+More information on the hub can be found [here](https://www.digitalamr.org/).
+
 ## Contributors ✨
 
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
