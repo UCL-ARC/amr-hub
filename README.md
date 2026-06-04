@@ -19,7 +19,7 @@
 [license-link]:             https://github.com/UCL-ARC/amr-hub/blob/main/LICENSE
 <!-- prettier-ignore-end -->
 
-AMR-HUB is an open-source agent-based modelling (ABM) framework for simulating hospital workflows, human movement, and antimicrobial resistance (AMR) transmission dynamics within healthcare environments. The project is designed around a Trusted Research Environment (TRE)-centric workflow that separates sensitive healthcare data from publicly distributable simulation software and anonymised outputs.
+As a part of the [Digital Health Hub for Antimicrobial Resistance (AMR)](https://www.digitalamr.org/), this project is an open-source agent-based modelling (ABM) framework for simulating hospital workflows, human movement, and antimicrobial resistance (AMR) transmission dynamics within healthcare environments. The project is designed around a Trusted Research Environment (TRE)-centric workflow that separates sensitive healthcare data from publicly distributable simulation software and anonymised outputs.
 
 The framework combines hospital geometry modelling, task scheduling, infection propagation, movement simulation, and interactive visualisation into a modular research software platform. It is intended both as a scientific modelling framework and as a reusable infrastructure for future epidemiological and operational healthcare simulations.
 
@@ -113,9 +113,8 @@ Welcome to the AMR-Hub Project. We aim to model the transmission of Anti-Microbi
 
 ## Funding
 
-This work is being undertaken as part of the Digital Health Hub for
-Antimicrobial Resistance (AMR), which is funded by the EPSRC (EP/X031276/1).
-More information on the hub can be found [here](https://www.digitalamr.org/).
+This work is being undertaken as part of the [Digital Health Hub for
+Antimicrobial Resistance (AMR)](https://www.digitalamr.org/), which is funded by the EPSRC (EP/X031276/1).
 
 ## Contributors ✨
 
