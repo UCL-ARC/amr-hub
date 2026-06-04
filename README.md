@@ -2,6 +2,7 @@
 
 [![pre-commit]][pre-commit]
 [![Tests status][tests-badge]][tests-link]
+[![codecov](https://codecov.io/gh/UCL-ARC/amr-hub/graph/badge.svg)](https://codecov.io/gh/UCL-ARC/amr-hub)
 [![Linting status][linting-badge]][linting-link]
 [![Documentation status][documentation-badge]][documentation-link]
 [![License][license-badge]][license-link]
