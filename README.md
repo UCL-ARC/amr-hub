@@ -5,9 +5,7 @@
 Welcome to the AMR-Hub Project. We aim to model the transmission of Anti-Microbial Resistance in Hospitals.
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-
-[![All Contributors](https://img.shields.io/badge/all_contributors-13-orange.svg?style=flat-square)](#contributors-)
-
+[![All Contributors](https://img.shields.io/badge/all_contributors-14-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 ## Contributors ✨
@@ -34,6 +32,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/p-j-smith"><img src="https://avatars.githubusercontent.com/u/29753790?v=4?s=100" width="100px;" alt="Paul Smith"/><br /><sub><b>Paul Smith</b></sub></a><br /><a href="#data-p-j-smith" title="Data">🔣</a> <a href="#infra-p-j-smith" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/skeating"><img src="https://avatars.githubusercontent.com/u/1736558?v=4?s=100" width="100px;" alt="Sarah Keating"/><br /><sub><b>Sarah Keating</b></sub></a><br /><a href="#infra-skeating" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/swise5"><img src="https://avatars.githubusercontent.com/u/1005676?v=4?s=100" width="100px;" alt="Sarah Wise"/><br /><sub><b>Sarah Wise</b></sub></a><br /><a href="#ideas-swise5" title="Ideas, Planning, & Feedback">🤔</a> <a href="#mentoring-swise5" title="Mentoring">🧑‍🏫</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/nicolin"><img src="https://avatars.githubusercontent.com/u/6137757?v=4?s=100" width="100px;" alt="nicolin"/><br /><sub><b>nicolin</b></sub></a><br /><a href="https://github.com/UCL-ARC/amr-hub/pulls?q=is%3Apr+reviewed-by%3Anicolin" title="Reviewed Pull Requests">👀</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/yidilozdemir"><img src="https://avatars.githubusercontent.com/u/30597301?v=4?s=100" width="100px;" alt="yidilozdemir"/><br /><sub><b>yidilozdemir</b></sub></a><br /><a href="https://github.com/UCL-ARC/amr-hub/commits?author=yidilozdemir" title="Documentation">📖</a> <a href="#research-yidilozdemir" title="Research">🔬</a> <a href="https://github.com/UCL-ARC/amr-hub/commits?author=yidilozdemir" title="Code">💻</a></td>
     </tr>
   </tbody>
