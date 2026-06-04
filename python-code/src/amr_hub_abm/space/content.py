@@ -105,6 +105,11 @@ class Content:
         return self.occupier_id is not None
 
     @property
+    def owned(self) -> bool:
+        """Check if the content is currently owned by an agent."""
+        return self.owner_id is not None
+
+    @property
     def position(self) -> tuple[float, float]:
         """Get the (x, y) position of the content."""
         return (self.location.x, self.location.y)

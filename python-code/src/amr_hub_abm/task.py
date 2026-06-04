@@ -454,7 +454,7 @@ class TaskWorkstation(Task):
         )
         logger.warning(msg)
 
-        self.workstation_location = unoccupied_workstations[agent_id - 1].location
+        self.workstation_location = unoccupied_workstations[0].location
         self.location = self.workstation_location
 
 

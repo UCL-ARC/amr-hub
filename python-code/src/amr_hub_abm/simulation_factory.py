@@ -459,15 +459,43 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
                 x=point[0],
                 y=point[1],
             )
+
         elif event_type == "workstation":
-            possible_locations = [
-                c.position
-                for c in room.contents
-                if c.content_type == ContentType.WORKSTATION
+            workstations = [
+                c for c in room.contents if c.content_type == ContentType.WORKSTATION
             ]
-            if not possible_locations:
+            if not workstations:
                 msg = f"No workstation found in room {room.name} for 'workstation'"
                 msg += f" event. Row: {row}. Selecting random location in room instead."
+                logger.error(msg)
+                possible_locations = [room.get_random_point()]
+
+            own_workstations = [
+                w
+                for w in workstations
+                if w.owner_id == (hcw_id, AgentType.HEALTHCARE_WORKER)
+            ]
+            if own_workstations:
+                possible_locations = [
+                    (w.location.x, w.location.y) for w in own_workstations
+                ]
+            elif workstations:
+                available_workstations = [w for w in workstations if not w.owned]
+                if not available_workstations:
+                    msg = f"No available workstations found in room {room.name}"
+                    msg += f" for HCW {hcw_id}."
+                    msg += " Selecting random location in room instead."
+                    logger.error(msg)
+                    possible_locations = [room.get_random_point()]
+                else:
+                    workstation = available_workstations[0]
+                    workstation.owner_id = (hcw_id, AgentType.HEALTHCARE_WORKER)
+                    possible_locations = [
+                        (workstation.location.x, workstation.location.y)
+                    ]
+            else:
+                msg = f"No workstations found in {room.name} for 'workstation' event."
+                msg += f" Row: {row}. Selecting random location in room instead."
                 logger.error(msg)
                 possible_locations = [room.get_random_point()]
 
