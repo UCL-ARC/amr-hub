@@ -5,6 +5,7 @@ import solara
 from matplotlib.figure import Figure
 from mesa.visualization import SolaraViz
 from mesa.visualization.utils import update_counter
+import qrcode
 
 from amr_hub_abm.mesa_wrapper import HospitalABM
 
@@ -41,8 +42,19 @@ def FloorplanComponent(model: HospitalABM) -> None:
         f"Time: {model.simulation.time}/{model.simulation.total_simulation_time}"
     )
 
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data("https://github-pages.arc.ucl.ac.uk/amr-hub/")
+    qr.make(fit=True)
+
+    img = qr.make_image(fill="black", back_color="white")
+    # Save the QR code image to a temporary file and read it back for display
+    img_path = "temp_qr_code.png"
+    img.save(img_path)  # pyright: ignore[reportArgumentType]
+
     with solara.Card(title="Floorplan", margin=0):
         solara.FigureMatplotlib(fig, format="png")
+        solara.Markdown("**Scan the QR code to learn more about the AMR Hub project!**")
+        solara.Image(img_path, width="200px")
 
 
 @solara.component  # pyright: ignore[reportPrivateImportUsage]

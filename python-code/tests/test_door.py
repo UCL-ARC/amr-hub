@@ -130,7 +130,8 @@ def test_invalid_door_equality_with_different_type() -> None:
         door_id=10,
     )
 
-    assert (door == "Not a door") is False
+    with pytest.raises(NotImplementedError):
+        _ = door == "Not a Door"
 
 
 def test_door_hash_consistency() -> None:

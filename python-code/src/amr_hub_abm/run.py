@@ -20,7 +20,23 @@ def simulate(
     plot_trajectory: bool = False,
     seed_infections: bool = False,
 ) -> None:
-    """Simulate the AMR Hub ABM based on a configuration file."""
+    """
+    Simulate the AMR Hub ABM based on a configuration file.
+
+    Parameters
+    ----------
+    plot : bool, optional
+        Whether to save plots of the simulation at regular intervals, by default False
+    record : bool, optional
+        Whether to record agent states to a CSV file, by default False
+    live : bool, optional
+        Whether to display a live plot of the simulation, by default False
+    plot_trajectory : bool, optional
+        Whether to plot agent trajectories at the end of simulation, by default False
+    seed_infections : bool, optional
+        Whether to seed initial infections for demonstration purposes, by default False
+
+    """
     config_path = Path("tests/inputs/simulation_config.yml")
     simulation = create_simulation(config_path)
     if seed_infections:
@@ -82,7 +98,23 @@ def run_steps(
     figures: list | None = None,
     trajectory: bool = False,  # NEW
 ) -> None:
-    """Run the simulation loop until completion, optionally plotting live."""
+    """
+    Run the simulation loop until completion, optionally plotting live.
+
+    Parameters
+    ----------
+    simulation : Simulation
+        The simulation instance to run.
+    plot_path : Path | None
+        Directory to save plots if plotting is enabled, otherwise None.
+    record : bool
+        Whether to record agent states to a CSV file at the end of simulation.
+    figures : list | None, optional
+        List of Matplotlib figure objects for live plotting, by default None
+    trajectory : bool, optional
+        Whether to plot agent trajectories at the end of simulation, by default False
+
+    """
     while simulation.time < simulation.total_simulation_time:
         simulation.step(plot_path=plot_path, record=record)
 

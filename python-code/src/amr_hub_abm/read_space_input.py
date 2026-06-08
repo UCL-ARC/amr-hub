@@ -31,7 +31,23 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SpaceInputReader:
-    """Class to read space input data from a YAML file."""
+    """
+    Class to read space input data from a YAML file.
+
+    This class is responsible for reading and validating the space input
+    data from a YAML file, and then creating the corresponding ``Room``,
+    ``Door``, ``Wall``, ``Floor``, and ``Building`` instances.
+
+    Parameters
+    ----------
+    input_path : Path
+        Path to the YAML file containing the space input data.
+
+    rng_generator : Generator
+        Random number generator for stochastic elements in the space
+        definitions.
+
+    """
 
     input_path: Path
     rng_generator: Generator
@@ -50,7 +66,33 @@ class SpaceInputReader:
     topological: bool = field(init=False, default=False)
 
     def __post_init__(self) -> None:
-        """Post-initialization to read and validate the YAML file."""
+        """
+        Post-initialization method to read data and create space instances.
+
+        This method is called automatically after the dataclass is initialized. It
+        performs the following steps:
+
+        1. Validates the input data from the YAML file.
+
+        2. Extracts room names and their corresponding detatched doors.
+
+        3. Creates Door instances from the detatched doors.
+
+        4. Creates Room instances from the validated data.
+
+        5. Organizes rooms into floors and buildings.
+
+
+        Note:
+        ----
+        The detached doors are intermediate representations of doors that are associated
+        with rooms but do not yet have their connecting rooms defined. They are used to
+        ensure that each door instance remains immutable and can be shared across
+        multiple rooms without duplication. The final Door instances are created after
+        all rooms have been processed, ensuring that each door correctly connects
+        exactly two rooms.
+
+        """
         self.validation()
         self.get_room_name_dict()
         self.create_doors_from_detatched_doors()
@@ -63,7 +105,14 @@ class SpaceInputReader:
         self.buildings = self.organise_rooms_into_floors_and_buildings(self.rooms)
 
     def get_room_name_dict(self) -> None:
-        """Extract room names and their corresponding detatched doors."""
+        """
+        Extract room names and their corresponding detatched doors.
+
+        This method iterates through the building, floor, and room data to extract
+        room names and their corresponding detatched doors. It populates the
+        room_door_dict attribute, which maps each room name to a list of `DetachedDoor`
+        instances representing the doors associated with that room.
+        """
         for building_data in [self.data["building"]]:
             for floor_data in building_data["floors"]:
                 for room_data in floor_data["rooms"]:
@@ -93,7 +142,14 @@ class SpaceInputReader:
                         self.room_door_dict[room_name] = doors
 
     def create_doors_from_detatched_doors(self) -> None:
-        """Create Door instances from detatched doors."""
+        """
+        Create Door instances from detatched doors.
+
+        This method processes the detatched doors collected in the room_door_dict to
+        create Door instances. It ensures that each door connects exactly two rooms and
+        assigns a unique door_id to each door. The created Door instances are stored in
+        the door_list attribute.
+        """
         detatced_door_list = [
             door for doors in self.room_door_dict.values() for door in doors
         ]
@@ -141,7 +197,20 @@ class SpaceInputReader:
 
     @staticmethod
     def organise_rooms_into_floors_and_buildings(rooms: list[Room]) -> list[Building]:
-        """Organize rooms into floors and buildings."""
+        """
+        Organize rooms into floors and buildings.
+
+        Parameters
+        ----------
+        rooms : list[Room]
+            List of Room instances to be organized.
+
+        Returns
+        -------
+        list[Building]
+            List of Building instances with organized floors and rooms.
+
+        """
         all_buildings = {room.building for room in rooms}
         buildings: list[Building] = []
         for building_name in all_buildings:
@@ -166,7 +235,14 @@ class SpaceInputReader:
         return Building.sort_and_number_buildings(buildings)
 
     def create_rooms_from_data(self) -> None:
-        """Create Room instances from the validated data."""
+        """
+        Create Room instances from the validated data.
+
+        This method iterates through the building, floor, and room data to create Room
+        instances. It uses the create_room method to create each Room instance based on
+        the room data and the corresponding doors. The created Room instances are stored
+        in the rooms attribute.
+        """
         sorted_room_names = sorted(room_name for room_name in self.room_door_dict)
 
         for index, name in enumerate(sorted_room_names):
@@ -181,7 +257,22 @@ class SpaceInputReader:
                             self.rooms.append(room)
 
     def validation(self) -> None:
-        """Validate the space input data from the YAML file."""
+        """
+        Validate the space input data from the YAML file.
+
+        This method reads the YAML file specified by the input_path attribute and
+        validates the structure and content of the space input data. It checks for the
+        presence of required keys and the correctness of the data format. If any
+        validation checks fail, it raises appropriate exceptions with informative error
+        messages. If the data is valid, it populates the data attribute with the loaded
+        YAML content for further processing in the creation of space instances.
+
+        Raises
+        ------
+        KeyError
+            If required keys are missing in the input data.
+
+        """
         with self.input_path.open("r", encoding="utf-8") as file:
             self.data = yaml.safe_load(file)
 
@@ -206,7 +297,27 @@ class SpaceInputReader:
     def create_room(
         self, room_data: dict, room_id: int, building_name: str, floor_level: int
     ) -> Room:
-        """Create a Room instance from room data."""
+        """
+        Create a Room instance from room data.
+
+        Parameters
+        ----------
+        room_data : dict
+            Dictionary containing the data for the room, including its name, doors,
+            walls, contents, and area (if topological).
+        room_id : int
+            Unique identifier for the room.
+        building_name : str
+            Name of the building to which the room belongs.
+        floor_level : int
+            Level of the floor on which the room is located.
+
+        Returns
+        -------
+        Room
+            A Room instance created from the provided room data.
+
+        """
         if self.topological:
             return self.create_topological_room(
                 room_data, room_id, building_name, floor_level
@@ -216,7 +327,27 @@ class SpaceInputReader:
     def create_topological_room(
         self, room_data: dict, room_id: int, building_name: str, floor_level: int
     ) -> Room:
-        """Create a topological Room instance from room data."""
+        """
+        Create a topological Room instance from room data.
+
+        Parameters
+        ----------
+        room_data : dict
+            Dictionary containing the data for the room, including its name, doors, and
+            area.
+        room_id : int
+            Unique identifier for the room.
+        building_name : str
+            Name of the building to which the room belongs.
+        floor_level : int
+            Level of the floor on which the room is located.
+
+        Returns
+        -------
+        Room
+            A topological Room instance created from the provided room data.
+
+        """
         room_doors = [
             door for door in self.door_list if door.name in room_data["doors"]
         ]
@@ -236,7 +367,27 @@ class SpaceInputReader:
     def create_spatial_room(
         self, room_data: dict, room_id: int, building_name: str, floor_level: int
     ) -> Room:
-        """Create a spatial Room instance from room data."""
+        """
+        Create a spatial Room instance from room data.
+
+        Parameters
+        ----------
+        room_data : dict
+            Dictionary containing the data for the room, including its name, doors,
+            walls, and contents.
+        room_id : int
+            Unique identifier for the room.
+        building_name : str
+            Name of the building to which the room belongs.
+        floor_level : int
+            Level of the floor on which the room is located.
+
+        Returns
+        -------
+        Room
+            A spatial Room instance created from the provided room data.
+
+        """
         room_doors = [
             door for door in self.door_list if room_id in door.connecting_rooms
         ]
@@ -284,7 +435,25 @@ class SpaceInputReader:
 
     @staticmethod
     def validate_building_data(building_data: dict) -> None:
-        """Validate the building data structure."""
+        """
+        Validate the building data structure.
+
+        This method checks for the presence of required keys in the building data
+        structure. It ensures that the building data contains a 'name', 'address', and
+        'floors' key. If any of these keys are missing, it raises a KeyError with an
+        informative error message.
+
+        Parameters
+        ----------
+        building_data : dict
+            Dictionary containing the data for the building.
+
+        Raises
+        ------
+        KeyError
+            If required keys are missing in the building data.
+
+        """
         if "name" not in building_data:
             msg = "The 'building' data must contain a 'name' key."
             logger.error(msg)
@@ -302,7 +471,25 @@ class SpaceInputReader:
 
     @staticmethod
     def validate_floor_data(floor_data: dict) -> None:
-        """Validate the floor data structure."""
+        """
+        Validate the floor data structure.
+
+        This method checks for the presence of required keys in the floor data
+        structure. It ensures that each floor has a 'level' defined and contains a
+        'rooms' key. If any of these keys are missing, it raises a KeyError with an
+        informative error message.
+
+        Parameters
+        ----------
+        floor_data : dict
+            Dictionary containing the data for the floor.
+
+        Raises
+        ------
+        KeyError
+            If required keys are missing in the floor data.
+
+        """
         if "level" not in floor_data:
             msg = "Each floor must have a 'level' defined."
             logger.error(msg)
@@ -315,7 +502,25 @@ class SpaceInputReader:
 
     @staticmethod
     def validate_room_data(room_data: dict) -> None:
-        """Validate the room data structure."""
+        """
+        Validate the room data structure.
+
+        This method checks for the presence of required keys in the room data
+        structure. It ensures that each room has a 'name' defined and contains a
+        'doors' key. If any of these keys are missing, it raises a KeyError with an
+        informative error message.
+
+        Parameters
+        ----------
+        room_data : dict
+            Dictionary containing the data for the room.
+
+        Raises
+        ------
+        KeyError
+            If required keys are missing in the room data.
+
+        """
         if "name" not in room_data:
             msg = "Each room must have a 'name' defined."
             logger.error(msg)
@@ -364,7 +569,28 @@ class SpaceInputReader:
     def check_tuple_length(
         data_tuple: list[float], expected_length: int, data_type: str
     ) -> None:
-        """Check if a data tuple has the expected length."""
+        """
+        Check if a data tuple has the expected length.
+
+        Parameters
+        ----------
+        data_tuple : list[float]
+            The tuple to check.
+        expected_length : int
+            The expected length of the tuple.
+        data_type : str
+            The type of the data (either 'wall' or 'door').
+
+        Raises
+        ------
+        InvalidDefinitionError
+            If the data type is not recognized.
+        InvalidRoomError
+            If the data type is 'wall' and the length is incorrect.
+        InvalidDoorError
+            If the data type is 'door' and the length is incorrect.
+
+        """
         if data_type not in {"wall", "door"}:
             msg = f"data_type must be either 'wall' or 'door'. Got '{data_type}'."
             raise InvalidDefinitionError(msg)
