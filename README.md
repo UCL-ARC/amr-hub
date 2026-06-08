@@ -7,6 +7,8 @@
 [![Documentation status][documentation-badge]][documentation-link]
 [![License][license-badge]][license-link]
 
+Welcome to the AMR-Hub Project. We aim to model the transmission of Anti-Microbial Resistance in Hospitals.
+
 <!-- prettier-ignore-start -->
 [pre-commit]:              https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white
 [tests-badge]:              https://github.com/UCL-ARC/amr-hub/actions/workflows/tests.yml/badge.svg
