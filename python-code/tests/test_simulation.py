@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from amr_hub_abm.agent import Agent, AgentType, InfectionStatus
+from amr_hub_abm.agent.agent import Agent, AgentType, InfectionStatus
 from amr_hub_abm.exceptions import TimeError
 from amr_hub_abm.simulation import Simulation, SimulationMode
 from amr_hub_abm.space.building import Building

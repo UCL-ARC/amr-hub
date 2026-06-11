@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from amr_hub_abm.agent import Agent, AgentType
+from amr_hub_abm.agent.agent import Agent, AgentType
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.read_space_input import SpaceInputReader
 from amr_hub_abm.simulation import Simulation, SimulationMode

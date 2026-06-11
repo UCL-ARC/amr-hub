@@ -5,7 +5,7 @@ from pathlib import Path
 
 from matplotlib import pyplot as plt
 
-from amr_hub_abm.agent import InfectionStatus
+from amr_hub_abm.agent.agent import InfectionStatus
 from amr_hub_abm.simulation import Simulation
 from amr_hub_abm.simulation_factory import create_simulation
 

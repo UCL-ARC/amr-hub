@@ -14,7 +14,7 @@ from amr_hub_abm.space.wall import Wall
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
-    from amr_hub_abm.agent import Agent
+    from amr_hub_abm.agent.agent import Agent
 
 
 @dataclass

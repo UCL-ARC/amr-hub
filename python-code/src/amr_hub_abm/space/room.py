@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from numpy.random import Generator
 
-    from amr_hub_abm.agent import Agent
+    from amr_hub_abm.agent.agent import Agent
     from amr_hub_abm.space.content import Content
     from amr_hub_abm.space.door import Door
     from amr_hub_abm.space.wall import Wall

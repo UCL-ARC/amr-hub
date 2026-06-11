@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from amr_hub_abm.agent import ROLE_COLOUR_MAP, Agent, AgentType, InfectionStatus
+from amr_hub_abm.agent.agent import ROLE_COLOUR_MAP, Agent, AgentType, InfectionStatus
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.location import Location

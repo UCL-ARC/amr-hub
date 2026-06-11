@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import shapely
 
-from amr_hub_abm.agent import Agent
+from amr_hub_abm.agent.agent import Agent
 from amr_hub_abm.exceptions import InvalidRoomError, SimulationModeError
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.content import Content

@@ -11,7 +11,7 @@ from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.location import Location
 
 if TYPE_CHECKING:
-    from amr_hub_abm.agent import Agent
+    from amr_hub_abm.agent.agent import Agent
     from amr_hub_abm.space.content import Content
     from amr_hub_abm.space.door import Door
     from amr_hub_abm.space.room import Room
