@@ -101,48 +101,6 @@ def test_distance_to_different_buildings() -> None:
     )
 
 
-def test_which_room_no_rooms() -> None:
-    """Test which_room method when there are no rooms."""
-    location = Location(x=5.0, y=5.0, floor=1, building="Test Building")
-    rooms: list[Room] = []
-
-    result = location.which_room(rooms)
-
-    assert result is None
-
-
-def test_which_room_not_in_any_room(sample_room: Room) -> None:
-    """Test which_room method when location is not in any room."""
-    location = Location(x=50.0, y=50.0, floor=1, building="Test Building")
-    rooms = [sample_room]
-
-    result = location.which_room(rooms)
-
-    assert result is None
-
-
-def test_which_room_in_room(sample_room: Room) -> None:
-    """Test which_room method when location is inside a room."""
-    location = Location(x=5.0, y=5.0, floor=1, building="Test Building")
-    rooms = [sample_room]
-
-    result = location.which_room(rooms)
-
-    assert result is not None
-    assert result.room_id == 1
-    assert result.name == "Sample Room"
-
-
-def test_which_room_different_floor(sample_room: Room) -> None:
-    """Test which_room method when location is on a different floor than rooms."""
-    location = Location(x=5.0, y=5.0, floor=2, building="Test Building")
-    rooms = [sample_room]
-
-    result = location.which_room(rooms)
-
-    assert result is None
-
-
 def test_line_of_sight_no_walls() -> None:
     """Test line of sight when there are no walls."""
     loc1 = Location(x=0.0, y=0.0, floor=1, building="Test Building")
