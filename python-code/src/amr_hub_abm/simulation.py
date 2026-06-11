@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
     from amr_hub_abm.agent.agent import Agent
-    from amr_hub_abm.space.building import Building
     from amr_hub_abm.space.room import Room
+    from amr_hub_abm.space.space import Space
 
 
 class SimulationMode(IntEnum):
@@ -62,7 +62,7 @@ class Simulation:
     description: str
     mode: SimulationMode
 
-    space: list[Building]
+    space: Space
     agents: list[Agent]
 
     total_simulation_time: int
@@ -142,7 +142,7 @@ class Simulation:
             raise NotADirectoryError(msg)
         directory_path.mkdir(parents=True, exist_ok=True)
 
-        for building in self.space:
+        for building in self.space.space:
             axes: list[Axes] = [plt.subplots(nrows=len(building.floors), ncols=1)[1]]
             building.plot_building(axes=axes, agents=self.agents, trajectory=trajectory)
             simulation_name = f"Simulation: {self.name}"
@@ -227,7 +227,7 @@ class Simulation:
         """
         plt.ion()
         figures = []
-        for building in self.space:
+        for building in self.space.space:
             fig, axes = plt.subplots(
                 nrows=len(building.floors),
                 ncols=1,
@@ -245,10 +245,10 @@ class Simulation:
         header += f"Mode: {self.mode.value}\n"
         header += f"Total Simulation Time: {self.total_simulation_time}\n"
         header += f"Current Time: {self.time}\n"
-        header += f"Number of Buildings: {len(self.space)}\n"
+        header += f"Number of Buildings: {len(self.space.space)}\n"
         header += f"Number of Agents: {len(self.agents)}\n"
 
-        buildings_repr = "\n".join([repr(building) for building in self.space])
+        buildings_repr = "\n".join([repr(building) for building in self.space.space])
         agents_repr = "\n".join([repr(agent) for agent in self.agents])
 
         return f"{header}\nBuildings:\n{buildings_repr}\n\nAgents:\n{agents_repr}"
@@ -257,7 +257,7 @@ class Simulation:
     def rooms(self) -> list[Room]:
         """Get all rooms in the simulation space."""
         all_rooms: list[Room] = []
-        for building in self.space:
+        for building in self.space.space:
             for floor in building.floors:
                 all_rooms.extend(floor.rooms)
         return all_rooms

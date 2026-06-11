@@ -24,7 +24,7 @@ def FloorplanComponent(model: HospitalABM) -> None:
 
     fig = Figure(figsize=(6, 6))
 
-    n_floors = len(model.simulation.space[0].floors)
+    n_floors = len(model.simulation.space.space[0].floors)
     axes = fig.subplots(nrows=n_floors, ncols=1)
 
     if hasattr(axes, "flatten"):
@@ -32,7 +32,7 @@ def FloorplanComponent(model: HospitalABM) -> None:
     else:
         axes = [axes]
 
-    model.simulation.space[0].plot_building(
+    model.simulation.space.space[0].plot_building(
         axes=axes,
         agents=model.simulation.agents,
         trajectory=True,

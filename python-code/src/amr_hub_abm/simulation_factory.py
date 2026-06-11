@@ -17,12 +17,13 @@ from amr_hub_abm.space.content import ContentType
 from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
+from amr_hub_abm.space.space import Space
 
 logger = logging.getLogger(__name__)
 
 
-def create_space_from_rooms(rooms: list[Room]) -> list[Building]:
-    """Create a list of Building instances from a list of Room instances."""
+def create_space_from_rooms(rooms: list[Room]) -> Space:
+    """Create a Space instance from a list of Room instances."""
     building_dict: dict[str, Building] = {}
 
     for room in rooms:
@@ -42,7 +43,8 @@ def create_space_from_rooms(rooms: list[Room]) -> list[Building]:
                     break
 
     raw_buildings = list(building_dict.values())
-    return Building.sort_and_number_buildings(raw_buildings)
+    space = Building.sort_and_number_buildings(raw_buildings)
+    return Space(space)
 
 
 def create_simulation(
@@ -113,7 +115,7 @@ def create_simulation(
         name="AMR Hub ABM Simulation",
         description="A simulation instance created from configuration.",
         mode=SimulationMode.SPATIAL,
-        space=space_reader.buildings,
+        space=Space(space=space_reader.buildings),
         agents=agents,
         total_simulation_time=total_steps,
         rng_generator=rng_generator,
@@ -173,7 +175,7 @@ def update_patient(  # noqa: PLR0913
     space_tuple: tuple[str, int, Room],
     patient_dict: dict[int, Agent],
     total_time_steps: int,
-    space: list[Building],
+    space: Space,
     rng_generator: np.random.Generator,
     agent_speed: float = 0.001,
     agent_stochasticity: float = 5.0,
@@ -191,8 +193,8 @@ def update_patient(  # noqa: PLR0913
         A dictionary mapping patient IDs to Agent instances.
     total_time_steps : int
         The total number of time steps in the simulation.
-    space : list[Building]
-        The simulation space represented as a list of Building instances.
+    space : Space
+        The simulation space represented as a Space instance.
     rng_generator : np.random.Generator
         Random number generator for reproducibility.
     agent_speed : float, optional
@@ -240,7 +242,7 @@ def update_hcw(  # noqa: PLR0913
     event_tuple: tuple[Location, int, str],
     hcw_dict: dict[int, Agent],
     total_time_steps: int,
-    space: list[Building],
+    space: Space,
     rng_generator: np.random.Generator,
     additional_info: dict | None = None,
     agent_speed: float = 0.001,
@@ -261,8 +263,8 @@ def update_hcw(  # noqa: PLR0913
         A dictionary mapping healthcare worker IDs to Agent instances.
     total_time_steps : int
         The total number of time steps in the simulation.
-    space : list[Building]
-        The simulation space represented as a list of Building instances.
+    space : Space
+        The simulation space represented as a Space instance.
     rng_generator : np.random.Generator
         Random number generator for reproducibility.
     additional_info : dict | None, optional

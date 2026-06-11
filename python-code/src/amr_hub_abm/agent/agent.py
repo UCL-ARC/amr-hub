@@ -39,8 +39,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from numpy.random import Generator
 
-    from amr_hub_abm.space.building import Building
-
+    from amr_hub_abm.space.space import Space
 
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
 
@@ -169,7 +168,7 @@ class Agent:
     idx: int
     location: Location
     heading_rad: float
-    space: list[Building]
+    space: Space
     rng_generator: Generator
 
     interaction_radius: float = field(default=0.01)
@@ -264,15 +263,17 @@ class Agent:
         if coords is None:
             coords = (self.location.x, self.location.y)
 
-        for building in self.space:
-            if building.name != self.location.building:
-                continue
-            for floor in building.floors:
-                if floor.floor_number != self.location.floor:
-                    continue
-                room = floor.find_room_by_location(coords)
-                if room:
-                    return room
+        room = self.space.get_room(
+            Location(
+                x=coords[0],
+                y=coords[1],
+                floor=self.location.floor,
+                building=self.location.building,
+            )
+        )
+        if room:
+            return room
+
         logger.info(
             "Agent id %s is not located in any room. Location: %s",
             self.idx,
@@ -884,7 +885,7 @@ class Agent:
             raise ValueError(msg)
 
         building_idx_list = [
-            b.idx for b in self.space if b.name == self.location.building
+            b.idx for b in self.space.space if b.name == self.location.building
         ]
         if not building_idx_list:
             msg = f"Building {self.location.building} not found in agent's space."

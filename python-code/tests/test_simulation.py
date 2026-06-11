@@ -13,6 +13,7 @@ from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
+from amr_hub_abm.space.space import Space
 from amr_hub_abm.space.wall import Wall
 
 
@@ -93,7 +94,7 @@ def sample_agent(sample_building: Building) -> Agent:
             building=sample_building.name,
         ),
         heading_rad=0.0,
-        space=[sample_building],
+        space=Space(space=[sample_building]),
         rng_generator=np.random.default_rng(),
     )
 
@@ -106,7 +107,7 @@ def sample_simulation(sample_building: Building, sample_agent: Agent) -> Simulat
         description="A test simulation.",
         total_simulation_time=10,
         mode=SimulationMode.TOPOLOGICAL,
-        space=[sample_building],
+        space=Space(space=[sample_building]),
         agents=[sample_agent],
         rng_generator=np.random.default_rng(),
     )
@@ -123,8 +124,8 @@ def test_simulation_initialization(
     assert simulation.time == 0
     assert simulation.name == "TestSimulation"
     assert simulation.description == "A test simulation."
-    assert len(simulation.space) == 1
-    assert simulation.space[0].name == "TestBuilding"
+    assert len(simulation.space.space) == 1
+    assert simulation.space.space[0].name == "TestBuilding"
     assert len(simulation.agents) == 1
     assert simulation.agents[0].idx == 1
 
@@ -177,7 +178,7 @@ def test_agent_get_room_in_multiple_buildings(
 
     simulation_space = [building1, building2, building3]
 
-    sample_agent.space = simulation_space
+    sample_agent.space = Space(space=simulation_space)
 
     room = sample_agent.get_room()
 
@@ -197,7 +198,7 @@ def test_agent_get_room_no_floors(
         ),
     ]
 
-    sample_agent.space = simulation_space
+    sample_agent.space = Space(space=simulation_space)
     room = sample_agent.get_room()
 
     assert room is None
@@ -214,7 +215,7 @@ def test_agent_get_room_no_matching_floor(
         ),
     ]
 
-    sample_agent.space = simulation_space
+    sample_agent.space = Space(space=simulation_space)
     room = sample_agent.get_room()
 
     assert room is None
@@ -229,7 +230,7 @@ def test_agent_get_room_no_matching_building(
         Building(name="BuildingB", floors=[Floor(floor_number=0, rooms=[])]),
     ]
 
-    sample_agent.space = simulation_space
+    sample_agent.space = Space(space=simulation_space)
     room = sample_agent.get_room()
 
     assert room is None
@@ -241,7 +242,7 @@ def test_agent_get_room_no_buildings(
     """Test that the agent returns None when there are no buildings."""
     simulation_space: list[Building] = []
 
-    sample_agent.space = simulation_space
+    sample_agent.space = Space(space=simulation_space)
     room = sample_agent.get_room()
 
     assert room is None
@@ -258,7 +259,7 @@ def test_agent_get_room_no_rooms(
         ),
     ]
 
-    sample_agent.space = simulation_space
+    sample_agent.space = Space(space=simulation_space)
     room = sample_agent.get_room()
 
     assert room is None
@@ -273,7 +274,7 @@ def test_agent_get_room_not_found(
         Building(name="BuildingY", floors=[Floor(floor_number=0, rooms=[])]),
     ]
 
-    sample_agent.space = simulation_space
+    sample_agent.space = Space(space=simulation_space)
     room = sample_agent.get_room()
 
     assert room is None

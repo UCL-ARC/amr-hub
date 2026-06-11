@@ -15,6 +15,7 @@ from amr_hub_abm.space.content import Content
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
+from amr_hub_abm.space.space import Space
 from amr_hub_abm.space.wall import Wall
 
 # ============================================================================
@@ -376,7 +377,7 @@ def test_plot_room_with_agent_inside(simple_room: Room) -> None:
         idx=1,
         location=Location(1.0, 1.0, floor=1, building=simple_room.building),
         heading_rad=0.0,
-        space=[],
+        space=Space([]),
         rng_generator=np.random.default_rng(),
     )
     with patch.object(agent, "plot_agent") as mock_plot_agent:
@@ -393,7 +394,7 @@ def test_plot_room_skips_agent_outside(simple_room: Room) -> None:
         idx=2,
         location=Location(6.0, 6.0, floor=1, building=simple_room.building),
         heading_rad=0.0,
-        space=[],
+        space=Space([]),
         rng_generator=np.random.default_rng(),
     )
 
