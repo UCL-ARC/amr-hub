@@ -25,6 +25,7 @@ from amr_hub_abm.space.content import ContentType
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
+from amr_hub_abm.space.space import get_room
 from amr_hub_abm.task import (
     Task,
     TaskAttendPatient,
@@ -39,7 +40,6 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from numpy.random import Generator
 
-    from amr_hub_abm.space.space import Space
 
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
 
@@ -168,7 +168,7 @@ class Agent:
     idx: int
     location: Location
     heading_rad: float
-    space: Space
+    rooms: list[Room]
     rng_generator: Generator
 
     interaction_radius: float = field(default=0.01)
@@ -263,13 +263,14 @@ class Agent:
         if coords is None:
             coords = (self.location.x, self.location.y)
 
-        room = self.space.get_room(
+        room = get_room(
             Location(
                 x=coords[0],
                 y=coords[1],
                 floor=self.location.floor,
                 building=self.location.building,
-            )
+            ),
+            self.rooms,
         )
         if room:
             return room
@@ -884,16 +885,19 @@ class Agent:
             msg += f"exceeds trajectory length {self.trajectory_length}."
             raise ValueError(msg)
 
-        building_idx_list = [
-            b.idx for b in self.space.space if b.name == self.location.building
-        ]
+        building_idx_list = {
+            b.building
+            for idx, b in enumerate(self.rooms)
+            if b.building == self.location.building
+        }
+
         if not building_idx_list:
             msg = f"Building {self.location.building} not found in agent's space."
             raise ValueError(msg)
         if len(building_idx_list) > 1:
             msg = f"Multiple buildings with name {self.location.building} found."
             raise ValueError(msg)
-        building_idx = building_idx_list[0]
+        building_idx = hash(building_idx_list.pop()) % 32  # Convert to int8 range
 
         self.trajectory.push(
             time=current_time,

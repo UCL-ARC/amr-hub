@@ -11,7 +11,6 @@ from amr_hub_abm.agent.agent import ROLE_COLOUR_MAP, Agent, AgentType, Infection
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.space import Space
 from amr_hub_abm.space.wall import Wall
 
 
@@ -25,7 +24,7 @@ def test_agent_creation() -> None:
             x=0.0, y=0.0, floor=1, building=Building(name="Hospital", floors=[]).name
         ),
         heading_rad=math.pi / 2,  # 90 degrees in radians
-        space=Space([]),
+        rooms=[],
         rng_generator=np.random.default_rng(),
     )
 
@@ -53,7 +52,7 @@ def test_heading_modulo() -> None:
         heading_rad=math.radians(
             450
         ),  # 450 degrees in radians, should wrap to 90 degrees
-        space=Space([]),
+        rooms=[],
         rng_generator=np.random.default_rng(),
     )
     expected_heading = 90.0
@@ -76,7 +75,7 @@ def test_agent_intersection_with_walls() -> None:
         infection_status=InfectionStatus.EXPOSED,
         location=Location(x=0.1, y=5.0, floor=1, building="Hospital"),
         heading_rad=math.pi,  # 180 degrees in radians
-        space=Space([]),
+        rooms=[],
         rng_generator=np.random.default_rng(),
     )
 
@@ -86,7 +85,7 @@ def test_agent_intersection_with_walls() -> None:
         infection_status=InfectionStatus.RECOVERED,
         location=Location(x=15.0, y=5.0, floor=1, building="Hospital"),
         heading_rad=0.0,
-        space=Space([]),
+        rooms=[],
         rng_generator=np.random.default_rng(),
     )
 
@@ -122,7 +121,7 @@ def test_move_to_location() -> None:
         infection_status=InfectionStatus.SUSCEPTIBLE,
         location=initial_location,
         heading_rad=math.pi / 4,
-        space=Space([]),
+        rooms=[],
         rng_generator=np.random.default_rng(),
     )
 
@@ -140,7 +139,7 @@ def test_plot_agent_without_tags() -> None:
         infection_status=InfectionStatus.SUSCEPTIBLE,
         location=Location(x=1.0, y=2.0, floor=1, building="Hospital"),
         heading_rad=0.0,
-        space=Space([]),
+        rooms=[],
         rng_generator=np.random.default_rng(),
     )
     ax = MagicMock()
@@ -166,7 +165,7 @@ def test_plot_agent_with_tags() -> None:
         infection_status=InfectionStatus.EXPOSED,
         location=Location(x=0.5, y=0.25, floor=1, building="Hospital"),
         heading_rad=0.0,
-        space=Space([]),
+        rooms=[],
         rng_generator=np.random.default_rng(),
     )
     ax = MagicMock()
@@ -223,7 +222,7 @@ def sample_agent(sample_location: Location) -> Agent:
         infection_status=InfectionStatus.INFECTED,
         location=sample_location,
         heading_rad=math.pi / 4,  # 45 degrees in radians
-        space=Space([]),
+        rooms=[],
         rng_generator=np.random.default_rng(),
     )
 

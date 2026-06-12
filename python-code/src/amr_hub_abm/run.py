@@ -47,7 +47,6 @@ def simulate(
         output_dir = Path("../simulation_outputs")
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info([room.doors for room in simulation.space.space[0].floors[0].rooms])
     for agent in simulation.agents:
         msg = f"Agent {agent.agent_type, agent.idx} task list"
         logger.info(msg)
