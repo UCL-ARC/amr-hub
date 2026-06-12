@@ -165,8 +165,6 @@ def update_patient(  # noqa: PLR0913
         A dictionary mapping patient IDs to Agent instances.
     total_time_steps : int
         The total number of time steps in the simulation.
-    space : Space
-        The simulation space represented as a Space instance.
     rng_generator : np.random.Generator
         Random number generator for reproducibility.
     agent_speed : float, optional
