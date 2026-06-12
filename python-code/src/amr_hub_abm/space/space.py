@@ -1,6 +1,9 @@
 """Module containing space related functions and of agent."""
 
 import logging
+import math
+
+from numpy.random import Generator
 
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
@@ -79,3 +82,47 @@ def check_if_location_reached(
 
     distance = current_location.distance_to(target_location)
     return distance <= interaction_radius
+
+
+def propose_new_coordinates(
+    coordinates: tuple[float, float],
+    heading_rad: float,
+    movement_speed: float,
+    stochasticity: float,
+    rng_generator: Generator,
+) -> tuple[float, float]:
+    """
+    Propose a new location for agent movement.
+
+    Parameters
+    ----------
+    coordinates : tuple[float, float]
+        The current (x, y) coordinates of the agent.
+    heading_rad : float
+        The current heading of the agent in radians.
+    movement_speed : float
+        The speed at which the agent moves (units per time step).
+    stochasticity : float
+        The level of randomness to apply to the movement.
+    rng_generator : Generator
+        A random number generator to use for adding stochasticity to the movement.
+
+    Returns
+    -------
+    tuple[float, float]
+        The proposed new (x, y) coordinates for the agent after moving one step.
+
+    """
+    stochastic_heading_rad = heading_rad + rng_generator.normal(
+        0, math.radians(stochasticity)
+    )
+    delta_x = movement_speed * math.cos(stochastic_heading_rad)
+    delta_y = movement_speed * math.sin(stochastic_heading_rad)
+
+    delta_x = (1 + rng_generator.normal(0, stochasticity)) * delta_x
+    delta_y = (1 + rng_generator.normal(0, stochasticity)) * delta_y
+
+    new_x = coordinates[0] + delta_x
+    new_y = coordinates[1] + delta_y
+
+    return new_x, new_y
