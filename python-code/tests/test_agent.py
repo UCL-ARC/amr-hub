@@ -7,7 +7,9 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from amr_hub_abm.agent.agent import ROLE_COLOUR_MAP, Agent, AgentType, InfectionStatus
+from amr_hub_abm.agent.agent import Agent
+from amr_hub_abm.agent.enums import ROLE_COLOUR_MAP, AgentType, InfectionStatus
+from amr_hub_abm.agent.plotter import plot_agent
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.location import Location
@@ -144,7 +146,7 @@ def test_plot_agent_without_tags() -> None:
     )
     ax = MagicMock()
 
-    agent.plot_agent(ax=ax, show_tags=False)
+    plot_agent(agent=agent, ax=ax, show_tags=False)
 
     ax.plot.assert_called_once_with(
         agent.location.x,
@@ -170,7 +172,7 @@ def test_plot_agent_with_tags() -> None:
     )
     ax = MagicMock()
 
-    agent.plot_agent(ax=ax, show_tags=True)
+    plot_agent(agent=agent, ax=ax, show_tags=True)
 
     assert ax.plot.call_count == 2
 

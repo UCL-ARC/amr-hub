@@ -14,9 +14,9 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass, field, replace
-from enum import IntEnum
 from typing import TYPE_CHECKING
 
+from amr_hub_abm.agent.enums import AgentType, InfectionStatus
 from amr_hub_abm.agent.output import Record, record_state
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.space.content import ContentType
@@ -35,7 +35,6 @@ from amr_hub_abm.task import (
 )
 
 if TYPE_CHECKING:
-    from matplotlib.axes import Axes
     from numpy.random import Generator
 
 
@@ -43,38 +42,6 @@ TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
 
 
 logger = logging.getLogger(__name__)
-
-
-class AgentType(IntEnum):
-    """Enumeration of possible agent types."""
-
-    GENERIC = 0
-    PATIENT = 1
-    HEALTHCARE_WORKER = 2
-
-
-ROLE_COLOUR_MAP = {
-    AgentType.GENERIC: "blue",
-    AgentType.PATIENT: "red",
-    AgentType.HEALTHCARE_WORKER: "green",
-}
-
-
-class InfectionStatus(IntEnum):
-    """Enumeration of possible infection statuses."""
-
-    SUSCEPTIBLE = 0
-    EXPOSED = 1
-    INFECTED = 2
-    RECOVERED = 3
-
-
-INFECTION_RING_COLOUR = {
-    InfectionStatus.SUSCEPTIBLE: None,  # no ring
-    InfectionStatus.EXPOSED: "gold",
-    InfectionStatus.INFECTED: "darkred",
-    InfectionStatus.RECOVERED: "blue",
-}
 
 
 # --8<--- [start:Agent]
@@ -173,115 +140,6 @@ class Agent:
         msg = f"Moving Agent id {self.idx} from {self.location} to {new_location}"
         logger.info(msg)
         self.location = new_location
-
-    def plot_agent(self, ax: Axes, *, show_tags: bool = True) -> None:
-        """
-        Plot the agent on the given axes.
-
-        Parameters
-        ----------
-        ax : Axes
-            The axes on which to plot the agent.
-        show_tags : bool, optional
-            Whether to show tags with the agent's type and index.
-
-        """
-        ring_colour = INFECTION_RING_COLOUR[self.infection_status]
-        if ring_colour is not None:
-            ax.plot(
-                self.location.x,
-                self.location.y,
-                marker="o",
-                markersize=12,  # bigger than the inner dot
-                markerfacecolor="none",  # hollow ring
-                markeredgecolor=ring_colour,
-                markeredgewidth=2,
-                zorder=2,
-            )
-
-        ax.plot(
-            self.location.x,
-            self.location.y,
-            marker="o",
-            markersize=5,
-            color=ROLE_COLOUR_MAP[self.agent_type],
-        )
-
-        if not show_tags:
-            return
-
-        # Build the multi-line label
-        role = self.agent_type.name.replace("_", " ").title()
-        lines = [f"{role} {self.idx}"]
-
-        if self.infection_status != InfectionStatus.SUSCEPTIBLE:
-            lines.append(f"({self.infection_status.name.lower()})")
-
-        # Find what to display: in-progress task takes priority, else next NOT_STARTED
-        in_progress = next(
-            (t for t in self.tasks if t.progress == TaskProgress.IN_PROGRESS),
-            None,
-        )
-        moving = next(
-            (t for t in self.tasks if t.progress == TaskProgress.MOVING_TO_LOCATION),
-            None,
-        )
-        upcoming = [t for t in self.tasks if t.progress == TaskProgress.NOT_STARTED]
-        next_upcoming = (
-            min(upcoming, key=lambda t: (t.time_due, t.priority.value))
-            if upcoming
-            else None
-        )
-
-        display_task = in_progress or moving or next_upcoming
-        if display_task is not None:
-            task_name = display_task.task_type.name.lower()
-            if isinstance(display_task, TaskAttendPatient):
-                task_name += f" → patient {display_task.patient.idx}"
-
-            if display_task.progress == TaskProgress.IN_PROGRESS:
-                prefix = "doing"
-            elif display_task.progress == TaskProgress.MOVING_TO_LOCATION:
-                prefix = "moving to"
-            else:
-                prefix = "next"
-            lines.append(f"[{prefix}: {task_name}]")
-
-        ax.text(
-            self.location.x + 0.1,
-            self.location.y + 0.05,
-            "\n".join(lines),
-            fontsize=7,
-            ha="left",
-            va="bottom",
-        )
-
-    def plot_trajectory(self, ax: Axes, current_time: int | None = None) -> None:
-        """
-        Plot the agent's trajectory on the given axes.
-
-        Parameters
-        ----------
-        ax : Axes
-            The axes on which to plot the agent's trajectory.
-
-        """
-        if self.trajectory_length == 0:
-            msg = "Cannot plot trajectory for agent with trajectory_length of 0."
-            raise ValueError(msg)
-
-        end = current_time if current_time is not None else self.trajectory_length
-        if end <= 0:
-            return
-
-        ax.plot(
-            self.trajectory.position[:, 0],
-            self.trajectory.position[:, 1],
-            linestyle="-",
-            linewidth=1.5,
-            color=ROLE_COLOUR_MAP[self.agent_type],
-            alpha=0.7,
-        )
 
     def __repr__(self) -> str:
         """

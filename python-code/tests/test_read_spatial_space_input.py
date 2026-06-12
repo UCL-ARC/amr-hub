@@ -169,7 +169,7 @@ def test_floor_plotting(space_input_reader: SpaceInputReader) -> None:
     """Test plotting the floor layout."""
     simple_floor = space_input_reader.buildings[0].floors[0]
     fig, ax = plt.subplots()
-    simple_floor.plot(ax=ax)
+    simple_floor.plot(ax=ax, agents=[])
     if not Path("tests/output/").exists():
         Path("tests/output/").mkdir(parents=True, exist_ok=True)
     plt.savefig("tests/output/floor_plot.png")

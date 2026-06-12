@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from amr_hub_abm.exceptions import InvalidRoomError
+from amr_hub_abm.space.plotter import plot_agents_in_room
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
 
@@ -104,8 +105,11 @@ class Floor:
             Whether to plot the trajectories of the agents. Defaults to False.
 
         """
+        if agents is None:
+            agents = []
+
         for room in self.rooms:
-            room.plot(ax=ax, agents=agents, trajectory=trajectory)
+            plot_agents_in_room(room, ax, agents, trajectory=trajectory)
 
     def add_pseudo_rooms(self) -> None:
         """Add pseudo-rooms to the floor."""

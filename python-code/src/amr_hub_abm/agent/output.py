@@ -9,7 +9,8 @@ import numpy as np
 import numpy.typing as npt
 
 if TYPE_CHECKING:
-    from amr_hub_abm.agent.agent import Agent, InfectionStatus
+    from amr_hub_abm.agent.agent import Agent
+    from amr_hub_abm.agent.enums import InfectionStatus
 
 
 @dataclass(slots=True)
