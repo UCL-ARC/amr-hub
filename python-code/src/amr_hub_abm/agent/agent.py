@@ -785,19 +785,11 @@ class Agent:
             msg += f"exceeds trajectory length {self.trajectory_length}."
             raise ValueError(msg)
 
-        building_idx_list = {
-            b.building
-            for idx, b in enumerate(self.rooms)
-            if b.building == self.location.building
-        }
+        if self.location.building is None:
+            msg = "Agent is not located in any building. Cannot record state."
+            raise ValueError(msg)
 
-        if not building_idx_list:
-            msg = f"Building {self.location.building} not found in agent's space."
-            raise ValueError(msg)
-        if len(building_idx_list) > 1:
-            msg = f"Multiple buildings with name {self.location.building} found."
-            raise ValueError(msg)
-        building_idx = hash(building_idx_list.pop()) % 32  # Convert to int8 range
+        building_idx = hash(self.location.building) % 128  # Convert to int8 range
 
         self.trajectory.push(
             time=current_time,
