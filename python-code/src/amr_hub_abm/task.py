@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.space import get_room
+from amr_hub_abm.space.space import check_if_location_reached, get_room
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent.agent import Agent
@@ -252,7 +252,9 @@ class Task:
             )
             return
 
-        if not agent.check_if_location_reached(self.location):
+        if not check_if_location_reached(
+            agent.location, self.location, agent.interaction_radius
+        ):
             self.progress = TaskProgress.MOVING_TO_LOCATION
             if isinstance(self, TaskDoorAccess):
                 self.modify_location(agent)

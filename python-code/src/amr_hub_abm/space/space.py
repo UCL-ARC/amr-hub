@@ -8,10 +8,7 @@ from amr_hub_abm.space.room import Room
 logger = logging.getLogger(__name__)
 
 
-def get_room(
-    location: Location,
-    rooms: list[Room],
-) -> Room | None:
+def get_room(location: Location, rooms: list[Room]) -> Room | None:
     """
     Identify the room in which the given co-ordinates are located.
 
@@ -39,8 +36,6 @@ def get_room(
         if room.contains_point((location.x, location.y)):
             return room
 
-    return None
-
     logger.info(
         """
         The given co-ordinates (%s) are not located in any room on floor %d
@@ -51,3 +46,36 @@ def get_room(
         location.building,
     )
     return None
+
+
+def check_if_location_reached(
+    current_location: Location, target_location: Location, interaction_radius: float
+) -> bool:
+    """
+    Check if the agent has reached the target location.
+
+    Parameters
+    ----------
+    current_location : Location
+        The current location of the agent.
+
+    target_location : Location
+        The target location to check against the agent's current location.
+
+    interaction_radius : float
+        The radius within which the agent is considered to have reached the
+        target location.
+
+    Returns
+    -------
+    bool
+        True if the agent has reached the target location, False otherwise.
+
+    """
+    if current_location.building != target_location.building:
+        return False
+    if current_location.floor != target_location.floor:
+        return False
+
+    distance = current_location.distance_to(target_location)
+    return distance <= interaction_radius

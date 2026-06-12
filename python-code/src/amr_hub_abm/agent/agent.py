@@ -243,29 +243,6 @@ class Agent:
         if self.trajectory_length > 0:
             self.trajectory = Record(total_time=self.trajectory_length)
 
-    def check_if_location_reached(self, target_location: Location) -> bool:
-        """
-        Check if the agent has reached the target location.
-
-        Parameters
-        ----------
-        target_location : Location
-            The target location to check against the agent's current location.
-
-        Returns
-        -------
-        bool
-            True if the agent has reached the target location, False otherwise.
-
-        """
-        if self.location.building != target_location.building:
-            return False
-        if self.location.floor != target_location.floor:
-            return False
-
-        distance = self.location.distance_to(target_location)
-        return distance <= self.interaction_radius
-
     def move_to_location(self, new_location: Location) -> None:
         """
         Move the agent to a new location and log the movement.
