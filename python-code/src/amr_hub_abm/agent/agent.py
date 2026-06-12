@@ -17,9 +17,7 @@ from dataclasses import dataclass, field, replace
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
-import numpy as np
-import numpy.typing as npt
-
+from amr_hub_abm.agent.output import Record, record_state
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.space.content import ContentType
 from amr_hub_abm.space.door import Door
@@ -77,87 +75,6 @@ INFECTION_RING_COLOUR = {
     InfectionStatus.INFECTED: "darkred",
     InfectionStatus.RECOVERED: "blue",
 }
-
-
-@dataclass(slots=True)
-class Record:
-    """
-    Representation of a record of an agent's state at a given time step.
-
-    Parameters
-    ----------
-    total_time: int
-        The total number of time steps for which to record the agent's state.
-
-    """
-
-    total_time: int
-
-    building: npt.NDArray[np.int8] = field(init=False)
-    floor: npt.NDArray[np.int8] = field(init=False)
-    position: npt.NDArray[np.float64] = field(init=False)
-    heading: npt.NDArray[np.float64] = field(init=False)
-    infection_status: npt.NDArray[np.int8] = field(init=False)
-
-    def __post_init__(self) -> None:
-        """
-        Simply initialises the numpy arrays of the class to be empty.
-
-        This includes the building, floor, position, heading, and infection status.
-        All of these are stored as integers and floats (and not strings) for memory
-        efficiency
-        """
-        self.building = np.empty(self.total_time, dtype=np.int8)
-        self.floor = np.empty(self.total_time, dtype=np.int8)
-        self.position = np.full((self.total_time, 2), np.nan, dtype=np.float64)
-        self.heading = np.empty((self.total_time, 1), dtype=np.float64)
-        self.infection_status = np.empty(self.total_time, dtype=np.int8)
-
-    def push(  # noqa: PLR0913
-        self,
-        time: int,
-        building_idx: int,
-        floor: int,
-        pos_x: float,
-        pos_y: float,
-        heading: float,
-        infection_status: InfectionStatus,
-    ) -> None:
-        """
-        Push a new record of the agent's state at a given time step.
-
-        Parameters
-        ----------
-        time : int
-            The time step for which to record the agent's state.
-        building_idx : int
-            The index of the building in which the agent is located.
-        floor : int
-            The floor number on which the agent is located.
-        pos_x : float
-            The x-coordinate of the agent's position.
-        pos_y : float
-            The y-coordinate of the agent's position.
-        heading : float
-            The heading of the agent in radians.
-        infection_status : InfectionStatus
-            The infection status of the agent.
-
-        Raises
-        ------
-        ValueError
-            If the time step exceeds the total_time for the record.
-
-        """
-        if time >= self.total_time:
-            msg = f"Time {time} exceeds total_time {self.total_time} for record."
-            raise ValueError(msg)
-
-        self.building[time] = building_idx
-        self.floor[time] = floor
-        self.heading[time] = heading
-        self.position[time] = [pos_x, pos_y]
-        self.infection_status[time] = infection_status.value
 
 
 # --8<--- [start:Agent]
@@ -764,43 +681,6 @@ class Agent:
         task.update_progress(current_time=current_time, agent=self)
         return True
 
-    def record_state(self, current_time: int) -> None:
-        """
-        Push a record of the agent's current state to the trajectory.
-
-        Parameters
-        ----------
-        current_time : int
-            The current time step in the simulation for which to record the agent's
-            state.
-
-        Raises
-        ------
-            ValueError
-                If the current_time exceeds the trajectory_length of the agent.
-
-        """
-        if current_time >= self.trajectory_length:
-            msg = f"Current time {current_time} "
-            msg += f"exceeds trajectory length {self.trajectory_length}."
-            raise ValueError(msg)
-
-        if self.location.building is None:
-            msg = "Agent is not located in any building. Cannot record state."
-            raise ValueError(msg)
-
-        building_idx = hash(self.location.building) % 128  # Convert to int8 range
-
-        self.trajectory.push(
-            time=current_time,
-            building_idx=building_idx,
-            floor=self.location.floor,
-            pos_x=self.location.x,
-            pos_y=self.location.y,
-            heading=self.heading_rad,
-            infection_status=self.infection_status,
-        )
-
     def perform_task(self, current_time: int, *, record: bool = False) -> None:
         """
         Perform the agent's current task if it's due.
@@ -820,7 +700,7 @@ class Agent:
                 current_time,
                 self.location,
             )
-            self.record_state(current_time=current_time)
+            record_state(agent=self, current_time=current_time)
 
         if logger.isEnabledFor(logging.INFO):
             task_list_values = [task.task_type.value for task in self.tasks]
