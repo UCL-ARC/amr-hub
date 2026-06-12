@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.location import Location
+from amr_hub_abm.space.space import get_room
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent.agent import Agent
@@ -32,7 +33,7 @@ def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
         The current time in the simulation, used for logging purposes.
 
     """
-    room = agent.get_room()
+    room = get_room(agent.location, agent.rooms)
     if room is None:
         return
     for content in room.contents:
@@ -70,7 +71,7 @@ def add_agent_occupancy(agent: Agent, content: Content, current_time: int) -> No
     content.occupier_id = (agent.idx, agent.agent_type)
     agent.stationary = True
 
-    room = agent.get_room()
+    room = get_room(agent.location, agent.rooms)
     room_name = "unknown" if room is None else room.name
 
     logger.info(
@@ -363,9 +364,7 @@ class TaskDoorAccess(Task):
             y=(self.door.start[1] + self.door.end[1]) / 2 - self.buffer_distance,
         )
 
-        proposed_location1_room = agent.get_room(
-            (proposed_location1.x, proposed_location1.y)
-        )
+        proposed_location1_room = get_room(proposed_location1, agent.rooms)
 
         if proposed_location1_room is None:
             msg = "Proposed location 1 does not correspond to a valid room."

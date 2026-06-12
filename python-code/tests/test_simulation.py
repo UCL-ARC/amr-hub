@@ -13,6 +13,7 @@ from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
+from amr_hub_abm.space.space import get_room
 from amr_hub_abm.space.wall import Wall
 
 
@@ -160,7 +161,7 @@ def test_agent_get_room(
     agent = sample_agent
     agent.location.floor = 1
 
-    room = agent.get_room()
+    room = get_room(agent.location, agent.rooms)
 
     assert room is not None
     assert room.name == "Room1"

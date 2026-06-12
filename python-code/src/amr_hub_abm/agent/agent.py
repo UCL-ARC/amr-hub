@@ -243,45 +243,6 @@ class Agent:
         if self.trajectory_length > 0:
             self.trajectory = Record(total_time=self.trajectory_length)
 
-    def get_room(self, coords: tuple[float, float] | None = None) -> Room | None:
-        """
-        Identify the room in which the agent is.
-
-        Parameters
-        ----------
-        coords : tuple[float, float] | None, optional
-            Co-ordinates for which the room is to be identified, if different from the
-            agent's current location.
-
-        Returns
-        -------
-        Room | None
-            The room in which the agent is located, or None if the agent is not located
-            in any room.
-
-        """
-        if coords is None:
-            coords = (self.location.x, self.location.y)
-
-        room = get_room(
-            Location(
-                x=coords[0],
-                y=coords[1],
-                floor=self.location.floor,
-                building=self.location.building,
-            ),
-            self.rooms,
-        )
-        if room:
-            return room
-
-        logger.info(
-            "Agent id %s is not located in any room. Location: %s",
-            self.idx,
-            self.location,
-        )
-        return None
-
     def check_if_location_reached(self, target_location: Location) -> bool:
         """
         Check if the agent has reached the target location.
@@ -677,7 +638,13 @@ class Agent:
                 self.rng_generator,
             )
 
-            room = self.get_room((new_x, new_y))
+            new_location = Location(
+                x=new_x,
+                y=new_y,
+                floor=self.location.floor,
+                building=self.location.building,
+            )
+            room = get_room(new_location, self.rooms)
             if room is None:
                 logger.info(
                     "Attempt %s: location (%s, %s) is not located in any room.",
@@ -1021,7 +988,7 @@ class Agent:
         if self.stationary:
             return
 
-        room = self.get_room()
+        room = get_room(self.location, self.rooms)
         if room is None:
             logger.info(
                 "Agent id %s is not located in any room. Cannot check for "
