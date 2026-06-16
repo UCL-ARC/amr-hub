@@ -406,14 +406,17 @@ class Agent:
         new_x, new_y = self.try_move_one_step(self.stochasticity)
         self.move_to_location(replace(self.location, x=new_x, y=new_y))
 
+    @staticmethod
     def select_task_based_on_progress(
-        self, progress: TaskProgress, *, allow_multiple: bool = False
+        tasklist: list[Task], progress: TaskProgress, *, allow_multiple: bool = False
     ) -> Task | None:
         """
         Select a task based on its progress.
 
         Parameters
         ----------
+        tasklist : list[Task]
+            The list of tasks to filter.
         progress : TaskProgress
             The progress status to filter tasks by.
         allow_multiple : bool, optional
@@ -432,11 +435,11 @@ class Agent:
                 allow_multiple is False.
 
         """
-        tasks = [task for task in self.tasks if task.progress == progress]
+        tasks = [task for task in tasklist if task.progress == progress]
         if not tasks:
             return None
         if len(tasks) > 1 and not allow_multiple:
-            msg = f"Agent {self.idx} has multiple tasks"
+            msg = "Agent has multiple tasks"
             msg += f" with progress {progress.value}."
             logger.error(msg)
             raise RuntimeError(msg)
@@ -457,7 +460,7 @@ class Agent:
                 True if an in-progress task was performed, False otherwise.
 
         """
-        task = self.select_task_based_on_progress(TaskProgress.IN_PROGRESS)
+        task = self.select_task_based_on_progress(self.tasks, TaskProgress.IN_PROGRESS)
         if task is None:
             return False
         task.update_progress(current_time=current_time, agent=self)
@@ -465,7 +468,9 @@ class Agent:
 
     def perform_moving_to_task_location(self, current_time: int) -> bool:
         """Move the agent towards the location of its next task."""
-        next_task = self.select_task_based_on_progress(TaskProgress.MOVING_TO_LOCATION)
+        next_task = self.select_task_based_on_progress(
+            self.tasks, TaskProgress.MOVING_TO_LOCATION
+        )
         if next_task is None:
             return False
         next_task.update_progress(current_time=current_time, agent=self)
@@ -487,7 +492,7 @@ class Agent:
 
         """
         task = self.select_task_based_on_progress(
-            TaskProgress.SUSPENDED, allow_multiple=True
+            self.tasks, TaskProgress.SUSPENDED, allow_multiple=True
         )
         if task is None:
             return False
@@ -510,7 +515,7 @@ class Agent:
 
         """
         task = self.select_task_based_on_progress(
-            TaskProgress.NOT_STARTED, allow_multiple=True
+            self.tasks, TaskProgress.NOT_STARTED, allow_multiple=True
         )
         if task is None:
             return False
