@@ -133,3 +133,30 @@ def propose_new_coordinates(
     new_y = coordinates[1] + delta_y
 
     return new_x, new_y
+
+
+def estimate_time_to_reach_location(
+    current_location: Location, target_location: Location, movement_speed: float
+) -> float:
+    """
+    Estimate the time required to reach a target location.
+
+    Parameters
+    ----------
+    current_location : Location
+        The current location of the agent.
+    target_location : Location
+        The target location to which the time to reach is to be estimated.
+    movement_speed : float
+        The speed at which the agent moves (units per time step).
+
+    Returns
+    -------
+        float
+            The estimated time required for the agent to reach the target location,
+            based on the distance to the target location and the agent's movement
+            speed.
+
+    """
+    distance = current_location.distance_to(target_location)
+    return distance / movement_speed

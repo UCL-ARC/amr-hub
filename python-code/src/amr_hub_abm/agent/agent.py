@@ -23,7 +23,11 @@ from amr_hub_abm.space.content import ContentType
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
-from amr_hub_abm.space.space import get_room, propose_new_coordinates
+from amr_hub_abm.space.space import (
+    estimate_time_to_reach_location,
+    get_room,
+    propose_new_coordinates,
+)
 from amr_hub_abm.task.task import (
     Task,
     TaskAttendPatient,
@@ -476,26 +480,6 @@ class Agent:
             self.idx,
         )
 
-    def estimate_time_to_reach_location(self, target_location: Location) -> float:
-        """
-        Estimate the time required to reach a target location.
-
-        Parameters
-        ----------
-        target_location : Location
-            The target location to which the time to reach is to be estimated.
-
-        Returns
-        -------
-            float
-                The estimated time required for the agent to reach the target location,
-                based on the distance to the target location and the agent's movement
-                speed.
-
-        """
-        distance = self.location.distance_to(target_location)
-        return distance / self.movement_speed
-
     def attempt_task_insertion(
         self, next_task: Task, next_task_move_time: float, current_time: int
     ) -> None:
@@ -549,8 +533,8 @@ class Agent:
 
         if empty_chairs:
             chair = empty_chairs[0]
-            estimated_time_to_chair = self.estimate_time_to_reach_location(
-                chair.location
+            estimated_time_to_chair = estimate_time_to_reach_location(
+                self.location, chair.location, self.movement_speed
             )
             if current_time + estimated_time_to_chair < next_task_move_time:
                 self.add_task(
