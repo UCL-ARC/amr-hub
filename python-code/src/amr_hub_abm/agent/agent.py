@@ -333,8 +333,9 @@ class Agent:
 
         Raises
         ------
-        RuntimeError
-            If the maximum number of attempts is exceeded.
+        SimulationModeError
+            If the agent cannot find valid coordinates after the maximum number of
+            attempts, or if the room has no walls defined for intersection checking.
 
         """
         for attempt in range(1, max_attempts + 1):
@@ -388,7 +389,7 @@ class Agent:
 
             return new_x, new_y
 
-        logger.info(
+        logger.error(
             "Maximum attempts %s exceeded for moving one step. "
             "Agent id %s moving to proposed coordinates (%s, %s) despite "
             "wall intersection.",
@@ -398,7 +399,7 @@ class Agent:
             self.location.y,
         )
 
-        return new_x, new_y
+        return self.location.x, self.location.y
 
     def move_one_step(self) -> None:
         """Move the agent one step in the direction of its heading."""
