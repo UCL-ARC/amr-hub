@@ -29,11 +29,15 @@ from amr_hub_abm.task.task import (
     TaskAttendPatient,
     TaskDoorAccess,
     TaskOccupyContent,
-    TaskProgress,
     TaskType,
     TaskWorkstation,
 )
-from amr_hub_abm.task.tasklist import select_task_based_on_progress
+from amr_hub_abm.task.tasklist import (
+    perform_in_progress_task,
+    perform_moving_to_task_location,
+    perform_suspended_task,
+    perform_to_be_started_task,
+)
 
 if TYPE_CHECKING:
     from numpy.random import Generator
@@ -407,106 +411,6 @@ class Agent:
         new_x, new_y = self.try_move_one_step(self.stochasticity)
         self.move_to_location(replace(self.location, x=new_x, y=new_y))
 
-    def perform_in_progress_task(self, current_time: int) -> bool:
-        """
-        Perform an in-progress task and return True if a task was performed.
-
-        Parameters
-        ----------
-        current_time : int
-            The current time step in the simulation.
-
-        Returns
-        -------
-            bool
-                True if an in-progress task was performed, False otherwise.
-
-        """
-        task = select_task_based_on_progress(self.tasks, TaskProgress.IN_PROGRESS)
-        if task is None:
-            return False
-        task.update_progress(current_time=current_time, agent=self)
-        return True
-
-    def perform_moving_to_task_location(self, current_time: int) -> bool:
-        """Move the agent towards the location of its next task."""
-        next_task = select_task_based_on_progress(
-            self.tasks, TaskProgress.MOVING_TO_LOCATION
-        )
-        if next_task is None:
-            return False
-        next_task.update_progress(current_time=current_time, agent=self)
-        return True
-
-    def perform_suspended_task(self, current_time: int) -> bool:
-        """
-        Perform a suspended task and return True if a task was performed.
-
-        Parameters
-        ----------
-        current_time : int
-            The current time step in the simulation.
-
-        Returns
-        -------
-        bool
-            True if a suspended task was performed, False otherwise.
-
-        """
-        task = select_task_based_on_progress(
-            self.tasks, TaskProgress.SUSPENDED, allow_multiple=True
-        )
-        if task is None:
-            return False
-        task.update_progress(current_time=current_time, agent=self)
-        return True
-
-    def perform_to_be_started_task(self, current_time: int) -> bool:
-        """
-        Perform a to-be-started task and return True if a task was performed.
-
-        Parameters
-        ----------
-        current_time : int
-            The current time step in the simulation.
-
-        Returns
-        -------
-        bool
-            True if a to-be-started task was performed, False otherwise.
-
-        """
-        task = select_task_based_on_progress(
-            self.tasks, TaskProgress.NOT_STARTED, allow_multiple=True
-        )
-        if task is None:
-            return False
-        if isinstance(task, TaskOccupyContent):
-            task.assign_content()
-
-        task_move_time = (
-            task.time_due
-            - task.time_needed
-            - self.estimate_time_to_reach_location(task.location)
-        )
-        logger.info(
-            "Agent id %s next task move time: %s, current time: %s",
-            self.idx,
-            task_move_time,
-            current_time,
-        )
-
-        if current_time < task_move_time:
-            self.attempt_task_insertion(
-                next_task=task,
-                next_task_move_time=task_move_time,
-                current_time=current_time,
-            )
-            return False
-
-        task.update_progress(current_time=current_time, agent=self)
-        return True
-
     def perform_task(self, current_time: int, *, record: bool = False) -> None:
         """
         Perform the agent's current task if it's due.
@@ -544,28 +448,28 @@ class Agent:
             len(self.tasks),
         )
 
-        if self.perform_in_progress_task(current_time=current_time):
+        if perform_in_progress_task(self, current_time=current_time):
             return
         logger.debug(
             "No in-progress tasks for Agent id %s.",
             self.idx,
         )
 
-        if self.perform_moving_to_task_location(current_time=current_time):
+        if perform_moving_to_task_location(self, current_time=current_time):
             return
         logger.debug(
             "No tasks to move to for Agent id %s.",
             self.idx,
         )
 
-        if self.perform_suspended_task(current_time=current_time):
+        if perform_suspended_task(self, current_time=current_time):
             return
         logger.debug(
             "No suspended tasks for Agent id %s.",
             self.idx,
         )
 
-        if self.perform_to_be_started_task(current_time=current_time):
+        if perform_to_be_started_task(self, current_time=current_time):
             return
         logger.debug(
             "No to-be-started tasks for Agent id %s.",
