@@ -113,6 +113,13 @@ def propose_new_coordinates(
         The proposed new (x, y) coordinates for the agent after moving one step.
 
     """
+    if stochasticity < 0:
+        logger.warning(
+            "Stochasticity is negative (%f). Using absolute value for calculations.",
+            stochasticity,
+        )
+        stochasticity = abs(stochasticity)
+
     stochastic_heading_rad = heading_rad + rng_generator.normal(
         0, math.radians(stochasticity)
     )
