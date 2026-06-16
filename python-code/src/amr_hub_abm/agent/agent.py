@@ -33,6 +33,7 @@ from amr_hub_abm.task.task import (
     TaskType,
     TaskWorkstation,
 )
+from amr_hub_abm.task.tasklist import select_task_based_on_progress
 
 if TYPE_CHECKING:
     from numpy.random import Generator
@@ -406,45 +407,6 @@ class Agent:
         new_x, new_y = self.try_move_one_step(self.stochasticity)
         self.move_to_location(replace(self.location, x=new_x, y=new_y))
 
-    @staticmethod
-    def select_task_based_on_progress(
-        tasklist: list[Task], progress: TaskProgress, *, allow_multiple: bool = False
-    ) -> Task | None:
-        """
-        Select a task based on its progress.
-
-        Parameters
-        ----------
-        tasklist : list[Task]
-            The list of tasks to filter.
-        progress : TaskProgress
-            The progress status to filter tasks by.
-        allow_multiple : bool, optional
-            Whether to allow multiple tasks with the same progress status.
-
-        Returns
-        -------
-        Task | None
-            The selected task with the specified progress status, or None if no such
-            task exists.
-
-        Raises
-        ------
-            RuntimeError
-                If multiple tasks with the same progress status are found and
-                allow_multiple is False.
-
-        """
-        tasks = [task for task in tasklist if task.progress == progress]
-        if not tasks:
-            return None
-        if len(tasks) > 1 and not allow_multiple:
-            msg = "Agent has multiple tasks"
-            msg += f" with progress {progress.value}."
-            logger.error(msg)
-            raise RuntimeError(msg)
-        return min(tasks, key=lambda t: (t.time_due, t.priority.value))
-
     def perform_in_progress_task(self, current_time: int) -> bool:
         """
         Perform an in-progress task and return True if a task was performed.
@@ -460,7 +422,7 @@ class Agent:
                 True if an in-progress task was performed, False otherwise.
 
         """
-        task = self.select_task_based_on_progress(self.tasks, TaskProgress.IN_PROGRESS)
+        task = select_task_based_on_progress(self.tasks, TaskProgress.IN_PROGRESS)
         if task is None:
             return False
         task.update_progress(current_time=current_time, agent=self)
@@ -468,7 +430,7 @@ class Agent:
 
     def perform_moving_to_task_location(self, current_time: int) -> bool:
         """Move the agent towards the location of its next task."""
-        next_task = self.select_task_based_on_progress(
+        next_task = select_task_based_on_progress(
             self.tasks, TaskProgress.MOVING_TO_LOCATION
         )
         if next_task is None:
@@ -491,7 +453,7 @@ class Agent:
             True if a suspended task was performed, False otherwise.
 
         """
-        task = self.select_task_based_on_progress(
+        task = select_task_based_on_progress(
             self.tasks, TaskProgress.SUSPENDED, allow_multiple=True
         )
         if task is None:
@@ -514,7 +476,7 @@ class Agent:
             True if a to-be-started task was performed, False otherwise.
 
         """
-        task = self.select_task_based_on_progress(
+        task = select_task_based_on_progress(
             self.tasks, TaskProgress.NOT_STARTED, allow_multiple=True
         )
         if task is None:
