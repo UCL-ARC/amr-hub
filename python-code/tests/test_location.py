@@ -44,20 +44,6 @@ def test_location_creation() -> None:
     assert location.floor == expected_floor
 
 
-def test_location_move() -> None:
-    """Test moving a Location to new coordinates."""
-    location = Location(x=0.0, y=0.0, floor=0)
-    location.move(new_x=15.0, new_y=25.0, new_floor=1)
-
-    expected_x = 15.0
-    expected_y = 25.0
-    expected_floor = 1
-
-    assert location.x == expected_x
-    assert location.y == expected_y
-    assert location.floor == expected_floor
-
-
 def test_distance_to_same_floor() -> None:
     """Test distance calculation between two locations on the same floor."""
     loc1 = Location(x=0.0, y=0.0, floor=1)

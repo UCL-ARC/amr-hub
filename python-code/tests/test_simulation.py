@@ -1,5 +1,6 @@
 """Test for the Simulation class in amr_hub_abm.simulation module."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -159,7 +160,7 @@ def test_agent_get_room(
 ) -> None:
     """Test that the agent can get its current room."""
     agent = sample_agent
-    agent.location.floor = 1
+    agent.location = replace(agent.location, floor=1)
 
     room = get_room(agent.location, agent.rooms)
 
