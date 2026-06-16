@@ -184,7 +184,7 @@ class Agent:
     trajectory_length: int = field(default=0)
     trajectory: Record = field(init=False)
 
-    stationary: bool = field(default=False, init=False)
+    stationary: bool = field(default=False)
 
     # --8<--- [end:Agent]
 
@@ -515,7 +515,7 @@ class Agent:
                 raise SimulationModeError(msg)
 
             task = TaskAttendPatient(
-                time_needed=15,
+                time_needed=900,
                 time_due=time,
                 patient=patient,
             )
@@ -536,7 +536,7 @@ class Agent:
             task = TaskDoorAccess(
                 door=additional_info["door"],
                 destination_room=additional_info["destination"],
-                time_needed=1,
+                time_needed=10,
                 time_due=time,
                 building=location.building,
                 floor=location.floor,
@@ -545,7 +545,7 @@ class Agent:
         elif task_type == TaskType.WORKSTATION:
             task = TaskWorkstation(
                 workstation_location=location,
-                time_needed=30,
+                time_needed=1800,
                 time_due=time,
             )
 
@@ -838,6 +838,16 @@ class Agent:
             return False
         if isinstance(task, TaskOccupyContent):
             task.assign_content()
+        if isinstance(task, TaskWorkstation):
+            room = self.get_room()
+            if room is None:
+                msg = (
+                    f"Agent id {self.idx} cannot be assigned to workstation task "
+                    "because they are not located in any room."
+                )
+                logger.error(msg)
+                raise RuntimeError(msg)
+            task.assign_workstation(self.idx, self.agent_type, room)
 
         task_move_time = (
             task.time_due
@@ -1033,11 +1043,12 @@ class Agent:
         ]
 
         logger.info(
-            "Agent id %s found %s empty chairs in room %s for task %s.",
+            "Agent id %s found %s empty chairs in room %s for task %s at time %s.",
             self.idx,
             len(empty_chairs),
             room.name,
             next_task.task_type.name,
+            current_time,
         )
 
         if empty_chairs:
@@ -1070,7 +1081,7 @@ class Agent:
                     chair.location,
                     next_task_move_time,
                 )
-                logger.warning(
+                logger.info(
                     """
                     Length of task list %s at time %s.
                     """,

@@ -8,6 +8,7 @@ from enum import IntEnum
 from typing import TYPE_CHECKING, ClassVar
 
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
+from amr_hub_abm.space.content import ContentType
 from amr_hub_abm.space.location import Location
 
 if TYPE_CHECKING:
@@ -46,7 +47,7 @@ def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
                 """,
                 agent.idx,
                 content.content_id,
-                content.content_type,
+                content.content_type.name,
                 room.name,
                 current_time,
             )
@@ -80,7 +81,7 @@ def add_agent_occupancy(agent: Agent, content: Content, current_time: int) -> No
         """,
         agent.idx,
         content.content_id,
-        content.content_type,
+        content.content_type.name,
         room_name,
         current_time,
     )
@@ -389,6 +390,73 @@ class TaskWorkstation(Task):
         super().__post_init__()
         self.location = self.workstation_location
 
+    def assign_workstation(
+        self, agent_id: int, agent_type: int, workstation_room: Room
+    ) -> None:
+        """
+        Assign a workstation to the task based on the agent's location.
+
+        The method searches for unoccupied workstations in the agent's current room and
+        assigns the closest one to the task. If no unoccupied workstations are found, it
+        raises a SimulationModeError.
+
+        Parameters
+        ----------
+        agent_id : int
+            The ID of the agent performing the task, used to determine the current room
+            and assign the workstation.
+
+        agent_type : int
+            The type of the agent performing the task, used to determine the current
+            room and assign the workstation.
+
+        workstation_room : Room
+            The room in which to search for unoccupied workstations.
+
+        Raises
+        ------
+        SimulationModeError
+            If no unoccupied workstations are found in the agent's current room.
+
+        """
+        unoccupied_workstations = [
+            content
+            for content in workstation_room.contents
+            if content.content_type == ContentType.WORKSTATION
+            and content.occupier_id is None
+        ]
+
+        if not unoccupied_workstations:
+            msg = (
+                f"No unoccupied workstations found in "
+                f"{workstation_room.name} for TaskWorkstation."
+            )
+            raise SimulationModeError(msg)
+
+        own_workstation = next(
+            (
+                content
+                for content in unoccupied_workstations
+                if content.owner_id == (agent_id, agent_type)
+            ),
+            None,
+        )
+
+        if own_workstation is not None:
+            self.workstation_location = own_workstation.location
+            self.location = self.workstation_location
+            return
+
+        msg = (
+            f"No workstation owned by agent id {agent_id} found in "
+            f"{workstation_room.name} for TaskWorkstation. Assigning default "
+            "workstation instead."
+        )
+        logger.warning(msg)
+
+        self.workstation_location = unoccupied_workstations[0].location
+        self.location = self.workstation_location
+
 
 @dataclass
 class TaskOccupyContent(Task):
@@ -419,7 +487,12 @@ class TaskOccupyContent(Task):
 
         """
         content = next(
-            (c for c in self.room.contents if c.content_type == self.content_type), None
+            (
+                c
+                for c in self.room.contents
+                if c.content_type == self.content_type and c.occupier_id is None
+            ),
+            None,
         )
 
         if content is None:

@@ -56,6 +56,9 @@ class Content:
     occupier_id : tuple[int, AgentType] | None, optional
         The ID and type of the agent currently occupying the content, if any.
         Defaults to None.
+    owner_id : tuple[int, AgentType] | None, optional
+        The ID and type of the agent that owns the content, if any.
+        Defaults to None.
 
     """
 
@@ -65,6 +68,7 @@ class Content:
     color: str = field(init=False)
     size: tuple[float, float] = field(init=False)
     occupier_id: tuple[int, AgentType] | None = field(default=None)
+    owner_id: tuple[int, AgentType] | None = field(default=None)
 
     marker_type: str = field(init=False, default="s")
     marker_size: int = field(init=False, default=100)
@@ -99,6 +103,11 @@ class Content:
     def occupied(self) -> bool:
         """Check if the content is currently occupied by an agent."""
         return self.occupier_id is not None
+
+    @property
+    def owned(self) -> bool:
+        """Check if the content is currently owned by an agent."""
+        return self.owner_id is not None
 
     @property
     def position(self) -> tuple[float, float]:
