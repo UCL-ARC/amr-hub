@@ -24,7 +24,7 @@ from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.space import get_room, propose_new_coordinates
-from amr_hub_abm.task import (
+from amr_hub_abm.task.task import (
     Task,
     TaskAttendPatient,
     TaskDoorAccess,

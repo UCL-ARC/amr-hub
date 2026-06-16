@@ -9,7 +9,7 @@ from amr_hub_abm.agent.enums import (
     ROLE_COLOUR_MAP,
     InfectionStatus,
 )
-from amr_hub_abm.task import TaskAttendPatient, TaskProgress
+from amr_hub_abm.task.task import TaskAttendPatient, TaskProgress
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
