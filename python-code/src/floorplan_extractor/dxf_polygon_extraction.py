@@ -770,6 +770,14 @@ def extract_polygons(
             config.doors,
         )
 
-    return labelled_polygons.loc[
-        labelled_polygons[config.polygons.polygon_label_target].notna(), :
-    ]
+    labelled_polygons["has_label"] = labelled_polygons[
+        config.polygons.polygon_label_target
+    ].notna()
+
+    labelled_polygons["needs_review"] = (
+        ~labelled_polygons["has_label"]
+        | labelled_polygons.get("label_ambiguous", False)
+        | (labelled_polygons.get("door_count", 0) == 0)
+    )
+
+    return labelled_polygons

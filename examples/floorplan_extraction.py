@@ -35,8 +35,15 @@ def main() -> None:
 
     logger.info("Extracted %s polygons", len(gdf))
 
+    production_gdf = gdf.loc[gdf["has_label"], :]
+    review_gdf = gdf.loc[gdf["needs_review"], :]
+
+    if len(review_gdf) > 0:
+        logger.warn(f"Identified {len(review_gdf)} rooms for review")
+        logger.warn(review_gdf.head())
+
     rooms = polygons_to_rooms(
-        gdf,
+        production_gdf,
         room_name_column=pec.polygons.polygon_label_target,
         door_column=pec.doors.out_col if pec.doors else None,
     )
