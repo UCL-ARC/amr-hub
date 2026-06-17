@@ -1,11 +1,30 @@
-"""Module for AMR Hub ABM tasks."""
+"""
+Module for AMR Hub ABM tasks.
+
+Design notes
+------------
+- ``Task`` is a plain dataclass with an explicit ``location`` field. Subclasses
+  exist only where there is genuine behaviour (door buffering, content lookup),
+  not just to set a location.
+- Subclass-specific behaviour is expressed through lifecycle hooks
+  (``on_start_moving``, ``on_started``, ``on_completed``) instead of
+  ``isinstance`` checks in the base class.
+- ``update_progress`` is a small explicit state machine: one handler per
+  ``TaskProgress`` state.
+- ``create_task`` is a factory that owns per-type defaults (durations etc.),
+  so ``Agent.add_task`` no longer needs a long if/elif chain.
+- Nothing here assumes a scheduler: time is always passed in explicitly, so
+  the module is drop-in compatible with a future Mesa ``Model``/scheduler,
+  where ``agent.step()`` will call into tasks with ``model.steps`` as the
+  current time.
+"""
 
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.location import Location
@@ -20,18 +39,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Occupancy helpers
+#
+# NOTE: these mutate Agent + Content state and arguably belong on Agent or
+# Content (e.g. ``content.occupy(agent)`` / ``content.release()``). They are
+# kept here for now so this refactor only touches task.py; move them when the
+# Agent refactor lands.
+# ---------------------------------------------------------------------------
+
+
 def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
-    """
-    Remove the agent's occupancy from any content they are currently occupying.
-
-    Parameters
-    ----------
-    agent : Agent
-        The agent whose occupancy is to be removed.
-    current_time : int
-        The current time in the simulation, used for logging purposes.
-
-    """
+    """Release any content the agent currently occupies."""
     room = agent.get_room()
     if room is None:
         return
@@ -40,10 +59,7 @@ def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
             content.occupier_id = None
             agent.stationary = False
             logger.info(
-                """
-                Agent id %s removed occupancy from content id %s of type %s
-                in room %s at time %d.
-                """,
+                "Agent %s released content %s (%s) in room %s at t=%d.",
                 agent.idx,
                 content.content_id,
                 content.content_type,
@@ -54,36 +70,24 @@ def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
 
 
 def add_agent_occupancy(agent: Agent, content: Content, current_time: int) -> None:
-    """
-    Add the agent's occupancy to the specified content.
-
-    Parameters
-    ----------
-    agent : Agent
-        The agent whose occupancy is to be added.
-    content : Content
-        The content to which the agent will occupy.
-    current_time : int
-        The current time in the simulation, used for logging purposes.
-
-    """
+    """Mark the agent as occupying the given content."""
     content.occupier_id = (agent.idx, agent.agent_type)
     agent.stationary = True
 
     room = agent.get_room()
-    room_name = "unknown" if room is None else room.name
-
     logger.info(
-        """
-        Agent id %s added occupancy to content id %s of type %s
-        in room %s at time %d.
-        """,
+        "Agent %s occupied content %s (%s) in room %s at t=%d.",
         agent.idx,
         content.content_id,
         content.content_type,
-        room_name,
+        "unknown" if room is None else room.name,
         current_time,
     )
+
+
+# ---------------------------------------------------------------------------
+# Enums
+# ---------------------------------------------------------------------------
 
 
 class TaskProgress(IntEnum):
@@ -122,10 +126,20 @@ class TaskPriority(IntEnum):
     HIGH = 3
 
 
+# ---------------------------------------------------------------------------
+# Base task
+# ---------------------------------------------------------------------------
+
+
 @dataclass
 class Task:
     """
     Representation of a task assigned to an agent.
+
+    A task is a small state machine driven by ``update_progress``. Subclasses
+    customise behaviour via the lifecycle hooks ``prepare``,
+    ``on_start_moving``, ``on_started`` and ``on_completed`` rather than by
+    being special-cased in the base class.
 
     Parameters
     ----------
@@ -133,295 +147,265 @@ class Task:
         The time required to complete the task.
     time_due : int
         The time by which the task should be completed.
+    location : Location | None
+        Where the task is performed. Simple task types (goto, workstation,
+        attend patient) pass this directly; subclasses that derive their own
+        location (door access, occupy content) may leave it None and set it
+        in ``__post_init__`` / ``prepare``.
     progress : TaskProgress, optional
-        The current progress of the task. Defaults to TaskProgress.NOT_STARTED.
+        Current progress. Defaults to NOT_STARTED.
     priority : TaskPriority, optional
-        The priority level of the task. Defaults to TaskPriority.MEDIUM.
+        Priority level. Defaults to MEDIUM.
 
     """
 
-    task_type: ClassVar[TaskType] = TaskType.GENERIC
-
     time_needed: int
     time_due: int
+    location: Location | None = None
 
+    task_type: TaskType = field(default=TaskType.GENERIC, kw_only=True)
     progress: TaskProgress = field(default=TaskProgress.NOT_STARTED, kw_only=True)
     priority: TaskPriority = field(default=TaskPriority.MEDIUM, kw_only=True)
 
-    location: Location = field(init=False)
-
     time_started: int | None = field(init=False, default=None)
     time_completed: int | None = field(init=False, default=None)
+
+    def __post_init__(self) -> None:
+        """Validate timing attributes."""
+        if self.time_needed < 0:
+            msg = "Time needed for a task cannot be negative."
+            raise TimeError(msg)
+        if self.time_due < 0:
+            msg = "Time due for a task cannot be negative."
+            raise TimeError(msg)
+
+    # -- lifecycle hooks (no-ops on the base class) -------------------------
+
+    def prepare(self, agent: Agent) -> None:
+        """
+        Resolve any late-bound state before the task is first scheduled.
+
+        Called once by the agent before the task leaves NOT_STARTED (e.g.
+        ``TaskOccupyContent`` resolves which content to occupy here).
+        """
+
+    def on_start_moving(self, agent: Agent) -> None:
+        """Handle the transition to MOVING_TO_LOCATION."""
+
+    def on_started(self, agent: Agent, current_time: int) -> None:
+        """Handle the transition to IN_PROGRESS."""
+
+    def on_completed(self, agent: Agent, current_time: int) -> None:
+        """Handle the transition to COMPLETED."""
+
+    # -- timing --------------------------------------------------------------
 
     def time_spent(self, current_time: int) -> int:
         """
         Calculate the time spent on the task so far.
 
-        Parameters
-        ----------
-        current_time : int
-            The current time in the simulation.
-
-        Returns
-        -------
-        int
-            The time spent on the task so far.
-
         Raises
         ------
         TimeError
-            If the task is marked as completed but start time or completion time is
-            None, or if the task is marked as in progress but start time is None.
+            If the task is COMPLETED or IN_PROGRESS but the corresponding
+            timestamps are missing.
 
         """
         if self.progress == TaskProgress.COMPLETED:
             if self.time_started is None:
                 msg = "Task marked as completed but start time is None."
                 raise TimeError(msg)
-
             if self.time_completed is None:
                 msg = "Task marked as completed but completion time is None."
                 raise TimeError(msg)
-
             return self.time_completed - self.time_started
 
         if self.progress == TaskProgress.IN_PROGRESS:
             if self.time_started is None:
                 msg = "Task marked as in progress but start time is None."
                 raise TimeError(msg)
-
             return current_time - self.time_started
 
         return 0
 
-    def __post_init__(self) -> None:
-        """
-        Post-initialization to validate task attributes.
-
-        Raises
-        ------
-        TimeError
-            If time_needed or time_due is negative.
-
-        """
-        if self.time_needed < 0:
-            msg = "Time needed for a task cannot be negative."
-            raise TimeError(msg)
-
-        if self.time_due < 0:
-            msg = "Time due for a task cannot be negative."
-            raise TimeError(msg)
+    # -- state machine ---------------------------------------------------------
 
     def update_progress(self, current_time: int, agent: Agent) -> None:
         """
-        Update the progress of the task based on time spent.
+        Advance the task state machine by one tick.
 
-        Parameters
-        ----------
-        current_time : int
-            The current time in the simulation.
-        agent : Agent
-            The agent performing the task.
-
+        Dispatches to a handler per ``TaskProgress`` state. Completion is
+        checked first since it can occur from any active state.
         """
         if self.progress == TaskProgress.COMPLETED:
             return
 
-        time_spent = self.time_spent(current_time=current_time)
-
-        if time_spent >= self.time_needed:
-            self.progress = TaskProgress.COMPLETED
-            logger.info(
-                "Task %s completed for Agent id %s at time %d.",
-                self.task_type.name,
-                agent.idx,
-                current_time,
-            )
-            self.time_completed = current_time
-            if isinstance(self, TaskOccupyContent):
-                add_agent_occupancy(agent, self.content, current_time=current_time)
+        if self.time_spent(current_time) >= self.time_needed:
+            self._complete(current_time, agent)
             return
 
-        if self.progress == TaskProgress.IN_PROGRESS:
-            logger.info(
-                "Agent id %s performing task %s at location %s.",
-                agent.idx,
-                self.task_type,
-                self.location,
-            )
+        handler = {
+            TaskProgress.IN_PROGRESS: self._tick_in_progress,
+            TaskProgress.MOVING_TO_LOCATION: self._tick_moving,
+            TaskProgress.NOT_STARTED: self._tick_not_started,
+            TaskProgress.SUSPENDED: self._tick_not_started,
+        }[self.progress]
+        handler(current_time, agent)
+
+    def _complete(self, current_time: int, agent: Agent) -> None:
+        self.progress = TaskProgress.COMPLETED
+        self.time_completed = current_time
+        logger.info(
+            "Task %s completed for Agent %s at t=%d.",
+            self.task_type.name,
+            agent.idx,
+            current_time,
+        )
+        self.on_completed(agent, current_time)
+
+    def _tick_in_progress(self, current_time: int, agent: Agent) -> None:  # noqa: ARG002
+        logger.info(
+            "Agent %s performing task %s at location %s.",
+            agent.idx,
+            self.task_type.name,
+            self.location,
+        )
+
+    def _tick_moving(self, current_time: int, agent: Agent) -> None:
+        if self.location is None:
+            msg = f"Task {self.task_type.name} has no location to move to."
+            raise SimulationModeError(msg)
+
+        if agent.check_if_location_reached(self.location):
+            self._start(current_time, agent)
             return
 
-        if not agent.check_if_location_reached(self.location):
-            self.progress = TaskProgress.MOVING_TO_LOCATION
-            if isinstance(self, TaskDoorAccess):
-                self.modify_location(agent)
-            remove_agent_occupancy(agent, current_time=current_time)
-            logger.info(
-                "Agent id %s moving to task location %s.", agent.idx, self.location
-            )
-            agent.head_to_point((self.location.x, self.location.y))
-            agent.move_one_step()
+        agent.head_to_point((self.location.x, self.location.y))
+        agent.move_one_step()
+
+    def _tick_not_started(self, current_time: int, agent: Agent) -> None:
+        if self.location is None:
+            msg = f"Task {self.task_type.name} has no location set."
+            raise SimulationModeError(msg)
+
+        if agent.check_if_location_reached(self.location):
+            self._start(current_time, agent)
             return
+
+        self.progress = TaskProgress.MOVING_TO_LOCATION
+        self.on_start_moving(agent)
+        remove_agent_occupancy(agent, current_time=current_time)
+        logger.info("Agent %s moving to task location %s.", agent.idx, self.location)
+        agent.head_to_point((self.location.x, self.location.y))
+        agent.move_one_step()
+
+    def _start(self, current_time: int, agent: Agent) -> None:
         self.progress = TaskProgress.IN_PROGRESS
         self.time_started = current_time
-
-        if self.progress == TaskProgress.MOVING_TO_LOCATION:
-            self.progress = TaskProgress.IN_PROGRESS
-            self.time_started = current_time
+        self.on_started(agent, current_time)
 
     def __repr__(self) -> str:
         """Representation of the task."""
         return (
-            f"Task(type={self.task_type}, priority={self.priority}, "
-            f"progress={self.progress}, time_needed={self.time_needed}, "
-            f"time_due={self.time_due})"
+            f"{type(self).__name__}(type={self.task_type.name}, "
+            f"priority={self.priority.name}, progress={self.progress.name}, "
+            f"time_needed={self.time_needed}, time_due={self.time_due})"
         )
 
 
-@dataclass
-class TaskGotoLocation(Task):
-    """Representation of a 'goto location' task."""
-
-    task_type: ClassVar[TaskType] = TaskType.GOTO_LOCATION
-    destination_location: Location
-
-    def __post_init__(self) -> None:
-        """Post-initialization to set the task location."""
-        super().__post_init__()
-        self.location = self.destination_location
+# ---------------------------------------------------------------------------
+# Subclasses with real behaviour
+# ---------------------------------------------------------------------------
 
 
 @dataclass
 class TaskAttendPatient(Task):
-    """Representation of an 'attend patient' task."""
+    """An 'attend patient' task. Carries the patient so the UI/agent can refer to it."""
 
-    task_type: ClassVar[TaskType] = TaskType.ATTEND_PATIENT
-    patient: Agent
+    task_type: TaskType = field(default=TaskType.ATTEND_PATIENT, kw_only=True)
+    patient: Agent | None = None
 
     def __post_init__(self) -> None:
-        """Post-initialization to set the task location."""
+        """Validate patient and set location."""
         super().__post_init__()
+        if self.patient is None:
+            msg = "TaskAttendPatient requires a patient."
+            raise SimulationModeError(msg)
         self.location = self.patient.location
 
 
 @dataclass
 class TaskDoorAccess(Task):
-    """Representation of a 'door access' task."""
+    """A 'door access' task: position the agent just beyond the door midpoint."""
 
-    task_type: ClassVar[TaskType] = TaskType.DOOR_ACCESS
-    door: Door
-    building: str
-    floor: int
-    destination_room: int
+    task_type: TaskType = field(default=TaskType.DOOR_ACCESS, kw_only=True)
+    door: Door | None = None
+    building: str = ""
+    floor: int = 0
+    destination_room: int = -1
     buffer_distance: float = 0.05
 
     def __post_init__(self) -> None:
-        """Post-initialization to set the task location."""
+        """Validate door and compute midpoint location."""
         super().__post_init__()
+        if self.door is None:
+            msg = "TaskDoorAccess requires a door."
+            raise SimulationModeError(msg)
+        self.location = self._midpoint_location()
 
+    def _midpoint(self) -> tuple[float, float]:
+        assert self.door is not None  # noqa: S101 - validated in __post_init__
         if self.door.start is None or self.door.end is None:
-            msg = "Door must have defined start and end points to set task location."
+            msg = "Door must have defined start and end points."
             raise SimulationModeError(msg)
-
-        self.location = Location(
-            building=self.building,
-            floor=self.floor,
-            x=(self.door.start[0] + self.door.end[0]) / 2,
-            y=(self.door.start[1] + self.door.end[1]) / 2,
+        return (
+            (self.door.start[0] + self.door.end[0]) / 2,
+            (self.door.start[1] + self.door.end[1]) / 2,
         )
 
-    def modify_location(self, agent: Agent) -> None:
-        """
-        Modify the location of the task to account for buffer.
-
-        Parameters
-        ----------
-        agent : Agent
-            The agent performing the task, used to determine which side of the door to
-            position on.
-
-        """
-        if self.door.start is None:
-            msg = "Door coords needed"
-            raise SimulationModeError(msg)
-
-        if self.door.end is None:
-            msg = "Door coords needed"
-            raise SimulationModeError(msg)
-
-        proposed_location1 = Location(
-            building=self.building,
-            floor=self.floor,
-            x=(self.door.start[0] + self.door.end[0]) / 2,
-            y=(self.door.start[1] + self.door.end[1]) / 2 + self.buffer_distance,
+    def _midpoint_location(self, y_offset: float = 0.0) -> Location:
+        mid_x, mid_y = self._midpoint()
+        return Location(
+            building=self.building, floor=self.floor, x=mid_x, y=mid_y + y_offset
         )
 
-        proposed_location2 = Location(
-            building=self.building,
-            floor=self.floor,
-            x=(self.door.start[0] + self.door.end[0]) / 2,
-            y=(self.door.start[1] + self.door.end[1]) / 2 - self.buffer_distance,
-        )
-
-        proposed_location1_room = agent.get_room(
-            (proposed_location1.x, proposed_location1.y)
-        )
-
-        if proposed_location1_room is None:
-            msg = "Proposed location 1 does not correspond to a valid room."
+    def on_start_moving(self, agent: Agent) -> None:
+        """Offset the target to the correct side of the door for the destination."""
+        candidate = self._midpoint_location(y_offset=self.buffer_distance)
+        candidate_room = agent.get_room((candidate.x, candidate.y))
+        if candidate_room is None:
+            msg = "Proposed door-buffer location does not correspond to a valid room."
             raise SimulationModeError(msg)
 
-        if proposed_location1_room.room_id == self.destination_room:
-            self.location = proposed_location1
+        if candidate_room.room_id == self.destination_room:
+            self.location = candidate
         else:
-            self.location = proposed_location2
-
-
-@dataclass
-class TaskWorkstation(Task):
-    """Representation of a 'workstation' task."""
-
-    task_type: ClassVar[TaskType] = TaskType.WORKSTATION
-    workstation_location: Location
-
-    def __post_init__(self) -> None:
-        """Post-initialization to set the task location."""
-        super().__post_init__()
-        self.location = self.workstation_location
+            self.location = self._midpoint_location(y_offset=-self.buffer_distance)
 
 
 @dataclass
 class TaskOccupyContent(Task):
-    """Representation of an 'occupy content' task."""
+    """An 'occupy content' task: find matching content in a room and sit on it."""
 
-    task_type: ClassVar[TaskType] = TaskType.OCCUPY_CONTENT
-    content_type: int
-    room: Room
+    task_type: TaskType = field(default=TaskType.OCCUPY_CONTENT, kw_only=True)
+    content_type: int = -1
+    room: Room | None = None
     content: Content = field(init=False)
 
     def __post_init__(self) -> None:
-        """Post-initialization to set the task location."""
+        """Validate that a room is provided."""
         super().__post_init__()
+        if self.room is None:
+            msg = "TaskOccupyContent requires a room."
+            raise SimulationModeError(msg)
 
-    def assign_content(self) -> None:
-        """
-        Assign the content to be occupied based on the content type and room.
-
-        The method searches for content in the specified room that matches the required
-        content type. If found, it assigns the content to the task and sets the task
-        location to the content's location. If no matching content is found, it raises a
-        SimulationModeError.
-
-        Raises
-        ------
-        SimulationModeError
-            If no content of the specified type is found in the room.
-
-        """
+    def prepare(self, agent: Agent) -> None:  # noqa: ARG002
+        """Resolve the concrete content instance and set the task location."""
+        assert self.room is not None  # noqa: S101 - validated in __post_init__
         content = next(
-            (c for c in self.room.contents if c.content_type == self.content_type), None
+            (c for c in self.room.contents if c.content_type == self.content_type),
+            None,
         )
-
         if content is None:
             msg = (
                 f"No content of type {self.content_type} found in {self.room.name} "
@@ -430,10 +414,124 @@ class TaskOccupyContent(Task):
             raise SimulationModeError(msg)
 
         self.content = content
+        self.location = content.location
 
-        self.location = Location(
-            building=self.content.location.building,
-            floor=self.content.location.floor,
-            x=self.content.location.x,
-            y=self.content.location.y,
+    def on_completed(self, agent: Agent, current_time: int) -> None:
+        """Occupy the content once the task finishes."""
+        add_agent_occupancy(agent, self.content, current_time=current_time)
+
+
+# ---------------------------------------------------------------------------
+# Factory
+# ---------------------------------------------------------------------------
+
+#: Default durations per task type, formerly hard-coded in Agent.add_task.
+DEFAULT_TIME_NEEDED: dict[TaskType, int] = {
+    TaskType.ATTEND_PATIENT: 15,
+    TaskType.DOOR_ACCESS: 1,
+    TaskType.WORKSTATION: 30,
+    TaskType.OCCUPY_CONTENT: 10,
+    TaskType.GOTO_LOCATION: 0,
+}
+
+
+def create_task(
+    event_type: str,
+    time_due: int,
+    location: Location | None = None,
+    additional_info: dict | None = None,
+) -> Task:
+    """
+    Create a task from a timeseries event.
+
+    Owns the per-type defaults and validation that previously lived in
+    ``Agent.add_task``, so the agent only needs::
+
+        self.tasks.append(create_task(event_type, time, location, additional_info))
+
+    Parameters
+    ----------
+    event_type : str
+        Lower-case name of a ``TaskType`` member (e.g. ``"attend_patient"``).
+    time_due : int
+        The time by which the task should be completed.
+    location : Location | None
+        Task location, where applicable.
+    additional_info : dict | None
+        Type-specific extras: ``patient`` (attend_patient), ``door`` and
+        ``destination`` (door_access), ``content_type`` and ``room``
+        (occupy_content).
+
+    Raises
+    ------
+    SimulationModeError
+        If the event type is unknown or required additional_info is missing.
+
+    """
+    try:
+        task_type = TaskType[event_type.upper()]
+    except KeyError as exc:
+        valid = [t.name.lower() for t in TaskType]
+        msg = f"Invalid task type: {event_type}. Must be one of {valid}."
+        raise SimulationModeError(msg) from exc
+
+    info = additional_info or {}
+    time_needed = DEFAULT_TIME_NEEDED.get(task_type)
+    if time_needed is None:
+        msg = f"Task type {task_type.name} not implemented yet."
+        raise NotImplementedError(msg)
+
+    if task_type == TaskType.ATTEND_PATIENT:
+        patient = info.get("patient")
+        # Local import only for the isinstance check; avoids a circular import.
+        from amr_hub_abm.agent import Agent as _Agent  # noqa: PLC0415
+
+        if not isinstance(patient, _Agent):
+            msg = "Patient (an Agent) must be provided for attend_patient tasks."
+            raise SimulationModeError(msg)
+        return TaskAttendPatient(
+            time_needed=time_needed, time_due=time_due, patient=patient
         )
+
+    if task_type == TaskType.DOOR_ACCESS:
+        if location is None or location.building is None or location.floor is None:
+            msg = "Building and floor must be provided for door access tasks."
+            raise SimulationModeError(msg)
+        if "door" not in info:
+            msg = "Door must be provided in additional_info for door access tasks."
+            raise SimulationModeError(msg)
+        return TaskDoorAccess(
+            time_needed=time_needed,
+            time_due=time_due,
+            door=info["door"],
+            destination_room=info["destination"],
+            building=location.building,
+            floor=location.floor,
+        )
+
+    if task_type == TaskType.OCCUPY_CONTENT:
+        if "content_type" not in info or "room" not in info:
+            msg = (
+                "content_type and room must be provided in additional_info "
+                "for occupy_content tasks."
+            )
+            raise SimulationModeError(msg)
+        return TaskOccupyContent(
+            time_needed=time_needed,
+            time_due=time_due,
+            content_type=info["content_type"],
+            room=info["room"],
+        )
+
+    # All remaining implemented types (workstation, goto_location) are plain
+    # location-based tasks: no subclass needed.
+    if location is None:
+        msg = f"A location must be provided for {task_type.name} tasks."
+        raise SimulationModeError(msg)
+
+    return Task(
+        time_needed=time_needed,
+        time_due=time_due,
+        location=location,
+        task_type=task_type,
+    )

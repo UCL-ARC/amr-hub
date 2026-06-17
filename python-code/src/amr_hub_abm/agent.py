@@ -22,17 +22,14 @@ import numpy.typing as npt
 
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.space.content import ContentType
-from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.room import Room
 from amr_hub_abm.task import (
     Task,
     TaskAttendPatient,
-    TaskDoorAccess,
     TaskOccupyContent,
     TaskProgress,
     TaskType,
-    TaskWorkstation,
+    create_task,
 )
 
 if TYPE_CHECKING:
@@ -40,7 +37,7 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from amr_hub_abm.space.building import Building
-
+    from amr_hub_abm.space.room import Room
 
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
 
@@ -379,7 +376,10 @@ class Agent:
         display_task = in_progress or moving or next_upcoming
         if display_task is not None:
             task_name = display_task.task_type.name.lower()
-            if isinstance(display_task, TaskAttendPatient):
+            if (
+                isinstance(display_task, TaskAttendPatient)
+                and display_task.patient is not None
+            ):
                 task_name += f" → patient {display_task.patient.idx}"
 
             if display_task.progress == TaskProgress.IN_PROGRESS:
@@ -444,141 +444,22 @@ class Agent:
             f"{self.infection_status.value})"
         )
 
-    def add_task(  # noqa: PLR0912
+    def add_task(
         self,
         time: int,
         location: Location,
         event_type: str,
         additional_info: dict | None = None,
     ) -> None:
-        """
-        Add a task to the agent's task list and log the addition.
-
-        Parameters
-        ----------
-        time : int
-            The time at which the task is added.
-        location : Location
-            The location associated with the task.
-        event_type : str
-            The type of task to add. Must be one of the following:
-
-            - "attend_patient"
-
-            - "door_access"
-
-            - "workstation"
-
-            - "occupy_content"
-
-        additional_info : dict | None, optional
-            Additional information required for certain task types.
-
-            For "attend_patient" tasks, this should include:
-
-            - "patient": An instance of Agent representing the patient to attend.
-            For "door_access" tasks, this should include:
-
-            - "door": An instance of Door representing the door to access.
-
-            - "destination": The rooom number of the destination room to which
-            the agent will move after accessing the door.
-
-            For "occupy_content" tasks, this should include:
-
-            - "content_type": A ContentType representing the type of content to occupy.
-
-            - "room": An instance of Room representing the room in which to occupy the
-            content.
-
-        Raises
-        ------
-            SimulationModeError
-                If the event_type is invalid or if required additional_info is missing
-                or of the wrong type for the specified event_type.
-
-        """
-        if event_type not in TASK_TYPES:
-            msg = f"Invalid task type: {event_type}. Must be one of {TASK_TYPES}."
-            raise SimulationModeError(msg)
-        task_type = TaskType[event_type.upper()]
-        task: Task
-
-        if task_type == TaskType.ATTEND_PATIENT:
-            if additional_info is None or "patient" not in additional_info:
-                msg = "Patient ID must be provided for attend_patient tasks."
-                raise SimulationModeError(msg)
-
-            patient = additional_info["patient"]
-            if not isinstance(patient, Agent):
-                msg = "Patient must be an instance of Agent."
-                raise SimulationModeError(msg)
-
-            task = TaskAttendPatient(
-                time_needed=15,
+        """Add a task to the agent's task list."""
+        self.tasks.append(
+            create_task(
+                event_type,
                 time_due=time,
-                patient=patient,
+                location=location,
+                additional_info=additional_info,
             )
-
-        elif task_type == TaskType.DOOR_ACCESS:
-            if location.building is None or location.floor is None:
-                msg = "Building and floor must be provided for door access tasks."
-                raise SimulationModeError(msg)
-
-            if (
-                additional_info is None
-                or "door" not in additional_info
-                or not isinstance(additional_info["door"], Door)
-            ):
-                msg = "Door must be provided in additional_info for door access tasks."
-                raise SimulationModeError(msg)
-
-            task = TaskDoorAccess(
-                door=additional_info["door"],
-                destination_room=additional_info["destination"],
-                time_needed=1,
-                time_due=time,
-                building=location.building,
-                floor=location.floor,
-            )
-
-        elif task_type == TaskType.WORKSTATION:
-            task = TaskWorkstation(
-                workstation_location=location,
-                time_needed=30,
-                time_due=time,
-            )
-
-        elif task_type == TaskType.OCCUPY_CONTENT:
-            if not additional_info or not isinstance(additional_info, dict):
-                msg = "additional_info must be a dictionary for occupy_content tasks."
-                raise SimulationModeError(msg)
-
-            if "content_type" not in additional_info:
-                msg = "Content type must be provided in additional_info for "
-                msg += "occupy_content tasks."
-                raise SimulationModeError(msg)
-
-            if "room" not in additional_info or not isinstance(
-                additional_info["room"], Room
-            ):
-                msg = (
-                    "Room must be provided in additional_info for occupy_content tasks."
-                )
-                raise SimulationModeError(msg)
-
-            task = TaskOccupyContent(
-                content_type=additional_info["content_type"],
-                room=additional_info["room"],
-                time_needed=10,
-                time_due=time,
-            )
-
-        else:
-            msg = f"Task type {task_type.name} not implemented yet."
-            raise NotImplementedError(msg)
-
-        self.tasks.append(task)
+        )
 
     def head_to_point(self, point: tuple[float, float]) -> None:
         """
@@ -836,8 +717,8 @@ class Agent:
         )
         if task is None:
             return False
-        if isinstance(task, TaskOccupyContent):
-            task.assign_content()
+        task.prepare(self)
+        assert task.location is not None  # noqa: S101
 
         task_move_time = (
             task.time_due
