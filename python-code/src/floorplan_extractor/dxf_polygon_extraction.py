@@ -100,6 +100,9 @@ class DoorAttachmentConfig:
     y_col: str = "y"
     out_col: str = "doors"
     predicate: str = "intersects"
+    boundary_tolerance: float = 0.1
+    min_door_length: float = 0.2
+    max_attached_rooms: int = 2
 
 
 @dataclass(frozen=True)
@@ -475,6 +478,31 @@ def _attach_centroid_coords(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return g
 
 
+def _normalise_label(value: str) -> str:
+    return str(value).strip()
+
+
+def _score_label(label: str) -> tuple[int, int, str]:
+    clean = _normalise_label(label)
+    if clean.lower() in {"corridor", "lobby", "stair", "stairs"}:
+        return (1, len(clean), clean)
+
+    has_digit = any(char.isdigit() for char in clean)
+    if has_digit:
+        return (0, len(clean), clean)
+
+    return (2, len(clean), clean)
+
+
+def _choose_primary_label(labels: pd.Series) -> str | None:
+    values = sorted({_normalise_label(v) for v in labels if pd.notna(v)})
+
+    if not values:
+        return None
+
+    return sorted(values, key=_score_label)[0]
+
+
 def _attach_polygon_labels(
     polygons: gpd.GeoDataFrame,
     room_labels: gpd.GeoDataFrame,
@@ -506,19 +534,40 @@ def _attach_polygon_labels(
         and a geometry type indicator column.
 
     """
-    number_polygon_matches = gpd.sjoin(
-        room_labels, polygons, how="left", predicate="within"
+    matches = gpd.sjoin(
+        room_labels,
+        polygons,
+        how="left",
+        predicate="within",
+    ).rename(columns={"index_right": "room_idx"})
+
+    grouped = matches.dropna(subset=["room_idx"]).copy()
+    grouped["room_idx"] = grouped["room_idx"].astype(int)
+
+    label_summary = grouped.groupby("room_idx")[polygon_label_column].agg(
+        primary_label=_choose_primary_label,
+        label_candidates=lambda x: sorted(
+            {_normalise_label(v) for v in x if pd.notna(v)}
+        ),
+        label_count=lambda x: len({_normalise_label(v) for v in x if pd.notna(v)}),
     )
 
-    aggregated_labels = number_polygon_matches.groupby("index_right")[
-        polygon_label_column
-    ].apply(lambda x: ", ".join(sorted(set(x))))
-
-    labelled_polygons = polygons.join(aggregated_labels)
-    labelled_polygons = labelled_polygons.rename(
-        columns={polygon_label_column: polygon_label_target}
+    label_summary = label_summary.rename(
+        columns={"primary_label": polygon_label_target}
     )
+    label_summary["label_ambiguous"] = label_summary["label_count"] > 1
+
+    labelled_polygons = polygons.join(label_summary, how="left")
     labelled_polygons["geometry_type"] = "POLYGON"
+    labelled_polygons["label_candidates"] = labelled_polygons["label_candidates"].apply(
+        lambda v: v if isinstance(v, list) else []
+    )
+    labelled_polygons["label_count"] = (
+        labelled_polygons["label_count"].fillna(0).astype(int)
+    )
+    labelled_polygons["label_ambiguous"] = labelled_polygons["label_ambiguous"].fillna(
+        value=False
+    )
 
     return labelled_polygons
 
