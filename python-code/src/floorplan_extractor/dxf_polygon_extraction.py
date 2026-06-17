@@ -43,6 +43,7 @@ from shapely.ops import linemerge, polygonize, unary_union
 XY = tuple[float, float]
 DoorQuad = list[float]  # [x1, y1, x2, y2]
 MIN_DOOR_ENDPOINTS: int = 2
+VALID_SHARED_WALL_CANONICAL_LINES: frozenset[str] = frozenset({"midline"})
 
 
 @dataclass(frozen=True)
@@ -106,6 +107,39 @@ class DoorAttachmentConfig:
 
 
 @dataclass(frozen=True)
+class SharedWallConfig:
+    """
+    Configuration for optional shared-wall normalisation.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether shared-wall normalisation should run.
+    min_gap : float
+        Minimum distance between paired wall faces.
+    max_gap : float
+        Maximum distance between paired wall faces.
+    angle_tolerance_degrees : float
+        Maximum angle difference for wall faces to be considered parallel.
+    min_overlap_ratio : float
+        Minimum projected overlap ratio required for pairing.
+    min_overlap_length : float
+        Minimum projected overlap length required for pairing.
+    canonical_line : str
+        Strategy for choosing the replacement shared wall line.
+
+    """
+
+    enabled: bool = False
+    min_gap: float = 50.0
+    max_gap: float = 130.0
+    angle_tolerance_degrees: float = 2.0
+    min_overlap_ratio: float = 0.75
+    min_overlap_length: float = 250.0
+    canonical_line: str = "midline"
+
+
+@dataclass(frozen=True)
 class ExtractionConfig:
     """
     Top-level configuration for DXF extraction.
@@ -118,12 +152,16 @@ class ExtractionConfig:
         Name of the DXF layer containing door geometries.
     doors : DoorAttachmentConfig or None
         If provided, doors are extracted and attached to polygons.
+    shared_walls : SharedWallConfig or None
+        If provided and enabled, shared-wall normalisation may be applied by
+        downstream processing.
 
     """
 
     polygons: PolygonExtractionConfig
     door_layer_name: str | None = None
     doors: DoorAttachmentConfig | None = None
+    shared_walls: SharedWallConfig | None = None
 
 
 def config_from_yaml(path: Path) -> ExtractionConfig:
@@ -148,6 +186,15 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
       y_col: y
       out_col: doors
       predicate: intersects
+
+    shared_walls:                # optional
+      enabled: true
+      min_gap: 50
+      max_gap: 130
+      angle_tolerance_degrees: 2
+      min_overlap_ratio: 0.75
+      min_overlap_length: 250
+      canonical_line: midline
 
     Parameters
     ----------
@@ -182,6 +229,7 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
 
     door_layer_name: str | None = None
     door_config: DoorAttachmentConfig | None = None
+    shared_wall_config: SharedWallConfig | None = None
 
     if "doors" in data:
         door_block = data["doors"]
@@ -204,10 +252,41 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
             predicate=door_block.get("predicate", "intersects"),
         )
 
+    if "shared_walls" in data:
+        shared_wall_block = data["shared_walls"]
+
+        if not isinstance(shared_wall_block, dict):
+            msg = "'shared_walls' block must be a mapping"
+            raise TypeError(msg)
+
+        canonical_line = str(shared_wall_block.get("canonical_line", "midline"))
+        if canonical_line not in VALID_SHARED_WALL_CANONICAL_LINES:
+            valid_values = ", ".join(sorted(VALID_SHARED_WALL_CANONICAL_LINES))
+            msg = (
+                "'shared_walls.canonical_line' must be one of "
+                f"{valid_values}; got {canonical_line!r}"
+            )
+            raise ValueError(msg)
+
+        shared_wall_config = SharedWallConfig(
+            enabled=bool(shared_wall_block.get("enabled", False)),
+            min_gap=float(shared_wall_block.get("min_gap", 50.0)),
+            max_gap=float(shared_wall_block.get("max_gap", 130.0)),
+            angle_tolerance_degrees=float(
+                shared_wall_block.get("angle_tolerance_degrees", 2.0)
+            ),
+            min_overlap_ratio=float(shared_wall_block.get("min_overlap_ratio", 0.75)),
+            min_overlap_length=float(
+                shared_wall_block.get("min_overlap_length", 250.0)
+            ),
+            canonical_line=canonical_line,
+        )
+
     return ExtractionConfig(
         polygons=polygons_cfg,
         door_layer_name=door_layer_name,
         doors=door_config,
+        shared_walls=shared_wall_config,
     )
 
 
