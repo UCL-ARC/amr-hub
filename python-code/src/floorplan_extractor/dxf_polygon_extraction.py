@@ -435,8 +435,24 @@ def _flatten_z_points(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return g
 
 
+def _repair_polygon_geometry(geom: BaseGeometry) -> BaseGeometry:
+    geom = shapely.force_2d(geom)
+
+    if geom.is_empty:
+        return geom
+
+    if not geom.is_valid:
+        geom = shapely.make_valid(geom)
+
+    if geom.geom_type == "MultiPolygon":
+        return max(geom.geoms, key=lambda g: g.area)
+
+    return geom
+
+
 def _generate_polygons(
-    gdf: gpd.GeoDataFrame, polygon_layer_name: str
+    gdf: gpd.GeoDataFrame,
+    polygon_layer_name: str,
 ) -> gpd.GeoDataFrame:
     """
     Generate polygon geometries from linework in a specified DXF layer.
@@ -458,8 +474,28 @@ def _generate_polygons(
         specified layer.
 
     """
-    polygon_layer = gdf.loc[gdf["Layer"] == polygon_layer_name, :]
-    return gpd.GeoDataFrame(geometry=list(polygonize(polygon_layer.geometry)))
+    polygon_layer = gdf.loc[gdf["Layer"] == polygon_layer_name, ["geometry"]].copy()
+    polygon_layer["geometry"] = shapely.force_2d(polygon_layer.geometry)
+
+    polygon_layer = polygon_layer.loc[
+        polygon_layer.geometry.geom_type.isin(
+            {"LineString", "MultiLineString", "LinearRing"}
+        ),
+        :,
+    ]
+
+    raw_polygons = list(polygonize(polygon_layer.geometry))
+    repaired = [_repair_polygon_geometry(geom) for geom in raw_polygons]
+
+    polygons = gpd.GeoDataFrame(geometry=repaired, crs=gdf.crs)
+    polygons = polygons.loc[
+        polygons.geometry.geom_type == "Polygon",
+        :,
+    ]
+    polygons = polygons.loc[~polygons.geometry.is_empty, :]
+    polygons = polygons.loc[polygons.geometry.area > 0, :]
+
+    return polygons.reset_index(drop=True)
 
 
 def _generate_room_numbers(
