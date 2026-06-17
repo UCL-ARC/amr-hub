@@ -8,7 +8,6 @@ from amr_hub_abm.space.location import Location
 from amr_hub_abm.task import (
     Task,
     TaskDoorAccess,
-    TaskGotoLocation,
     TaskPriority,
     TaskProgress,
     TaskType,
@@ -62,12 +61,13 @@ def test_task_progress_update(sample_task: Task) -> None:
 
 def test_goto_location_task() -> None:
     """Test the initialization of a 'goto location' task."""
-    goto_task = TaskGotoLocation(
-        progress=TaskProgress.NOT_STARTED,
-        priority=TaskPriority.HIGH,
+    goto_task = Task(
         time_needed=15,
         time_due=30,
-        destination_location=Location(building="A", floor=1, x=10.0, y=20.0),
+        location=Location(building="A", floor=1, x=10.0, y=20.0),
+        progress=TaskProgress.NOT_STARTED,
+        priority=TaskPriority.HIGH,
+        task_type=TaskType.GOTO_LOCATION,
     )
 
     assert goto_task.task_type == TaskType.GOTO_LOCATION
@@ -141,6 +141,4 @@ def test_door_access_task_with_invalid_door_raises() -> None:
             destination_room=1,
         )
 
-    assert "Door must have defined start and end points to set task location." in str(
-        excinfo.value
-    )
+    assert "Door must have defined start and end points." in str(excinfo.value)
