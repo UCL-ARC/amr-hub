@@ -201,6 +201,7 @@ class Agent:
             For "attend_patient" tasks, this should include:
 
             - "patient": An instance of Agent representing the patient to attend.
+
             For "door_access" tasks, this should include:
 
             - "door": An instance of Door representing the door to access.
