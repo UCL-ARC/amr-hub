@@ -1,5 +1,6 @@
 """Module for testing extraction of polygons from dxf linework."""
 
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -8,7 +9,9 @@ import pytest
 import yaml
 from shapely.geometry import LineString, Point, Polygon
 
+import floorplan_extractor.dxf_polygon_extraction as dxf_extraction
 from floorplan_extractor.dxf_polygon_extraction import (
+    DoorAttachmentConfig,
     ExtractionConfig,
     PolygonExtractionConfig,
     SharedWallConfig,
@@ -16,6 +19,7 @@ from floorplan_extractor.dxf_polygon_extraction import (
     _flatten_z_points,
     _generate_polygons,
     config_from_yaml,
+    extract_polygons,
 )
 
 # Constants
@@ -56,6 +60,102 @@ SHARED_WALL_ANGLE_TOLERANCE_DEGREES: float = 2.0
 SHARED_WALL_MIN_OVERLAP_RATIO: float = 0.75
 SHARED_WALL_MIN_OVERLAP_LENGTH: float = 250.0
 SHARED_WALL_CANONICAL_LINE: str = "midline"
+DOOR_LAYER_NAME: str = "DOORS"
+DOOR_ENTITY_HANDLE: str = "door-1"
+
+
+def _polygon_config() -> PolygonExtractionConfig:
+    return PolygonExtractionConfig(
+        polygon_layer_name=POLYGON_LAYER_NAME,
+        label_layer_name=LABEL_LAYER_NAME,
+        polygon_label_column=POLYGON_LABEL_COLUMN,
+        polygon_label_target=POLYGON_LABEL_TARGET,
+        floor_filter=FLOOR_FILTER,
+        excluded_room_numbers=[],
+    )
+
+
+def _shared_wall_config(*, enabled: bool) -> SharedWallConfig:
+    return SharedWallConfig(
+        enabled=enabled,
+        min_gap=SHARED_WALL_MIN_GAP,
+        max_gap=SHARED_WALL_MAX_GAP,
+        angle_tolerance_degrees=SHARED_WALL_ANGLE_TOLERANCE_DEGREES,
+        min_overlap_ratio=SHARED_WALL_MIN_OVERLAP_RATIO,
+        min_overlap_length=SHARED_WALL_MIN_OVERLAP_LENGTH,
+        canonical_line=SHARED_WALL_CANONICAL_LINE,
+    )
+
+
+def _rectangle_lines(
+    min_x: float,
+    min_y: float,
+    max_x: float,
+    max_y: float,
+) -> list[LineString]:
+    return [
+        LineString([(min_x, min_y), (max_x, min_y)]),
+        LineString([(max_x, min_y), (max_x, max_y)]),
+        LineString([(max_x, max_y), (min_x, max_y)]),
+        LineString([(min_x, max_y), (min_x, min_y)]),
+    ]
+
+
+def _shared_wall_extraction_gdf() -> gpd.GeoDataFrame:
+    room_boundary_lines = [
+        *_rectangle_lines(0.0, 0.0, 400.0, 400.0),
+        *_rectangle_lines(500.0, 0.0, 900.0, 400.0),
+    ]
+    rows: list[dict[str, object]] = [
+        {
+            LAYER_COLUMN: POLYGON_LAYER_NAME,
+            "EntityHandle": None,
+            POLYGON_LABEL_COLUMN: None,
+            GEOMETRY_COLUMN: line,
+        }
+        for line in room_boundary_lines
+    ]
+
+    rows.extend(
+        [
+            {
+                LAYER_COLUMN: LABEL_LAYER_NAME,
+                "EntityHandle": None,
+                POLYGON_LABEL_COLUMN: "101",
+                GEOMETRY_COLUMN: Point(200.0, 200.0),
+            },
+            {
+                LAYER_COLUMN: LABEL_LAYER_NAME,
+                "EntityHandle": None,
+                POLYGON_LABEL_COLUMN: "102",
+                GEOMETRY_COLUMN: Point(700.0, 200.0),
+            },
+            {
+                LAYER_COLUMN: DOOR_LAYER_NAME,
+                "EntityHandle": DOOR_ENTITY_HANDLE,
+                POLYGON_LABEL_COLUMN: None,
+                GEOMETRY_COLUMN: LineString([(450.0, 150.0), (450.0, 250.0)]),
+            },
+        ]
+    )
+
+    return gpd.GeoDataFrame(rows, geometry=GEOMETRY_COLUMN)
+
+
+def _canonical_segments(polygon: Polygon) -> set[tuple[tuple[float, float], ...]]:
+    coords = list(polygon.exterior.coords)
+
+    return {
+        tuple(
+            sorted(
+                (
+                    (round(start[0], 6), round(start[1], 6)),
+                    (round(end[0], 6), round(end[1], 6)),
+                )
+            )
+        )
+        for start, end in pairwise(coords)
+    }
 
 
 def _base_config_data() -> dict[str, Any]:
@@ -172,6 +272,70 @@ def test_config_from_yaml_rejects_invalid_shared_wall_canonical_line(
         match=r"'shared_walls\.canonical_line' must be one of midline",
     ):
         config_from_yaml(config_path)
+
+
+def test_extract_polygons_applies_enabled_shared_wall_normalisation(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Enabled shared-wall normalisation runs before door attachment."""
+    monkeypatch.setattr(
+        dxf_extraction.gpd,
+        "read_file",
+        lambda _: _shared_wall_extraction_gdf(),
+    )
+    config = ExtractionConfig(
+        polygons=_polygon_config(),
+        door_layer_name=DOOR_LAYER_NAME,
+        doors=DoorAttachmentConfig(),
+        shared_walls=_shared_wall_config(enabled=True),
+    )
+
+    result = extract_polygons(tmp_path / "floorplan.dxf", config)
+
+    expected_midline = ((450.0, 0.0), (450.0, 400.0))
+    assert tuple(sorted(expected_midline)) in _canonical_segments(
+        result.geometry.iloc[0]
+    )
+    assert tuple(sorted(expected_midline)) in _canonical_segments(
+        result.geometry.iloc[1]
+    )
+    assert result["shared_wall_count"].to_list() == [1, 1]
+    assert result["shared_wall_review"].to_list() == [False, False]
+    assert result["door_count"].to_list() == [1, 1]
+    assert result["doors"].apply(bool).to_list() == [True, True]
+    assert result["needs_review"].to_list() == [False, False]
+
+
+def test_extract_polygons_preserves_shape_when_shared_walls_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Disabled shared-wall configuration leaves extraction output current-style."""
+    monkeypatch.setattr(
+        dxf_extraction.gpd,
+        "read_file",
+        lambda _: _shared_wall_extraction_gdf(),
+    )
+    config = ExtractionConfig(
+        polygons=_polygon_config(),
+        door_layer_name=DOOR_LAYER_NAME,
+        doors=DoorAttachmentConfig(),
+        shared_walls=_shared_wall_config(enabled=False),
+    )
+
+    result = extract_polygons(tmp_path / "floorplan.dxf", config)
+
+    assert tuple(sorted(((400.0, 0.0), (400.0, 400.0)))) in _canonical_segments(
+        result.geometry.iloc[0]
+    )
+    assert tuple(sorted(((500.0, 0.0), (500.0, 400.0)))) in _canonical_segments(
+        result.geometry.iloc[1]
+    )
+    assert "shared_wall_count" not in result.columns
+    assert "shared_wall_review" not in result.columns
+    assert "shared_wall_rejections" not in result.columns
+    assert result["door_count"].to_list() == [0, 0]
 
 
 def test_flatten_z_points_removes_z_dimension() -> None:

@@ -8,8 +8,6 @@ from math import atan2, cos, pi, radians, sin
 import geopandas as gpd
 from shapely.geometry import LineString, Point, Polygon
 
-from floorplan_extractor.dxf_polygon_extraction import SharedWallConfig
-
 XY = tuple[float, float]
 SegmentReplacement = tuple[XY, XY, XY, XY]
 MIN_SEGMENT_COORDINATES = 2
@@ -22,6 +20,39 @@ REVIEW_REJECTION_REASONS: frozenset[str] = frozenset(
         "third_room_intersection",
     }
 )
+
+
+@dataclass(frozen=True)
+class SharedWallConfig:
+    """
+    Configuration for optional shared-wall normalisation.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether shared-wall normalisation should run.
+    min_gap : float
+        Minimum distance between paired wall faces.
+    max_gap : float
+        Maximum distance between paired wall faces.
+    angle_tolerance_degrees : float
+        Maximum angle difference for wall faces to be considered parallel.
+    min_overlap_ratio : float
+        Minimum projected overlap ratio required for pairing.
+    min_overlap_length : float
+        Minimum projected overlap length required for pairing.
+    canonical_line : str
+        Strategy for choosing the replacement shared wall line.
+
+    """
+
+    enabled: bool = False
+    min_gap: float = 50.0
+    max_gap: float = 130.0
+    angle_tolerance_degrees: float = 2.0
+    min_overlap_ratio: float = 0.75
+    min_overlap_length: float = 250.0
+    canonical_line: str = "midline"
 
 
 @dataclass(frozen=True)

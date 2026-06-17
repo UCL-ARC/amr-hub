@@ -40,6 +40,8 @@ from shapely.geometry import GeometryCollection, LineString, MultiLineString
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import linemerge, polygonize, unary_union
 
+from floorplan_extractor.shared_walls import SharedWallConfig, normalise_shared_walls
+
 XY = tuple[float, float]
 DoorQuad = list[float]  # [x1, y1, x2, y2]
 MIN_DOOR_ENDPOINTS: int = 2
@@ -104,39 +106,6 @@ class DoorAttachmentConfig:
     boundary_tolerance: float = 0.1
     min_door_length: float = 0.2
     max_attached_rooms: int = 2
-
-
-@dataclass(frozen=True)
-class SharedWallConfig:
-    """
-    Configuration for optional shared-wall normalisation.
-
-    Attributes
-    ----------
-    enabled : bool
-        Whether shared-wall normalisation should run.
-    min_gap : float
-        Minimum distance between paired wall faces.
-    max_gap : float
-        Maximum distance between paired wall faces.
-    angle_tolerance_degrees : float
-        Maximum angle difference for wall faces to be considered parallel.
-    min_overlap_ratio : float
-        Minimum projected overlap ratio required for pairing.
-    min_overlap_length : float
-        Minimum projected overlap length required for pairing.
-    canonical_line : str
-        Strategy for choosing the replacement shared wall line.
-
-    """
-
-    enabled: bool = False
-    min_gap: float = 50.0
-    max_gap: float = 130.0
-    angle_tolerance_degrees: float = 2.0
-    min_overlap_ratio: float = 0.75
-    min_overlap_length: float = 250.0
-    canonical_line: str = "midline"
 
 
 @dataclass(frozen=True)
@@ -841,6 +810,12 @@ def extract_polygons(
         config.polygons.polygon_label_target,
     )
 
+    if config.shared_walls and config.shared_walls.enabled:
+        labelled_polygons = normalise_shared_walls(
+            labelled_polygons,
+            config.shared_walls,
+        )
+
     if config.door_layer_name and config.doors:
         doors = _generate_doors(gdf, config.door_layer_name)
         labelled_polygons = attach_room_doors(
@@ -857,6 +832,7 @@ def extract_polygons(
         ~labelled_polygons["has_label"]
         | labelled_polygons.get("label_ambiguous", False)
         | (labelled_polygons.get("door_count", 0) == 0)
+        | labelled_polygons.get("shared_wall_review", False)
     )
 
     return labelled_polygons
