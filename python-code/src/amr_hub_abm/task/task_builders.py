@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
-from amr_hub_abm.agent.agent import Agent
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.task.task import (
     Task,
@@ -18,6 +17,7 @@ from amr_hub_abm.task.task import (
 )
 
 if TYPE_CHECKING:
+    from amr_hub_abm.agent.agent import Agent
     from amr_hub_abm.space.content import ContentType
     from amr_hub_abm.space.door import Door
     from amr_hub_abm.space.location import Location
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 type TaskBuilder = Callable[[TaskBuilderContext], Task]
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class TaskBuilderContext:
     """Context for building tasks."""
 
@@ -39,14 +39,33 @@ class TaskBuilderContext:
     content_room: Room | None
 
 
+def build_task_context(
+    time: int,
+    location: Location | None,
+    additional_info: dict[str, object] | None = None,
+) -> TaskBuilderContext:
+    """
+    Build a TaskBuilderContext from the legacy additional_info dict.
+
+    This adapter can be removed once callers pass TaskBuilderContext directly.
+    """
+    additional_info = additional_info or {}
+
+    return TaskBuilderContext(
+        time=time,
+        location=location,
+        patient=cast("Agent | None", additional_info.get("patient")),
+        door=cast("Door | None", additional_info.get("door")),
+        destination_room_idx=cast("int | None", additional_info.get("destination")),
+        content_type=cast("ContentType | None", additional_info.get("content_type")),
+        content_room=cast("Room | None", additional_info.get("room")),
+    )
+
+
 def build_attend_patient_task(context: TaskBuilderContext) -> Task:
     """Build a TaskAttendPatient task."""
     if context.patient is None:
         msg = "Patient must be provided for attend_patient tasks."
-        raise SimulationModeError(msg)
-
-    if not isinstance(context.patient, Agent):
-        msg = "Patient must be an instance of Agent."
         raise SimulationModeError(msg)
 
     return TaskAttendPatient(
