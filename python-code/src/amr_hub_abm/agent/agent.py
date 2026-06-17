@@ -221,7 +221,14 @@ class Agent:
                 or of the wrong type for the specified event_type.
 
         """
+        if event_type not in TASK_TYPES:
+            msg = f"Invalid task type: {event_type}. Must be one of {TASK_TYPES}."
+            raise SimulationModeError(msg)
         task_type = TaskType[event_type.upper()]
+        if task_type == TaskType.GENERIC:
+            msg = "Task type GENERIC not implemented yet."
+            raise NotImplementedError(msg)
+
         context = build_task_context(
             time=time,
             location=location,

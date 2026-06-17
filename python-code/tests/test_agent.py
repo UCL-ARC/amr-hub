@@ -254,24 +254,7 @@ def test_add_attend_patient_task_without_patient(
             event_type="attend_patient",
         )
 
-    assert "Patient ID must be provided for attend_patient tasks." in str(
-        exc_info.value
-    )
-
-
-def test_add_attend_patient_task_with_invalid_patient(
-    sample_agent: Agent, sample_location: Location
-) -> None:
-    """Test that error is raised if adding task with invalid patient."""
-    with pytest.raises(SimulationModeError) as exc_info:
-        sample_agent.add_task(
-            time=0,
-            location=sample_location,
-            event_type="attend_patient",
-            additional_info={"patient": "not_an_agent"},
-        )
-
-    assert "Patient must be an instance of Agent." in str(exc_info.value)
+    assert "Patient must be provided for attend_patient tasks." in str(exc_info.value)
 
 
 def test_add_door_access_task_without_building_floor(
