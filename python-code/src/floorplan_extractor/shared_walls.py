@@ -6,13 +6,22 @@ from itertools import combinations, pairwise
 from math import atan2, cos, pi, radians, sin
 
 import geopandas as gpd
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import LineString, Point, Polygon
 
 from floorplan_extractor.dxf_polygon_extraction import SharedWallConfig
 
 XY = tuple[float, float]
+SegmentReplacement = tuple[XY, XY, XY, XY]
 MIN_SEGMENT_COORDINATES = 2
 GEOMETRY_TOLERANCE = 1e-9
+REVIEW_REJECTION_REASONS: frozenset[str] = frozenset(
+    {
+        "ambiguous_match",
+        "insufficient_overlap_length",
+        "insufficient_overlap_ratio",
+        "third_room_intersection",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -42,6 +51,7 @@ class SharedWallCandidate:
     gap: float
     overlap_length: float
     overlap_ratio: float
+    overlap: tuple[float, float]
     strip: Polygon
 
 
@@ -105,6 +115,46 @@ def detect_shared_wall_candidates(
     rejections.extend(ambiguity_rejections)
 
     return SharedWallDetectionResult(candidates=accepted, rejections=rejections)
+
+
+def normalise_shared_walls(
+    rooms: gpd.GeoDataFrame,
+    config: SharedWallConfig,
+    detection: SharedWallDetectionResult | None = None,
+) -> gpd.GeoDataFrame:
+    """
+    Move accepted shared wall-face overlaps to a common midline.
+
+    Parameters
+    ----------
+    rooms : geopandas.GeoDataFrame
+        Labelled room polygons to normalise.
+    config : SharedWallConfig
+        Shared-wall configuration. If disabled, geometries are not changed.
+    detection : SharedWallDetectionResult or None
+        Candidate detection output. If omitted and config is enabled, detection
+        is run using ``rooms`` and ``config``.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        A copy of ``rooms`` with updated geometries and shared-wall metadata.
+
+    """
+    result = rooms.copy()
+
+    if detection is None:
+        detection = (
+            detect_shared_wall_candidates(rooms, config)
+            if config.enabled
+            else SharedWallDetectionResult(candidates=[], rejections=[])
+        )
+
+    if config.enabled and detection.candidates:
+        replacements = _candidate_replacements(detection.candidates)
+        result.geometry = _normalised_geometry(result, replacements)
+
+    return _attach_review_metadata(result, detection)
 
 
 def _extract_wall_segments(rooms: gpd.GeoDataFrame) -> list[WallSegment]:
@@ -198,6 +248,7 @@ def _evaluate_pair(
             gap=gap,
             overlap_length=overlap_length,
             overlap_ratio=overlap_ratio,
+            overlap=overlap,
             strip=strip,
         ),
         None,
@@ -296,6 +347,149 @@ def _reject_ambiguous_candidates(
     return accepted, rejections
 
 
+def _candidate_replacements(
+    candidates: list[SharedWallCandidate],
+) -> dict[tuple[Hashable, int], SegmentReplacement]:
+    replacements: dict[tuple[Hashable, int], SegmentReplacement] = {}
+
+    for candidate in candidates:
+        first_midline, second_midline = _midline_replacements(candidate)
+        replacements[candidate.first.key] = first_midline
+        replacements[candidate.second.key] = second_midline
+
+    return replacements
+
+
+def _midline_replacements(
+    candidate: SharedWallCandidate,
+) -> tuple[SegmentReplacement, SegmentReplacement]:
+    first_start = _point_at_projection(candidate.first, candidate.overlap[0])
+    first_end = _point_at_projection(candidate.first, candidate.overlap[1])
+    second_start = _point_at_projection(candidate.second, candidate.overlap[0])
+    second_end = _point_at_projection(candidate.second, candidate.overlap[1])
+
+    midline = (
+        _midpoint(first_start, second_start),
+        _midpoint(first_end, second_end),
+    )
+
+    return (
+        _orient_replacement(candidate.first, (first_start, first_end), midline),
+        _orient_replacement(candidate.second, (second_start, second_end), midline),
+    )
+
+
+def _orient_replacement(
+    segment: WallSegment,
+    overlap: tuple[XY, XY],
+    midline: tuple[XY, XY],
+) -> SegmentReplacement:
+    start_distance = segment.line.project(Point(overlap[0]))
+    end_distance = segment.line.project(Point(overlap[1]))
+
+    if start_distance <= end_distance:
+        return (overlap[0], midline[0], midline[1], overlap[1])
+
+    return (overlap[1], midline[1], midline[0], overlap[0])
+
+
+def _normalised_geometry(
+    rooms: gpd.GeoDataFrame,
+    replacements: dict[tuple[Hashable, int], SegmentReplacement],
+) -> gpd.GeoSeries:
+    geometries = rooms.geometry.copy()
+
+    for room_id, geometry in rooms.geometry.items():
+        if not isinstance(geometry, Polygon) or geometry.is_empty:
+            continue
+
+        updated = _normalise_polygon(room_id, geometry, replacements)
+        if updated.is_valid and updated.area > GEOMETRY_TOLERANCE:
+            geometries.loc[room_id] = updated
+
+    return geometries
+
+
+def _normalise_polygon(
+    room_id: Hashable,
+    polygon: Polygon,
+    replacements: dict[tuple[Hashable, int], SegmentReplacement],
+) -> Polygon:
+    coords = [_xy(coord) for coord in polygon.exterior.coords]
+    if len(coords) < 2:
+        return polygon
+
+    updated: list[XY] = []
+    for segment_index, (start, end) in enumerate(pairwise(coords)):
+        if not updated:
+            updated.append(start)
+
+        replacement = replacements.get((room_id, segment_index))
+        if replacement is None:
+            updated.append(end)
+            continue
+
+        overlap_start, mid_start, mid_end, overlap_end = replacement
+        _append_distinct(updated, overlap_start)
+        _append_distinct(updated, mid_start)
+        _append_distinct(updated, mid_end)
+        _append_distinct(updated, overlap_end)
+        _append_distinct(updated, end)
+
+    if updated[0] != updated[-1]:
+        updated.append(updated[0])
+
+    return Polygon(updated, holes=list(polygon.interiors))
+
+
+def _attach_review_metadata(
+    rooms: gpd.GeoDataFrame,
+    detection: SharedWallDetectionResult,
+) -> gpd.GeoDataFrame:
+    result = rooms.copy()
+    counts: dict[Hashable, int] = dict.fromkeys(result.index, 0)
+    rejections: dict[Hashable, list[dict[str, object]]] = {
+        room_id: [] for room_id in result.index
+    }
+
+    for candidate in detection.candidates:
+        counts[candidate.first.room_id] = counts.get(candidate.first.room_id, 0) + 1
+        counts[candidate.second.room_id] = counts.get(candidate.second.room_id, 0) + 1
+
+    for rejection in detection.rejections:
+        if rejection.reason not in REVIEW_REJECTION_REASONS:
+            continue
+
+        rejection_summary = _rejection_summary(rejection)
+        for room_id in (rejection.first.room_id, rejection.second.room_id):
+            if room_id in rejections:
+                rejections[room_id].append(rejection_summary)
+
+    result["shared_wall_count"] = [counts.get(room_id, 0) for room_id in result.index]
+    result["shared_wall_rejections"] = [
+        rejections.get(room_id, []) for room_id in result.index
+    ]
+    result["shared_wall_review"] = [
+        bool(rejections.get(room_id, [])) for room_id in result.index
+    ]
+
+    return result
+
+
+def _rejection_summary(rejection: SharedWallRejection) -> dict[str, object]:
+    return {
+        "reason": rejection.reason,
+        "first_room_id": rejection.first.room_id,
+        "first_segment_index": rejection.first.segment_index,
+        "second_room_id": rejection.second.room_id,
+        "second_segment_index": rejection.second.segment_index,
+        "gap": rejection.gap,
+        "overlap_length": rejection.overlap_length,
+        "overlap_ratio": rejection.overlap_ratio,
+        "blocking_room_id": rejection.blocking_room_id,
+    }
+
+
 def _projection_range(
     segment: WallSegment,
     axis: tuple[float, float],
@@ -329,3 +523,12 @@ def _dot(first: Iterable[float], second: Iterable[float]) -> float:
 
 def _xy(point: tuple[float, ...]) -> XY:
     return (float(point[0]), float(point[1]))
+
+
+def _midpoint(first: XY, second: XY) -> XY:
+    return ((first[0] + second[0]) / 2, (first[1] + second[1]) / 2)
+
+
+def _append_distinct(coords: list[XY], point: XY) -> None:
+    if coords[-1] != point:
+        coords.append(point)
