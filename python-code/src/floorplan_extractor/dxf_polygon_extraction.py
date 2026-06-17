@@ -30,15 +30,15 @@ internal helpers and are not part of the public API.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import geopandas as gpd
 import pandas as pd
 import shapely
 import yaml
-from shapely.geometry import GeometryCollection
+from shapely.geometry import GeometryCollection, LineString, MultiLineString
 from shapely.geometry.base import BaseGeometry
-from shapely.ops import polygonize
+from shapely.ops import linemerge, polygonize, unary_union
 
 XY = tuple[float, float]
 DoorQuad = list[float]  # [x1, y1, x2, y2]
@@ -240,6 +240,58 @@ def _pair_points_to_quad(points: list[XY]) -> DoorQuad | None:
     return [x1, y1, x2, y2]
 
 
+def _line_to_xyxy(line: BaseGeometry) -> DoorQuad | None:
+    if line.is_empty:
+        return None
+
+    if isinstance(line, MultiLineString):
+        merged = linemerge(line)
+        if isinstance(merged, MultiLineString):
+            line = max(merged.geoms, key=lambda g: g.length)
+        else:
+            line = merged
+
+    if not isinstance(line, LineString):
+        return None
+
+    coords = list(line.coords)
+    if len(coords) < 2:
+        return None
+
+    x1, y1 = coords[0][:2]
+    x2, y2 = coords[-1][:2]
+
+    return [float(x1), float(y1), float(x2), float(y2)]
+
+
+def _combine_door_geometries(
+    doors: gpd.GeoDataFrame,
+    config: DoorAttachmentConfig,
+) -> gpd.GeoDataFrame:
+    rows = []
+
+    for entity_id, group in doors.groupby(config.entity_col, sort=False):
+        geom = unary_union(list(group.geometry))
+        geom = shapely.force_2d(geom)
+
+        if geom.length < config.min_door_length:
+            continue
+
+        door_quad = _line_to_xyxy(geom)
+        if door_quad is None:
+            continue
+
+        rows.append(
+            {
+                config.entity_col: entity_id,
+                "geometry": geom,
+                "door_xyxy": door_quad,
+            }
+        )
+
+    return gpd.GeoDataFrame(rows, geometry="geometry", crs=doors.crs)
+
+
 def attach_room_doors(
     labelled_polygons: gpd.GeoDataFrame,
     doors: gpd.GeoDataFrame,
@@ -276,12 +328,7 @@ def attach_room_doors(
     if config is None:
         config = DoorAttachmentConfig()
 
-    required_doors_cols = {
-        config.entity_col,
-        config.x_col,
-        config.y_col,
-        "geometry",
-    }
+    required_doors_cols = {config.entity_col, "geometry"}
     missing = required_doors_cols.difference(doors.columns)
     if missing:
         msg = f"doors is missing required columns: {sorted(missing)}"
@@ -291,39 +338,73 @@ def attach_room_doors(
         msg = "labelled_polygons must have a 'geometry' column"
         raise KeyError(msg)
 
-    joined = gpd.sjoin(
-        doors[[config.entity_col, config.x_col, config.y_col, "geometry"]],
-        labelled_polygons[["geometry"]],
-        how="inner",
-        predicate=config.predicate,
-    ).rename(columns={"index_right": "room_idx"})
+    combined_doors = _combine_door_geometries(doors, config)
 
-    points = joined.groupby(["room_idx", config.entity_col], sort=False)[
-        [config.x_col, config.y_col]
-    ].apply(
-        lambda df: list(
-            zip(
-                df[config.x_col].astype(float),
-                df[config.y_col].astype(float),
-                strict=True,
-            )
-        )
+    rooms = labelled_polygons.copy()
+    rooms["_room_idx"] = rooms.index
+    rooms["_boundary_geometry"] = rooms.geometry.boundary.buffer(
+        config.boundary_tolerance
     )
 
-    quads = points.apply(_pair_points_to_quad).dropna().rename("door_xyxy")
+    boundary_gdf = gpd.GeoDataFrame(
+        rooms[["_room_idx"]],
+        geometry=rooms["_boundary_geometry"],
+        crs=rooms.crs,
+    )
+
+    joined = gpd.sjoin(
+        combined_doors[[config.entity_col, "door_xyxy", "geometry"]],
+        boundary_gdf,
+        how="left",
+        predicate="intersects",
+    )
+
+    valid = joined.dropna(subset=["_room_idx"]).copy()
+    valid["_room_idx"] = valid["_room_idx"].astype(int)
+
+    attachments = (
+        valid.groupby(["_room_idx", config.entity_col], sort=False)["door_xyxy"]
+        .first()
+        .reset_index()
+    )
 
     doors_by_room = (
-        cast("pd.Series", quads)
-        .groupby(level=0, sort=False)
+        attachments.groupby("_room_idx", sort=False)["door_xyxy"]
         .apply(list)
         .rename(config.out_col)
     )
+
+    attachment_counts = (
+        valid.groupby(config.entity_col)["_room_idx"]
+        .nunique()
+        .rename("attached_room_count")
+    )
+
+    unresolved_doors = (
+        combined_doors[[config.entity_col]]
+        .merge(
+            attachment_counts,
+            left_on=config.entity_col,
+            right_index=True,
+            how="left",
+        )
+        .fillna({"attached_room_count": 0})
+    )
+
+    unresolved_doors["door_attachment_warning"] = (
+        unresolved_doors["attached_room_count"].astype(int) > config.max_attached_rooms
+    ) | (unresolved_doors["attached_room_count"].astype(int) == 0)
 
     result = labelled_polygons.copy()
     result = result.join(doors_by_room, how="left")
     result[config.out_col] = result[config.out_col].apply(
         lambda v: v if isinstance(v, list) else []
     )
+
+    result["door_count"] = result[config.out_col].apply(len)
+
+    result.attrs["door_attachment_report"] = unresolved_doors.to_dict(orient="records")
+
     return result
 
 
