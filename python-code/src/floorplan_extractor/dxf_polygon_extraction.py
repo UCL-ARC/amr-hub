@@ -386,6 +386,7 @@ def attach_room_doors(
         msg = "labelled_polygons must have a 'geometry' column"
         raise KeyError(msg)
 
+    source_attrs = dict(labelled_polygons.attrs)
     combined_doors = _combine_door_geometries(doors, config)
 
     rooms = labelled_polygons.copy()
@@ -451,6 +452,7 @@ def attach_room_doors(
 
     result["door_count"] = result[config.out_col].apply(len)
 
+    result.attrs.update(source_attrs)
     result.attrs["door_attachment_report"] = unresolved_doors.to_dict(orient="records")
 
     return result
