@@ -6,17 +6,25 @@ from itertools import combinations, pairwise
 from math import atan2, cos, pi, radians, sin
 
 import geopandas as gpd
+import shapely
 from shapely.geometry import LineString, Point, Polygon
 
 XY = tuple[float, float]
-SegmentReplacement = tuple[XY, XY, XY, XY]
+SegmentReplacement = tuple[float, XY, XY, XY, XY]
 MIN_SEGMENT_COORDINATES = 2
 GEOMETRY_TOLERANCE = 1e-9
+COORDINATE_TOLERANCE = 1e-6
+BOUNDARY_COVERAGE_TOLERANCE = 1e-4
+MIN_BOUNDARY_COVERAGE_RATIO = 0.99
+MAX_REPAIR_AREA_RELATIVE_DIFFERENCE = 1e-9
+MAX_ATTR_REJECTIONS = 1000
 REVIEW_REJECTION_REASONS: frozenset[str] = frozenset(
     {
         "ambiguous_match",
+        "gap_too_small",
         "insufficient_overlap_length",
         "insufficient_overlap_ratio",
+        "normalisation_invalid_geometry",
         "third_room_intersection",
     }
 )
@@ -83,6 +91,8 @@ class SharedWallCandidate:
     overlap_length: float
     overlap_ratio: float
     overlap: tuple[float, float]
+    first_interval: tuple[float, float]
+    second_interval: tuple[float, float]
     strip: Polygon
 
 
@@ -97,6 +107,16 @@ class SharedWallRejection:
     overlap_length: float | None = None
     overlap_ratio: float | None = None
     blocking_room_id: Hashable | None = None
+
+
+@dataclass(frozen=True)
+class SharedWallPairMetrics:
+    """Geometric measurements for a paired wall-face comparison."""
+
+    gap: float
+    overlap: tuple[float, float]
+    overlap_length: float
+    overlap_ratio: float
 
 
 @dataclass(frozen=True)
@@ -142,6 +162,12 @@ def detect_shared_wall_candidates(
         elif rejection is not None:
             rejections.append(rejection)
 
+    candidates, overlap_rejections = _reject_insufficient_overlap_candidates(
+        candidates,
+        config.min_overlap_ratio,
+    )
+    rejections.extend(overlap_rejections)
+
     accepted, ambiguity_rejections = _reject_ambiguous_candidates(candidates)
     rejections.extend(ambiguity_rejections)
 
@@ -182,10 +208,78 @@ def normalise_shared_walls(
         )
 
     if config.enabled and detection.candidates:
-        replacements = _candidate_replacements(detection.candidates)
-        result.geometry = _normalised_geometry(result, replacements)
+        result.geometry, applied_candidates, application_rejections = (
+            _normalised_geometry(result, detection.candidates)
+        )
+        detection = SharedWallDetectionResult(
+            candidates=applied_candidates,
+            rejections=[*detection.rejections, *application_rejections],
+        )
 
     return _attach_review_metadata(result, detection)
+
+
+def candidate_midline(candidate: SharedWallCandidate) -> LineString:
+    """
+    Return the canonical midline for an accepted shared-wall candidate.
+
+    Parameters
+    ----------
+    candidate : SharedWallCandidate
+        Candidate whose paired wall-face overlap should be represented.
+
+    Returns
+    -------
+    shapely.geometry.LineString
+        Line segment halfway between the paired overlapping wall faces.
+
+    """
+    first_start, first_end, second_start, second_end = _candidate_overlap_points(
+        candidate
+    )
+
+    return LineString(
+        [
+            _midpoint(first_start, second_start),
+            _midpoint(first_end, second_end),
+        ]
+    )
+
+
+def rejection_overlap_lines(
+    rejection: SharedWallRejection,
+) -> tuple[LineString, LineString]:
+    """
+    Return source-wall lines clipped to a rejected pair's projected overlap.
+
+    Parameters
+    ----------
+    rejection : SharedWallRejection
+        Rejected wall-face pair to represent.
+
+    Returns
+    -------
+    tuple[shapely.geometry.LineString, shapely.geometry.LineString]
+        Corresponding overlap portions on the first and second wall faces.
+
+    """
+    overlap = _projected_overlap(rejection.first, rejection.second)
+    axis = _unit_axis(rejection.first)
+
+    return (
+        LineString(
+            [
+                _point_at_axis_projection(rejection.first, axis, overlap[0]),
+                _point_at_axis_projection(rejection.first, axis, overlap[1]),
+            ]
+        ),
+        LineString(
+            [
+                _point_at_axis_projection(rejection.second, axis, overlap[0]),
+                _point_at_axis_projection(rejection.second, axis, overlap[1]),
+            ]
+        ),
+    )
 
 
 def _extract_wall_segments(rooms: gpd.GeoDataFrame) -> list[WallSegment]:
@@ -233,42 +327,68 @@ def _evaluate_pair(
         return None, None
 
     gap = _perpendicular_gap(first, second)
-    if gap < config.min_gap or gap > config.max_gap:
-        return None, SharedWallRejection(first, second, "gap_out_of_range", gap=gap)
+    if gap > config.max_gap:
+        return None, SharedWallRejection(first, second, "gap_too_large", gap=gap)
 
     overlap = _projected_overlap(first, second)
     overlap_length = overlap[1] - overlap[0]
     overlap_ratio = overlap_length / min(first.length, second.length)
-    if overlap_length < config.min_overlap_length:
+    if overlap_length <= GEOMETRY_TOLERANCE:
+        return None, None
+
+    metrics = SharedWallPairMetrics(
+        gap=gap,
+        overlap=overlap,
+        overlap_length=overlap_length,
+        overlap_ratio=overlap_ratio,
+    )
+
+    if gap < config.min_gap:
+        return None, SharedWallRejection(
+            first,
+            second,
+            "gap_too_small",
+            gap=metrics.gap,
+            overlap_length=metrics.overlap_length,
+            overlap_ratio=metrics.overlap_ratio,
+        )
+
+    return _evaluate_overlapping_pair(
+        first,
+        second,
+        rooms,
+        config,
+        metrics,
+    )
+
+
+def _evaluate_overlapping_pair(
+    first: WallSegment,
+    second: WallSegment,
+    rooms: gpd.GeoDataFrame,
+    config: SharedWallConfig,
+    metrics: SharedWallPairMetrics,
+) -> tuple[SharedWallCandidate | None, SharedWallRejection | None]:
+    if metrics.overlap_length < config.min_overlap_length:
         return None, SharedWallRejection(
             first,
             second,
             "insufficient_overlap_length",
-            gap=gap,
-            overlap_length=overlap_length,
-            overlap_ratio=overlap_ratio,
+            gap=metrics.gap,
+            overlap_length=metrics.overlap_length,
+            overlap_ratio=metrics.overlap_ratio,
         )
 
-    if overlap_ratio < config.min_overlap_ratio:
-        return None, SharedWallRejection(
-            first,
-            second,
-            "insufficient_overlap_ratio",
-            gap=gap,
-            overlap_length=overlap_length,
-            overlap_ratio=overlap_ratio,
-        )
-
-    strip = _overlap_strip(first, second, overlap)
+    strip = _overlap_strip(first, second, metrics.overlap)
     blocking_room_id = _blocking_room_id(rooms, strip, {first.room_id, second.room_id})
     if blocking_room_id is not None:
         return None, SharedWallRejection(
             first,
             second,
             "third_room_intersection",
-            gap=gap,
-            overlap_length=overlap_length,
-            overlap_ratio=overlap_ratio,
+            gap=metrics.gap,
+            overlap_length=metrics.overlap_length,
+            overlap_ratio=metrics.overlap_ratio,
             blocking_room_id=blocking_room_id,
         )
 
@@ -276,10 +396,16 @@ def _evaluate_pair(
         SharedWallCandidate(
             first=first,
             second=second,
-            gap=gap,
-            overlap_length=overlap_length,
-            overlap_ratio=overlap_ratio,
-            overlap=overlap,
+            gap=metrics.gap,
+            overlap_length=metrics.overlap_length,
+            overlap_ratio=metrics.overlap_ratio,
+            overlap=metrics.overlap,
+            first_interval=_segment_interval(first, metrics.overlap, _unit_axis(first)),
+            second_interval=_segment_interval(
+                second,
+                metrics.overlap,
+                _unit_axis(first),
+            ),
             strip=strip,
         ),
         None,
@@ -321,10 +447,11 @@ def _overlap_strip(
     second: WallSegment,
     overlap: tuple[float, float],
 ) -> Polygon:
-    first_start = _point_at_projection(first, overlap[0])
-    first_end = _point_at_projection(first, overlap[1])
-    second_start = _point_at_projection(second, overlap[0])
-    second_end = _point_at_projection(second, overlap[1])
+    axis = _unit_axis(first)
+    first_start = _point_at_axis_projection(first, axis, overlap[0])
+    first_end = _point_at_axis_projection(first, axis, overlap[1])
+    second_start = _point_at_axis_projection(second, axis, overlap[0])
+    second_end = _point_at_axis_projection(second, axis, overlap[1])
 
     return Polygon([first_start, first_end, second_end, second_start])
 
@@ -334,33 +461,100 @@ def _blocking_room_id(
     strip: Polygon,
     paired_room_ids: set[Hashable],
 ) -> Hashable | None:
+    if not strip.is_valid:
+        strip = shapely.make_valid(strip)
+
     for room_id, geometry in rooms.geometry.items():
         if room_id in paired_room_ids:
             continue
 
-        intersection = geometry.intersection(strip)
+        room_geometry = (
+            shapely.make_valid(geometry) if not geometry.is_valid else geometry
+        )
+
+        intersection = room_geometry.intersection(strip)
         if intersection.area > GEOMETRY_TOLERANCE:
             return room_id
 
     return None
 
 
-def _reject_ambiguous_candidates(
+def _reject_insufficient_overlap_candidates(
     candidates: list[SharedWallCandidate],
+    min_overlap_ratio: float,
 ) -> tuple[list[SharedWallCandidate], list[SharedWallRejection]]:
-    segment_counts: dict[tuple[Hashable, int], int] = {}
+    candidates_by_segment: dict[tuple[Hashable, int], list[SharedWallCandidate]] = {}
     for candidate in candidates:
-        for key in (candidate.first.key, candidate.second.key):
-            segment_counts[key] = segment_counts.get(key, 0) + 1
+        candidates_by_segment.setdefault(candidate.first.key, []).append(candidate)
+        candidates_by_segment.setdefault(candidate.second.key, []).append(candidate)
 
     accepted: list[SharedWallCandidate] = []
     rejections: list[SharedWallRejection] = []
 
     for candidate in candidates:
-        if (
-            segment_counts[candidate.first.key] == 1
-            and segment_counts[candidate.second.key] == 1
+        if candidate.overlap_ratio >= min_overlap_ratio or any(
+            _aggregate_overlap_ratio(segment, candidates_by_segment[segment.key])
+            >= min_overlap_ratio
+            for segment in (candidate.first, candidate.second)
         ):
+            accepted.append(candidate)
+            continue
+
+        rejections.append(
+            SharedWallRejection(
+                first=candidate.first,
+                second=candidate.second,
+                reason="insufficient_overlap_ratio",
+                gap=candidate.gap,
+                overlap_length=candidate.overlap_length,
+                overlap_ratio=candidate.overlap_ratio,
+            )
+        )
+
+    return accepted, rejections
+
+
+def _aggregate_overlap_ratio(
+    segment: WallSegment,
+    candidates: list[SharedWallCandidate],
+) -> float:
+    intervals = [
+        (
+            candidate.first_interval
+            if candidate.first.key == segment.key
+            else candidate.second_interval
+        )
+        for candidate in candidates
+    ]
+
+    return _merged_interval_length(intervals) / segment.length
+
+
+def _merged_interval_length(intervals: list[tuple[float, float]]) -> float:
+    merged: list[tuple[float, float]] = []
+    for start, end in sorted(intervals):
+        if not merged or start > merged[-1][1] + GEOMETRY_TOLERANCE:
+            merged.append((start, end))
+            continue
+
+        merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+
+    return sum(end - start for start, end in merged)
+
+
+def _reject_ambiguous_candidates(
+    candidates: list[SharedWallCandidate],
+) -> tuple[list[SharedWallCandidate], list[SharedWallRejection]]:
+    candidates_by_segment: dict[tuple[Hashable, int], list[SharedWallCandidate]] = {}
+    for candidate in candidates:
+        candidates_by_segment.setdefault(candidate.first.key, []).append(candidate)
+        candidates_by_segment.setdefault(candidate.second.key, []).append(candidate)
+
+    accepted: list[SharedWallCandidate] = []
+    rejections: list[SharedWallRejection] = []
+
+    for candidate in candidates:
+        if not _has_overlapping_competitor(candidate, candidates_by_segment):
             accepted.append(candidate)
             continue
 
@@ -378,15 +572,44 @@ def _reject_ambiguous_candidates(
     return accepted, rejections
 
 
+def _has_overlapping_competitor(
+    candidate: SharedWallCandidate,
+    candidates_by_segment: dict[tuple[Hashable, int], list[SharedWallCandidate]],
+) -> bool:
+    for segment, interval in (
+        (candidate.first, candidate.first_interval),
+        (candidate.second, candidate.second_interval),
+    ):
+        for competitor in candidates_by_segment[segment.key]:
+            if competitor is candidate:
+                continue
+
+            competitor_interval = (
+                competitor.first_interval
+                if competitor.first.key == segment.key
+                else competitor.second_interval
+            )
+            if (
+                _interval_overlap_length(interval, competitor_interval)
+                > GEOMETRY_TOLERANCE
+            ):
+                return True
+
+    return False
+
+
 def _candidate_replacements(
     candidates: list[SharedWallCandidate],
-) -> dict[tuple[Hashable, int], SegmentReplacement]:
-    replacements: dict[tuple[Hashable, int], SegmentReplacement] = {}
+) -> dict[tuple[Hashable, int], list[SegmentReplacement]]:
+    replacements: dict[tuple[Hashable, int], list[SegmentReplacement]] = {}
 
     for candidate in candidates:
         first_midline, second_midline = _midline_replacements(candidate)
-        replacements[candidate.first.key] = first_midline
-        replacements[candidate.second.key] = second_midline
+        replacements.setdefault(candidate.first.key, []).append(first_midline)
+        replacements.setdefault(candidate.second.key, []).append(second_midline)
+
+    for segment_replacements in replacements.values():
+        segment_replacements.sort(key=lambda r: r[0])
 
     return replacements
 
@@ -394,10 +617,9 @@ def _candidate_replacements(
 def _midline_replacements(
     candidate: SharedWallCandidate,
 ) -> tuple[SegmentReplacement, SegmentReplacement]:
-    first_start = _point_at_projection(candidate.first, candidate.overlap[0])
-    first_end = _point_at_projection(candidate.first, candidate.overlap[1])
-    second_start = _point_at_projection(candidate.second, candidate.overlap[0])
-    second_end = _point_at_projection(candidate.second, candidate.overlap[1])
+    first_start, first_end, second_start, second_end = _candidate_overlap_points(
+        candidate
+    )
 
     midline = (
         _midpoint(first_start, second_start),
@@ -419,32 +641,132 @@ def _orient_replacement(
     end_distance = segment.line.project(Point(overlap[1]))
 
     if start_distance <= end_distance:
-        return (overlap[0], midline[0], midline[1], overlap[1])
+        return (start_distance, overlap[0], midline[0], midline[1], overlap[1])
 
-    return (overlap[1], midline[1], midline[0], overlap[0])
+    return (end_distance, overlap[1], midline[1], midline[0], overlap[0])
 
 
 def _normalised_geometry(
     rooms: gpd.GeoDataFrame,
-    replacements: dict[tuple[Hashable, int], SegmentReplacement],
-) -> gpd.GeoSeries:
+    candidates: list[SharedWallCandidate],
+) -> tuple[
+    gpd.GeoSeries,
+    list[SharedWallCandidate],
+    list[SharedWallRejection],
+]:
     geometries = rooms.geometry.copy()
+    candidates_by_room: dict[Hashable, list[SharedWallCandidate]] = {
+        room_id: [] for room_id in rooms.index
+    }
+    applied: list[SharedWallCandidate] = []
+    rejections: list[SharedWallRejection] = []
 
-    for room_id, geometry in rooms.geometry.items():
-        if not isinstance(geometry, Polygon) or geometry.is_empty:
+    ordered_candidates = sorted(
+        candidates,
+        key=lambda candidate: (
+            -candidate.overlap_length,
+            -candidate.overlap_ratio,
+            candidate.gap,
+        ),
+    )
+    for candidate in ordered_candidates:
+        room_ids = (candidate.first.room_id, candidate.second.room_id)
+        updated: dict[Hashable, Polygon] = {}
+
+        for room_id in room_ids:
+            geometry = rooms.geometry.loc[room_id]
+            if not isinstance(geometry, Polygon) or geometry.is_empty:
+                break
+
+            room_candidates = [*candidates_by_room[room_id], candidate]
+            replacements = _candidate_replacements(room_candidates)
+            polygon = _normalise_polygon(room_id, geometry, replacements)
+            if not polygon.is_valid:
+                repaired = _repair_normalised_polygon(polygon, room_candidates)
+                if repaired is None:
+                    break
+                polygon = repaired
+
+            if polygon.area <= GEOMETRY_TOLERANCE:
+                break
+
+            updated[room_id] = polygon
+        else:
+            applied.append(candidate)
+            for room_id, polygon in updated.items():
+                candidates_by_room[room_id].append(candidate)
+                geometries.loc[room_id] = polygon
             continue
 
-        updated = _normalise_polygon(room_id, geometry, replacements)
-        if updated.is_valid and updated.area > GEOMETRY_TOLERANCE:
-            geometries.loc[room_id] = updated
+        rejections.append(
+            SharedWallRejection(
+                first=candidate.first,
+                second=candidate.second,
+                reason="normalisation_invalid_geometry",
+                gap=candidate.gap,
+                overlap_length=candidate.overlap_length,
+                overlap_ratio=candidate.overlap_ratio,
+            )
+        )
 
-    return geometries
+    return geometries, applied, rejections
+
+
+def _repair_normalised_polygon(
+    polygon: Polygon,
+    candidates: list[SharedWallCandidate],
+) -> Polygon | None:
+    repaired = shapely.make_valid(polygon)
+    polygons = _polygon_parts(repaired)
+    if len(polygons) != 1:
+        return None
+
+    repaired_polygon = polygons[0]
+    area_tolerance = max(1.0, polygon.area) * MAX_REPAIR_AREA_RELATIVE_DIFFERENCE
+    if abs(repaired_polygon.area - polygon.area) > area_tolerance:
+        return None
+
+    if not all(
+        _boundary_contains_midline(repaired_polygon, candidate)
+        for candidate in candidates
+    ):
+        return None
+
+    return repaired_polygon
+
+
+def _polygon_parts(geometry: shapely.Geometry) -> list[Polygon]:
+    if isinstance(geometry, Polygon):
+        return [geometry]
+    if not hasattr(geometry, "geoms"):
+        return []
+
+    return [
+        polygon for component in geometry.geoms for polygon in _polygon_parts(component)
+    ]
+
+
+def _boundary_contains_midline(
+    polygon: Polygon,
+    candidate: SharedWallCandidate,
+) -> bool:
+    midline = candidate_midline(candidate)
+    if midline.length <= GEOMETRY_TOLERANCE:
+        return True
+
+    covered_length = (
+        polygon.boundary.buffer(BOUNDARY_COVERAGE_TOLERANCE)
+        .intersection(midline)
+        .length
+    )
+
+    return covered_length / midline.length >= MIN_BOUNDARY_COVERAGE_RATIO
 
 
 def _normalise_polygon(
     room_id: Hashable,
     polygon: Polygon,
-    replacements: dict[tuple[Hashable, int], SegmentReplacement],
+    replacements: dict[tuple[Hashable, int], list[SegmentReplacement]],
 ) -> Polygon:
     coords = [_xy(coord) for coord in polygon.exterior.coords]
     if len(coords) < 2:
@@ -455,20 +777,23 @@ def _normalise_polygon(
         if not updated:
             updated.append(start)
 
-        replacement = replacements.get((room_id, segment_index))
-        if replacement is None:
-            updated.append(end)
+        segment_replacements = replacements.get((room_id, segment_index))
+        if segment_replacements is None:
+            _append_distinct(updated, end)
             continue
 
-        overlap_start, mid_start, mid_end, overlap_end = replacement
-        _append_distinct(updated, overlap_start)
-        _append_distinct(updated, mid_start)
-        _append_distinct(updated, mid_end)
-        _append_distinct(updated, overlap_end)
+        for replacement in segment_replacements:
+            _, overlap_start, mid_start, mid_end, overlap_end = replacement
+            _append_distinct(updated, overlap_start)
+            _append_distinct(updated, mid_start)
+            _append_distinct(updated, mid_end)
+            _append_distinct(updated, overlap_end)
         _append_distinct(updated, end)
 
-    if updated[0] != updated[-1]:
+    if not _coords_close(updated[0], updated[-1]):
         updated.append(updated[0])
+    else:
+        updated[-1] = updated[0]
 
     return Polygon(updated, holes=list(polygon.interiors))
 
@@ -503,6 +828,14 @@ def _attach_review_metadata(
     result["shared_wall_review"] = [
         bool(rejections.get(room_id, [])) for room_id in result.index
     ]
+    result.attrs["shared_wall_detection"] = SharedWallDetectionResult(
+        candidates=detection.candidates,
+        rejections=[
+            rejection
+            for rejection in detection.rejections
+            if rejection.reason in REVIEW_REJECTION_REASONS
+        ][:MAX_ATTR_REJECTIONS],
+    )
 
     return result
 
@@ -530,14 +863,67 @@ def _projection_range(
     return (min(projections), max(projections))
 
 
-def _point_at_projection(segment: WallSegment, projection: float) -> XY:
-    axis = _unit_axis(segment)
-    origin_projection = _dot(segment.start, axis)
-    distance = projection - origin_projection
+def _segment_interval(
+    segment: WallSegment,
+    overlap: tuple[float, float],
+    projection_axis: tuple[float, float],
+) -> tuple[float, float]:
+    overlap_start = _point_at_axis_projection(
+        segment,
+        projection_axis,
+        overlap[0],
+    )
+    overlap_end = _point_at_axis_projection(
+        segment,
+        projection_axis,
+        overlap[1],
+    )
+
+    return tuple(
+        sorted(
+            (
+                segment.line.project(Point(overlap_start)),
+                segment.line.project(Point(overlap_end)),
+            )
+        )
+    )
+
+
+def _interval_overlap_length(
+    first: tuple[float, float],
+    second: tuple[float, float],
+) -> float:
+    overlap_start = max(first[0], second[0])
+    overlap_end = min(first[1], second[1])
+
+    return max(0.0, overlap_end - overlap_start)
+
+
+def _candidate_overlap_points(
+    candidate: SharedWallCandidate,
+) -> tuple[XY, XY, XY, XY]:
+    axis = _unit_axis(candidate.first)
 
     return (
-        segment.start[0] + axis[0] * distance,
-        segment.start[1] + axis[1] * distance,
+        _point_at_axis_projection(candidate.first, axis, candidate.overlap[0]),
+        _point_at_axis_projection(candidate.first, axis, candidate.overlap[1]),
+        _point_at_axis_projection(candidate.second, axis, candidate.overlap[0]),
+        _point_at_axis_projection(candidate.second, axis, candidate.overlap[1]),
+    )
+
+
+def _point_at_axis_projection(
+    segment: WallSegment,
+    projection_axis: tuple[float, float],
+    projection: float,
+) -> XY:
+    segment_axis = _unit_axis(segment)
+    axis_alignment = _dot(segment_axis, projection_axis)
+    distance = (projection - _dot(segment.start, projection_axis)) / axis_alignment
+
+    return (
+        segment.start[0] + segment_axis[0] * distance,
+        segment.start[1] + segment_axis[1] * distance,
     )
 
 
@@ -561,5 +947,12 @@ def _midpoint(first: XY, second: XY) -> XY:
 
 
 def _append_distinct(coords: list[XY], point: XY) -> None:
-    if coords[-1] != point:
+    if not _coords_close(coords[-1], point):
         coords.append(point)
+
+
+def _coords_close(first: XY, second: XY) -> bool:
+    return (
+        abs(first[0] - second[0]) <= COORDINATE_TOLERANCE
+        and abs(first[1] - second[1]) <= COORDINATE_TOLERANCE
+    )
