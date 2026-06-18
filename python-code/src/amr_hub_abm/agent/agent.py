@@ -370,49 +370,19 @@ class Agent:
             )
             record_state(agent=self, current_time=current_time)
 
-        if logger.isEnabledFor(logging.INFO):
-            task_list_values = [task.task_type.value for task in self.tasks]
-            task_progress_values = [task.progress.value for task in self.tasks]
-            msg = f"Time {current_time} Task list: {task_list_values}"
-            logger.info(msg)
-            msg = f"Time {current_time} Task list: {task_progress_values}"
-            logger.info(msg)
-
         if not self.tasks:
             return
-        logger.debug(
-            "Agent id %s has %s tasks to perform.",
-            self.idx,
-            len(self.tasks),
+
+        task_handlers = (
+            perform_in_progress_task,
+            perform_moving_to_task_location,
+            perform_suspended_task,
+            perform_to_be_started_task,
         )
 
-        if perform_in_progress_task(self, current_time=current_time):
-            return
-        logger.debug(
-            "No in-progress tasks for Agent id %s.",
-            self.idx,
-        )
-
-        if perform_moving_to_task_location(self, current_time=current_time):
-            return
-        logger.debug(
-            "No tasks to move to for Agent id %s.",
-            self.idx,
-        )
-
-        if perform_suspended_task(self, current_time=current_time):
-            return
-        logger.debug(
-            "No suspended tasks for Agent id %s.",
-            self.idx,
-        )
-
-        if perform_to_be_started_task(self, current_time=current_time):
-            return
-        logger.debug(
-            "No to-be-started tasks for Agent id %s.",
-            self.idx,
-        )
+        for handler in task_handlers:
+            if handler(self, current_time=current_time):
+                return
 
     def attempt_task_insertion(
         self, next_task: Task, next_task_move_time: float, current_time: int
