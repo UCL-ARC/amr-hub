@@ -36,6 +36,7 @@ theme:
 nav:
   - Overview: index.md
   - The Toy Problem: toy_problem.md
+  - Floorplan extraction: floorplan_extraction.md
   - API reference:
       - Overview: api/index.md
       - Agent: api/agent.md
