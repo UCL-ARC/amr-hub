@@ -28,7 +28,7 @@ The public entry point is `extract_polygons`. All other functions are
 internal helpers and are not part of the public API.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -36,14 +36,21 @@ import geopandas as gpd
 import pandas as pd
 import shapely
 import yaml
-from shapely.geometry import GeometryCollection, LineString, MultiLineString
+from shapely.geometry import (
+    GeometryCollection,
+    LineString,
+    MultiLineString,
+    Point,
+    Polygon,
+)
 from shapely.geometry.base import BaseGeometry
-from shapely.ops import linemerge, polygonize, unary_union
+from shapely.ops import linemerge, polygonize, split, unary_union
 
 from floorplan_extractor.shared_walls import SharedWallConfig, normalise_shared_walls
 
 XY = tuple[float, float]
 DoorQuad = list[float]  # [x1, y1, x2, y2]
+CutLine = tuple[float, float, float, float]
 MIN_DOOR_ENDPOINTS: int = 2
 VALID_SHARED_WALL_CANONICAL_LINES: frozenset[str] = frozenset({"midline"})
 
@@ -109,6 +116,31 @@ class DoorAttachmentConfig:
 
 
 @dataclass(frozen=True)
+class PolygonSplitRegionConfig:
+    """Explicit label for one region produced by a configured polygon split."""
+
+    label: str
+    seed_point: XY
+
+
+@dataclass(frozen=True)
+class PolygonSplitConfig:
+    """Configuration for splitting one polygon at known floorplan boundaries."""
+
+    selector_point: XY
+    cut_lines: list[CutLine]
+    regions: list[PolygonSplitRegionConfig]
+
+
+@dataclass(frozen=True)
+class PolygonAdditionConfig:
+    """Explicit polygon missing from source room-area linework."""
+
+    label: str
+    coordinates: list[XY]
+
+
+@dataclass(frozen=True)
 class ExtractionConfig:
     """
     Top-level configuration for DXF extraction.
@@ -124,6 +156,10 @@ class ExtractionConfig:
     shared_walls : SharedWallConfig or None
         If provided and enabled, shared-wall normalisation may be applied by
         downstream processing.
+    polygon_splits : list[PolygonSplitConfig]
+        Floorplan-specific polygon splits applied before label attachment.
+    polygon_additions : list[PolygonAdditionConfig]
+        Floorplan-specific polygons added before label attachment.
 
     """
 
@@ -131,6 +167,8 @@ class ExtractionConfig:
     door_layer_name: str | None = None
     doors: DoorAttachmentConfig | None = None
     shared_walls: SharedWallConfig | None = None
+    polygon_splits: list[PolygonSplitConfig] = field(default_factory=list)
+    polygon_additions: list[PolygonAdditionConfig] = field(default_factory=list)
 
 
 def config_from_yaml(path: Path) -> ExtractionConfig:
@@ -164,6 +202,19 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
       min_overlap_ratio: 0.75
       min_overlap_length: 250
       canonical_line: midline
+
+    polygon_splits:              # optional
+      - selector_point: [x, y]
+        cut_lines:
+          - [x1, y1, x2, y2]
+        regions:
+          - label: ROOM_CODE
+            seed_point: [x, y]
+
+    polygon_additions:           # optional
+      - label: CORRIDOR
+        coordinates:
+          - [x, y]
 
     Parameters
     ----------
@@ -199,6 +250,8 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
     door_layer_name: str | None = None
     door_config: DoorAttachmentConfig | None = None
     shared_wall_config: SharedWallConfig | None = None
+    polygon_splits: list[PolygonSplitConfig] = []
+    polygon_additions: list[PolygonAdditionConfig] = []
 
     if "doors" in data:
         door_block = data["doors"]
@@ -251,11 +304,107 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
             canonical_line=canonical_line,
         )
 
+    if "polygon_splits" in data:
+        split_blocks = data["polygon_splits"]
+        if not isinstance(split_blocks, list):
+            msg = "'polygon_splits' block must be a list"
+            raise TypeError(msg)
+
+        polygon_splits = [_parse_polygon_split(block) for block in split_blocks]
+
+    if "polygon_additions" in data:
+        addition_blocks = data["polygon_additions"]
+        if not isinstance(addition_blocks, list):
+            msg = "'polygon_additions' block must be a list"
+            raise TypeError(msg)
+        polygon_additions = [
+            _parse_polygon_addition(block) for block in addition_blocks
+        ]
+
     return ExtractionConfig(
         polygons=polygons_cfg,
         door_layer_name=door_layer_name,
         doors=door_config,
         shared_walls=shared_wall_config,
+        polygon_splits=polygon_splits,
+        polygon_additions=polygon_additions,
+    )
+
+
+def _parse_xy(value: object, field_name: str) -> XY:
+    """Parse one configured two-dimensional point."""
+    if not isinstance(value, list) or len(value) != 2:
+        msg = f"'{field_name}' must contain exactly two coordinates"
+        raise ValueError(msg)
+
+    return (float(value[0]), float(value[1]))
+
+
+def _parse_polygon_split(block: object) -> PolygonSplitConfig:
+    """Parse one configured polygon split."""
+    if not isinstance(block, dict):
+        msg = "Each 'polygon_splits' entry must be a mapping"
+        raise TypeError(msg)
+
+    selector_point = _parse_xy(block.get("selector_point"), "selector_point")
+
+    raw_cut_lines = block.get("cut_lines")
+    if not isinstance(raw_cut_lines, list) or not raw_cut_lines:
+        msg = "'cut_lines' must be a non-empty list"
+        raise ValueError(msg)
+    cut_lines: list[CutLine] = []
+    for line in raw_cut_lines:
+        if not isinstance(line, list) or len(line) != 4:
+            msg = "Each 'cut_lines' entry must contain exactly four coordinates"
+            raise ValueError(msg)
+        cut_lines.append(
+            (
+                float(line[0]),
+                float(line[1]),
+                float(line[2]),
+                float(line[3]),
+            )
+        )
+
+    raw_regions = block.get("regions")
+    if not isinstance(raw_regions, list) or not raw_regions:
+        msg = "'regions' must be a non-empty list"
+        raise ValueError(msg)
+    regions: list[PolygonSplitRegionConfig] = []
+    for region in raw_regions:
+        if not isinstance(region, dict) or "label" not in region:
+            msg = "Each split region requires 'label' and 'seed_point'"
+            raise ValueError(msg)
+        regions.append(
+            PolygonSplitRegionConfig(
+                label=str(region["label"]),
+                seed_point=_parse_xy(region.get("seed_point"), "seed_point"),
+            )
+        )
+
+    return PolygonSplitConfig(
+        selector_point=selector_point,
+        cut_lines=cut_lines,
+        regions=regions,
+    )
+
+
+def _parse_polygon_addition(block: object) -> PolygonAdditionConfig:
+    """Parse one explicitly configured polygon."""
+    if not isinstance(block, dict) or "label" not in block:
+        msg = "Each polygon addition requires 'label' and 'coordinates'"
+        raise ValueError(msg)
+
+    raw_coordinates = block.get("coordinates")
+    if not isinstance(raw_coordinates, list) or len(raw_coordinates) < 3:
+        msg = "Polygon addition 'coordinates' must contain at least three points"
+        raise ValueError(msg)
+
+    return PolygonAdditionConfig(
+        label=str(block["label"]),
+        coordinates=[
+            _parse_xy(coordinate, "coordinates") for coordinate in raw_coordinates
+        ],
     )
 
 
@@ -548,6 +697,142 @@ def _generate_polygons(
     return polygons.reset_index(drop=True)
 
 
+def _apply_polygon_splits(
+    polygons: gpd.GeoDataFrame,
+    split_configs: list[PolygonSplitConfig],
+) -> gpd.GeoDataFrame:
+    """Split configured polygons using explicit floorplan cut lines."""
+    result = polygons.copy()
+
+    for split_config in split_configs:
+        selector = Point(split_config.selector_point)
+        matching_indices = result.index[result.geometry.covers(selector)]
+        if len(matching_indices) != 1:
+            msg = (
+                "Polygon split selector must identify exactly one polygon; "
+                f"found {len(matching_indices)}"
+            )
+            raise ValueError(msg)
+
+        source_index = matching_indices[0]
+        pieces: list[BaseGeometry] = [result.loc[source_index, "geometry"]]
+        for cut_line in split_config.cut_lines:
+            cutter = LineString(
+                [(cut_line[0], cut_line[1]), (cut_line[2], cut_line[3])]
+            )
+            pieces = [
+                part
+                for piece in pieces
+                for part in split(piece, cutter).geoms
+                if part.geom_type == "Polygon" and not part.is_empty
+            ]
+
+        if len(pieces) < 2:
+            msg = "Configured cut lines did not split the selected polygon"
+            raise ValueError(msg)
+
+        result = result.drop(index=source_index)
+        result = gpd.GeoDataFrame(
+            pd.concat(
+                [
+                    result,
+                    gpd.GeoDataFrame(geometry=pieces, crs=result.crs),
+                ],
+                ignore_index=True,
+            ),
+            geometry="geometry",
+            crs=result.crs,
+        )
+
+    return result.reset_index(drop=True)
+
+
+def _apply_polygon_additions(
+    polygons: gpd.GeoDataFrame,
+    addition_configs: list[PolygonAdditionConfig],
+) -> gpd.GeoDataFrame:
+    """Add explicitly configured polygons absent from source linework."""
+    additions = [Polygon(addition.coordinates) for addition in addition_configs]
+    if not additions:
+        return polygons
+    if not all(polygon.is_valid and polygon.area > 0 for polygon in additions):
+        msg = "Configured polygon additions must be valid positive-area polygons"
+        raise ValueError(msg)
+
+    return gpd.GeoDataFrame(
+        pd.concat(
+            [
+                polygons,
+                gpd.GeoDataFrame(geometry=additions, crs=polygons.crs),
+            ],
+            ignore_index=True,
+        ),
+        geometry="geometry",
+        crs=polygons.crs,
+    )
+
+
+def _apply_split_region_labels(
+    polygons: gpd.GeoDataFrame,
+    split_configs: list[PolygonSplitConfig],
+    polygon_label_target: str,
+) -> gpd.GeoDataFrame:
+    """Apply explicit labels to regions created by configured polygon splits."""
+    result = polygons.copy()
+
+    for split_config in split_configs:
+        for region in split_config.regions:
+            seed = Point(region.seed_point)
+            matching_indices = result.index[result.geometry.covers(seed)]
+            if len(matching_indices) != 1:
+                msg = (
+                    "Split region seed must identify exactly one polygon; "
+                    f"found {len(matching_indices)}"
+                )
+                raise ValueError(msg)
+
+            region_index = matching_indices[0]
+            result.loc[
+                region_index,
+                [polygon_label_target, "label_count", "label_ambiguous"],
+            ] = [region.label, 1, False]
+            result.loc[[region_index], "label_candidates"] = pd.Series(
+                [[region.label]],
+                index=[region_index],
+            )
+
+    return result
+
+
+def _apply_addition_labels(
+    polygons: gpd.GeoDataFrame,
+    addition_configs: list[PolygonAdditionConfig],
+    polygon_label_target: str,
+) -> gpd.GeoDataFrame:
+    """Apply labels to explicitly configured polygon additions."""
+    result = polygons.copy()
+    addition_count = len(addition_configs)
+    if addition_count == 0:
+        return result
+
+    addition_indices = result.index[-addition_count:]
+    for addition_index, addition in zip(
+        addition_indices,
+        addition_configs,
+        strict=True,
+    ):
+        result.loc[
+            addition_index,
+            [polygon_label_target, "label_count", "label_ambiguous"],
+        ] = [addition.label, 1, False]
+        result.loc[[addition_index], "label_candidates"] = pd.Series(
+            [[addition.label]],
+            index=[addition_index],
+        )
+
+    return result
+
+
 def _generate_room_numbers(
     gdf: gpd.GeoDataFrame,
     label_layer_name: str,
@@ -558,9 +843,10 @@ def _generate_room_numbers(
     """
     Extract and filter room label point geometries for a given floor.
 
-    Room labels are selected from a specific DXF layer and filtered by
-    a string prefix match on the label column. Any Z-coordinates present
-    on point geometries are removed.
+    Room labels are selected from a specific DXF layer. Multiline text is
+    normalised to the line beginning with the configured floor prefix before
+    exclusions are applied. Any Z-coordinates present on point geometries are
+    removed.
 
     Parameters
     ----------
@@ -581,16 +867,35 @@ def _generate_room_numbers(
         A GeoDataFrame containing filtered 2D room label point geometries.
 
     """
-    room_number_layer = gdf.loc[gdf["Layer"] == label_layer_name, :]
-    room_number_layer = room_number_layer.loc[
-        ~room_number_layer[polygon_label_column].isin(excluded_room_numbers), :
-    ]
+    room_number_layer = gdf.loc[
+        gdf["Layer"] == label_layer_name,
+        [polygon_label_column, "geometry"],
+    ].copy()
+    room_number_layer[polygon_label_column] = room_number_layer[
+        polygon_label_column
+    ].apply(lambda value: _extract_floor_label(value, floor_filter))
     room_numbers = room_number_layer.loc[
-        room_number_layer[polygon_label_column].str.startswith(floor_filter),
+        room_number_layer[polygon_label_column].notna()
+        & ~room_number_layer[polygon_label_column].isin(excluded_room_numbers),
         [polygon_label_column, "geometry"],
     ]
 
     return _flatten_z_points(room_numbers)
+
+
+def _extract_floor_label(value: object, floor_filter: str) -> str | None:
+    """Return the first trimmed label line matching the floor prefix."""
+    if not isinstance(value, str):
+        return None
+
+    return next(
+        (
+            line.strip()
+            for line in value.splitlines()
+            if line.strip().startswith(floor_filter)
+        ),
+        None,
+    )
 
 
 def _generate_doors(gdf: gpd.GeoDataFrame, target_layer: str) -> gpd.GeoDataFrame:
@@ -796,6 +1101,8 @@ def extract_polygons(
     gdf = gpd.read_file(input_dxf_path)
 
     polygons = _generate_polygons(gdf, config.polygons.polygon_layer_name)
+    polygons = _apply_polygon_splits(polygons, config.polygon_splits)
+    polygons = _apply_polygon_additions(polygons, config.polygon_additions)
 
     room_numbers = _generate_room_numbers(
         gdf,
@@ -809,6 +1116,16 @@ def extract_polygons(
         polygons,
         room_numbers,
         config.polygons.polygon_label_column,
+        config.polygons.polygon_label_target,
+    )
+    labelled_polygons = _apply_split_region_labels(
+        labelled_polygons,
+        config.polygon_splits,
+        config.polygons.polygon_label_target,
+    )
+    labelled_polygons = _apply_addition_labels(
+        labelled_polygons,
+        config.polygon_additions,
         config.polygons.polygon_label_target,
     )
 
