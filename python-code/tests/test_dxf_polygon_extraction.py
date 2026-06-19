@@ -49,7 +49,7 @@ POLYGON_COORDINATES: list[tuple[float, float]] = [
 ]
 
 LABEL_VALUES: list[str] = ["101", "102"]
-EXPECTED_AGGREGATED_LABEL: str = "101, 102"
+EXPECTED_PRIMARY_LABEL: str = "101"
 
 Z_POINT_X: float = 1.0
 Z_POINT_Y: float = 2.0
@@ -370,8 +370,8 @@ def test_generate_polygons_from_linework() -> None:
     assert isinstance(polygons.geometry.iloc[0], Polygon)
 
 
-def test_attach_polygon_labels_aggregates_sorted_labels() -> None:
-    """Multiple labels within a polygon are aggregated deterministically."""
+def test_attach_polygon_labels_selects_primary_label_and_records_ambiguity() -> None:
+    """Multiple labels produce one primary label and ambiguity diagnostics."""
     polygons: gpd.GeoDataFrame = gpd.GeoDataFrame(
         {GEOMETRY_COLUMN: [Polygon(POLYGON_COORDINATES)]},
         geometry=GEOMETRY_COLUMN,
@@ -395,5 +395,8 @@ def test_attach_polygon_labels_aggregates_sorted_labels() -> None:
         polygon_label_target=POLYGON_LABEL_TARGET,
     )
 
-    assert result.loc[0, POLYGON_LABEL_TARGET] == EXPECTED_AGGREGATED_LABEL
+    assert result.loc[0, POLYGON_LABEL_TARGET] == EXPECTED_PRIMARY_LABEL
+    assert result.loc[0, "label_candidates"] == LABEL_VALUES
+    assert result.loc[0, "label_count"] == len(LABEL_VALUES)
+    assert result.loc[0, "label_ambiguous"]
     assert result.loc[0, GEOMETRY_TYPE_COLUMN] == "POLYGON"
