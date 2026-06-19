@@ -13,11 +13,19 @@ import floorplan_extractor.dxf_polygon_extraction as dxf_extraction
 from floorplan_extractor.dxf_polygon_extraction import (
     DoorAttachmentConfig,
     ExtractionConfig,
+    PolygonAdditionConfig,
     PolygonExtractionConfig,
+    PolygonSplitConfig,
+    PolygonSplitRegionConfig,
     SharedWallConfig,
+    _apply_addition_labels,
+    _apply_polygon_additions,
+    _apply_polygon_splits,
+    _apply_split_region_labels,
     _attach_polygon_labels,
     _flatten_z_points,
     _generate_polygons,
+    _generate_room_numbers,
     config_from_yaml,
     extract_polygons,
 )
@@ -254,6 +262,61 @@ def test_config_from_yaml_loads_disabled_shared_wall_config(tmp_path: Path) -> N
     assert config.shared_walls.canonical_line == SHARED_WALL_CANONICAL_LINE
 
 
+def test_config_from_yaml_loads_polygon_splits(tmp_path: Path) -> None:
+    """Configured polygon cut lines and region labels are parsed."""
+    config_data = _base_config_data()
+    config_data["polygon_splits"] = [
+        {
+            "selector_point": [0.5, 0.5],
+            "cut_lines": [[1.0, -1.0, 1.0, 3.0]],
+            "regions": [
+                {"label": "101", "seed_point": [0.5, 0.5]},
+                {"label": "CORRIDOR", "seed_point": [1.5, 0.5]},
+            ],
+        }
+    ]
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
+
+    config = config_from_yaml(config_path)
+
+    assert config.polygon_splits == [
+        PolygonSplitConfig(
+            selector_point=(0.5, 0.5),
+            cut_lines=[(1.0, -1.0, 1.0, 3.0)],
+            regions=[
+                PolygonSplitRegionConfig(label="101", seed_point=(0.5, 0.5)),
+                PolygonSplitRegionConfig(
+                    label="CORRIDOR",
+                    seed_point=(1.5, 0.5),
+                ),
+            ],
+        )
+    ]
+
+
+def test_config_from_yaml_loads_polygon_additions(tmp_path: Path) -> None:
+    """Explicit missing polygons and labels are parsed."""
+    config_data = _base_config_data()
+    config_data["polygon_additions"] = [
+        {
+            "label": "CORRIDOR",
+            "coordinates": POLYGON_COORDINATES,
+        }
+    ]
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
+
+    config = config_from_yaml(config_path)
+
+    assert config.polygon_additions == [
+        PolygonAdditionConfig(
+            label="CORRIDOR",
+            coordinates=POLYGON_COORDINATES,
+        )
+    ]
+
+
 def test_config_from_yaml_rejects_invalid_shared_wall_canonical_line(
     tmp_path: Path,
 ) -> None:
@@ -368,6 +431,128 @@ def test_generate_polygons_from_linework() -> None:
 
     assert len(polygons) == 1
     assert isinstance(polygons.geometry.iloc[0], Polygon)
+
+
+def test_polygon_split_creates_and_labels_configured_regions() -> None:
+    """Configured cut lines create regions with explicit labels."""
+    polygons = gpd.GeoDataFrame(
+        {GEOMETRY_COLUMN: [Polygon(POLYGON_COORDINATES)]},
+        geometry=GEOMETRY_COLUMN,
+    )
+    split_config = PolygonSplitConfig(
+        selector_point=(0.5, 0.5),
+        cut_lines=[(1.0, -1.0, 1.0, 3.0)],
+        regions=[
+            PolygonSplitRegionConfig(label="101", seed_point=(0.5, 0.5)),
+            PolygonSplitRegionConfig(label="CORRIDOR", seed_point=(1.5, 0.5)),
+        ],
+    )
+
+    split_polygons = _apply_polygon_splits(polygons, [split_config])
+    labelled_polygons = split_polygons.assign(
+        **{
+            POLYGON_LABEL_TARGET: None,
+            "label_candidates": [[] for _ in range(len(split_polygons))],
+            "label_count": 0,
+            "label_ambiguous": False,
+        }
+    )
+    result = _apply_split_region_labels(
+        labelled_polygons,
+        [split_config],
+        POLYGON_LABEL_TARGET,
+    )
+
+    assert len(result) == 2
+    assert set(result[POLYGON_LABEL_TARGET]) == {"101", "CORRIDOR"}
+    assert result["label_count"].to_list() == [1, 1]
+    assert result["label_ambiguous"].to_list() == [False, False]
+
+
+def test_polygon_addition_creates_and_labels_missing_region() -> None:
+    """Configured additions create explicitly labelled polygons."""
+    polygons = gpd.GeoDataFrame(
+        {GEOMETRY_COLUMN: []},
+        geometry=GEOMETRY_COLUMN,
+    )
+    addition_config = PolygonAdditionConfig(
+        label="CORRIDOR",
+        coordinates=POLYGON_COORDINATES,
+    )
+
+    added_polygons = _apply_polygon_additions(polygons, [addition_config])
+    labelled_polygons = added_polygons.assign(
+        **{
+            POLYGON_LABEL_TARGET: None,
+            "label_candidates": [[]],
+            "label_count": 0,
+            "label_ambiguous": False,
+        }
+    )
+    result = _apply_addition_labels(
+        labelled_polygons,
+        [addition_config],
+        POLYGON_LABEL_TARGET,
+    )
+
+    assert len(result) == 1
+    assert result.loc[0, POLYGON_LABEL_TARGET] == "CORRIDOR"
+    assert result.loc[0, "label_candidates"] == ["CORRIDOR"]
+    assert result.loc[0, "label_count"] == 1
+    assert not result.loc[0, "label_ambiguous"]
+
+
+def test_generate_room_numbers_extracts_codes_from_multiline_labels() -> None:
+    """Room codes are extracted regardless of their line within label text."""
+    gdf = gpd.GeoDataFrame(
+        {
+            LAYER_COLUMN: [LABEL_LAYER_NAME] * 3,
+            POLYGON_LABEL_COLUMN: [
+                "STORE\n101",
+                "102\nLINEN",
+                "OTHER FLOOR\n201",
+            ],
+            GEOMETRY_COLUMN: [
+                Point(0.0, 0.0),
+                Point(1.0, 1.0),
+                Point(2.0, 2.0),
+            ],
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+
+    result = _generate_room_numbers(
+        gdf,
+        label_layer_name=LABEL_LAYER_NAME,
+        floor_filter=FLOOR_FILTER,
+        polygon_label_column=POLYGON_LABEL_COLUMN,
+        excluded_room_numbers=[],
+    )
+
+    assert result[POLYGON_LABEL_COLUMN].to_list() == ["101", "102"]
+
+
+def test_generate_room_numbers_excludes_normalised_multiline_codes() -> None:
+    """Exclusions apply after a room code is extracted from multiline text."""
+    excluded_label = "101"
+    gdf = gpd.GeoDataFrame(
+        {
+            LAYER_COLUMN: [LABEL_LAYER_NAME],
+            POLYGON_LABEL_COLUMN: [f"STORE\n{excluded_label}"],
+            GEOMETRY_COLUMN: [Point(0.0, 0.0)],
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+
+    result = _generate_room_numbers(
+        gdf,
+        label_layer_name=LABEL_LAYER_NAME,
+        floor_filter=FLOOR_FILTER,
+        polygon_label_column=POLYGON_LABEL_COLUMN,
+        excluded_room_numbers=[excluded_label],
+    )
+
+    assert result.empty
 
 
 def test_attach_polygon_labels_selects_primary_label_and_records_ambiguity() -> None:
