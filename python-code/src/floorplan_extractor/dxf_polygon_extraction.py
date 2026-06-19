@@ -29,6 +29,7 @@ internal helpers and are not part of the public API.
 """
 
 from dataclasses import dataclass, field
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -535,19 +536,130 @@ def _combine_door_geometries(
         if geom.length < config.min_door_length:
             continue
 
-        door_quad = _line_to_xyxy(geom)
+        rows.append(
+            {
+                config.entity_col: entity_id,
+                "geometry": geom,
+            }
+        )
+
+    return gpd.GeoDataFrame(rows, geometry="geometry", crs=doors.crs)
+
+
+def _polygon_boundary_segments(geometry: BaseGeometry) -> list[LineString]:
+    if not isinstance(geometry, Polygon) or geometry.is_empty:
+        return []
+
+    coords = list(geometry.exterior.coords)
+    return [LineString([start, end]) for start, end in pairwise(coords) if start != end]
+
+
+def _project_geometry_onto_segment(
+    geometry: BaseGeometry,
+    segment: LineString,
+    tolerance: float,
+    min_length: float,
+) -> LineString | None:
+    nearby_geometry = geometry.intersection(
+        segment.buffer(tolerance, cap_style="square")
+    )
+    if nearby_geometry.is_empty:
+        return None
+
+    coordinates = shapely.get_coordinates(nearby_geometry)
+    if len(coordinates) < MIN_DOOR_ENDPOINTS:
+        return None
+
+    projected_distances = [
+        segment.project(Point(float(x), float(y))) for x, y in coordinates
+    ]
+    start_distance = min(projected_distances)
+    end_distance = max(projected_distances)
+    if end_distance - start_distance < min_length:
+        return None
+
+    start = segment.interpolate(start_distance)
+    end = segment.interpolate(end_distance)
+    return LineString([start, end])
+
+
+def _canonical_line_key(line: LineString) -> tuple[XY, XY]:
+    start = (round(line.coords[0][0], 8), round(line.coords[0][1], 8))
+    end = (round(line.coords[-1][0], 8), round(line.coords[-1][1], 8))
+    ordered = sorted((start, end))
+    return ordered[0], ordered[1]
+
+
+def _project_doors_onto_room_boundaries(
+    doors: gpd.GeoDataFrame,
+    rooms: gpd.GeoDataFrame,
+    config: DoorAttachmentConfig,
+) -> gpd.GeoDataFrame:
+    rows = []
+
+    room_segments = [
+        (room_id, segment)
+        for room_id, geometry in rooms.geometry.items()
+        for segment in _polygon_boundary_segments(geometry)
+    ]
+
+    for _, door in doors.iterrows():
+        candidates: dict[
+            tuple[XY, XY],
+            tuple[LineString, set[int]],
+        ] = {}
+
+        for room_id, segment in room_segments:
+            projection = _project_geometry_onto_segment(
+                door.geometry,
+                segment,
+                config.boundary_tolerance,
+                config.min_door_length,
+            )
+            if projection is None:
+                continue
+
+            key = _canonical_line_key(projection)
+            if key not in candidates:
+                candidates[key] = (projection, set())
+            candidates[key][1].add(int(room_id))
+
+        if not candidates:
+            continue
+
+        projection, room_ids = max(
+            candidates.values(),
+            key=lambda candidate: (
+                len(candidate[1]),
+                candidate[0].length,
+            ),
+        )
+        door_quad = _line_to_xyxy(projection)
         if door_quad is None:
             continue
 
         rows.append(
             {
-                config.entity_col: entity_id,
-                "geometry": geom,
+                config.entity_col: door[config.entity_col],
+                "geometry": projection,
                 "door_xyxy": door_quad,
+                "projected_room_ids": room_ids,
             }
         )
 
-    return gpd.GeoDataFrame(rows, geometry="geometry", crs=doors.crs)
+    if not rows:
+        return gpd.GeoDataFrame(
+            columns=[
+                config.entity_col,
+                "door_xyxy",
+                "projected_room_ids",
+                "geometry",
+            ],
+            geometry="geometry",
+            crs=rooms.crs,
+        )
+
+    return gpd.GeoDataFrame(rows, geometry="geometry", crs=rooms.crs)
 
 
 def attach_room_doors(
@@ -564,8 +676,7 @@ def attach_room_doors(
         GeoDataFrame containing room polygon geometries. The index is used as
         the room identifier.
     doors : geopandas.GeoDataFrame
-        GeoDataFrame containing door geometries, with two rows per physical
-        door.
+        GeoDataFrame containing one or more CAD geometries per physical door.
     config : DoorAttachmentConfig, default DoorAttachmentConfig()
         Configuration controlling the join predicate, column names, and output
         column name.
@@ -598,46 +709,42 @@ def attach_room_doors(
 
     source_attrs = dict(labelled_polygons.attrs)
     combined_doors = _combine_door_geometries(doors, config)
-
-    rooms = labelled_polygons.copy()
-    rooms["_room_idx"] = rooms.index
-    rooms["_boundary_geometry"] = rooms.geometry.boundary.buffer(
-        config.boundary_tolerance
+    projected_doors = _project_doors_onto_room_boundaries(
+        combined_doors,
+        labelled_polygons,
+        config,
     )
 
-    boundary_gdf = gpd.GeoDataFrame(
-        rooms[["_room_idx"]],
-        geometry=rooms["_boundary_geometry"],
-        crs=rooms.crs,
-    )
+    valid_rows = [
+        {
+            "_room_idx": room_id,
+            config.entity_col: door[config.entity_col],
+            "door_xyxy": door["door_xyxy"],
+        }
+        for _, door in projected_doors.iterrows()
+        for room_id in door["projected_room_ids"]
+    ]
+    valid = pd.DataFrame(valid_rows)
 
-    joined = gpd.sjoin(
-        combined_doors[[config.entity_col, "door_xyxy", "geometry"]],
-        boundary_gdf,
-        how="left",
-        predicate="intersects",
-    )
-
-    valid = joined.dropna(subset=["_room_idx"]).copy()
-    valid["_room_idx"] = valid["_room_idx"].astype(int)
-
-    attachments = (
-        valid.groupby(["_room_idx", config.entity_col], sort=False)["door_xyxy"]
-        .first()
-        .reset_index()
-    )
-
-    doors_by_room = (
-        attachments.groupby("_room_idx", sort=False)["door_xyxy"]
-        .apply(list)
-        .rename(config.out_col)
-    )
-
-    attachment_counts = (
-        valid.groupby(config.entity_col)["_room_idx"]
-        .nunique()
-        .rename("attached_room_count")
-    )
+    if valid.empty:
+        doors_by_room = pd.Series(name=config.out_col, dtype=object)
+        attachment_counts = pd.Series(name="attached_room_count", dtype=int)
+    else:
+        attachments = (
+            valid.groupby(["_room_idx", config.entity_col], sort=False)["door_xyxy"]
+            .first()
+            .reset_index()
+        )
+        doors_by_room = (
+            attachments.groupby("_room_idx", sort=False)["door_xyxy"]
+            .apply(list)
+            .rename(config.out_col)
+        )
+        attachment_counts = (
+            valid.groupby(config.entity_col)["_room_idx"]
+            .nunique()
+            .rename("attached_room_count")
+        )
 
     unresolved_doors = (
         combined_doors[[config.entity_col]]

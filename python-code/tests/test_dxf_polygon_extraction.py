@@ -28,6 +28,7 @@ from floorplan_extractor.dxf_polygon_extraction import (
     _flatten_z_points,
     _generate_polygons,
     _generate_room_numbers,
+    attach_room_doors,
     config_from_yaml,
     extract_polygons,
 )
@@ -423,6 +424,40 @@ def test_extract_polygons_preserves_shape_when_shared_walls_disabled(
     assert "shared_wall_review" not in result.columns
     assert "shared_wall_rejections" not in result.columns
     assert result["door_count"].to_list() == [0, 0]
+
+
+def test_attach_room_doors_projects_door_symbol_onto_shared_wall() -> None:
+    """Door symbols become one canonical segment on the shared wall."""
+    rooms = gpd.GeoDataFrame(
+        {
+            GEOMETRY_COLUMN: [
+                Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+                Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+            ]
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+    doors = gpd.GeoDataFrame(
+        {
+            "EntityHandle": [DOOR_ENTITY_HANDLE] * 3,
+            GEOMETRY_COLUMN: [
+                LineString([(5.0, 4.0), (8.0, 4.0)]),
+                LineString([(5.0, 6.0), (8.0, 6.0)]),
+                LineString([(8.0, 4.0), (7.0, 5.5), (5.0, 6.0)]),
+            ],
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+
+    result = attach_room_doors(rooms, doors)
+
+    expected_door = [5.0, 4.0, 5.0, 6.0]
+    assert result["doors"].to_list() == [[expected_door], [expected_door]]
+    for room_id, door_values in result["doors"].items():
+        door_line = LineString(
+            [(door_values[0][0], door_values[0][1]), door_values[0][2:]]
+        )
+        assert door_line.difference(result.geometry.iloc[room_id].boundary).is_empty
 
 
 def test_flatten_z_points_removes_z_dimension() -> None:

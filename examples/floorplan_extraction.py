@@ -74,20 +74,32 @@ def plot_extracted_floorplan(
     )
 
     if door_column is not None and door_column in production_gdf.columns:
-        for door_segments in production_gdf[door_column]:
-            for x1, y1, x2, y2 in door_segments:
-                ax.plot(
-                    [x1, x2],
-                    [y1, y2],
-                    color="#7c2d12",
-                    linewidth=1.2,
-                    label="_nolegend_",
-                )
+        door_label = "Canonical door opening"
+        for x1, y1, x2, y2 in _unique_door_segments(production_gdf[door_column]):
+            ax.plot(
+                [x1, x2],
+                [y1, y2],
+                color="white",
+                linewidth=3.6,
+                solid_capstyle="butt",
+                label="_nolegend_",
+                zorder=4,
+            )
+            ax.plot(
+                [x1, x2],
+                [y1, y2],
+                color="#dc2626",
+                linewidth=2.0,
+                solid_capstyle="butt",
+                label=door_label,
+                zorder=5,
+            )
+            door_label = "_nolegend_"
 
-    _plot_shared_wall_diagnostics(
-        ax,
-        production_gdf.attrs.get("shared_wall_detection"),
-    )
+    # _plot_shared_wall_diagnostics(
+    #     ax,
+    #     production_gdf.attrs.get("shared_wall_detection"),
+    # )
 
     for _, row in production_gdf.iterrows():
         label_point = row.geometry.representative_point()
@@ -106,10 +118,35 @@ def plot_extracted_floorplan(
     ax.set_ylim(min_y - margin, max_y + margin)
     ax.set_aspect("equal", adjustable="box")
     ax.set_axis_off()
+    handles, labels = ax.get_legend_handles_labels()
+    unique = dict(zip(labels, handles, strict=False))
+    if unique:
+        ax.legend(unique.values(), unique.keys(), loc="upper right", fontsize=7)
     fig.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200)
     plt.close(fig)
+
+
+def _unique_door_segments(door_values):
+    """Return canonical door segments once, including doors shared by two rooms."""
+    segments = {}
+
+    for room_doors in door_values:
+        for x1, y1, x2, y2 in room_doors:
+            start = (float(x1), float(y1))
+            end = (float(x2), float(y2))
+            key = tuple(
+                sorted(
+                    (
+                        (round(start[0], 8), round(start[1], 8)),
+                        (round(end[0], 8), round(end[1], 8)),
+                    )
+                )
+            )
+            segments.setdefault(key, (*start, *end))
+
+    return segments.values()
 
 
 def _plot_shared_wall_diagnostics(
