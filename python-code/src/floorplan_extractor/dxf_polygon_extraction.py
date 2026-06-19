@@ -141,6 +141,14 @@ class PolygonAdditionConfig:
 
 
 @dataclass(frozen=True)
+class PolygonMergeConfig:
+    """Configuration for merging labelled polygons into one target polygon."""
+
+    target_label: str
+    source_labels: list[str]
+
+
+@dataclass(frozen=True)
 class ExtractionConfig:
     """
     Top-level configuration for DXF extraction.
@@ -160,6 +168,8 @@ class ExtractionConfig:
         Floorplan-specific polygon splits applied before label attachment.
     polygon_additions : list[PolygonAdditionConfig]
         Floorplan-specific polygons added before label attachment.
+    polygon_merges : list[PolygonMergeConfig]
+        Floorplan-specific labelled polygons merged before geometry normalisation.
 
     """
 
@@ -169,6 +179,7 @@ class ExtractionConfig:
     shared_walls: SharedWallConfig | None = None
     polygon_splits: list[PolygonSplitConfig] = field(default_factory=list)
     polygon_additions: list[PolygonAdditionConfig] = field(default_factory=list)
+    polygon_merges: list[PolygonMergeConfig] = field(default_factory=list)
 
 
 def config_from_yaml(path: Path) -> ExtractionConfig:
@@ -216,6 +227,10 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
         coordinates:
           - [x, y]
 
+    polygon_merges:              # optional
+      - target_label: ROOM_CODE
+        source_labels: [CORRIDOR]
+
     Parameters
     ----------
     path : pathlib.Path
@@ -250,8 +265,6 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
     door_layer_name: str | None = None
     door_config: DoorAttachmentConfig | None = None
     shared_wall_config: SharedWallConfig | None = None
-    polygon_splits: list[PolygonSplitConfig] = []
-    polygon_additions: list[PolygonAdditionConfig] = []
 
     if "doors" in data:
         door_block = data["doors"]
@@ -304,22 +317,7 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
             canonical_line=canonical_line,
         )
 
-    if "polygon_splits" in data:
-        split_blocks = data["polygon_splits"]
-        if not isinstance(split_blocks, list):
-            msg = "'polygon_splits' block must be a list"
-            raise TypeError(msg)
-
-        polygon_splits = [_parse_polygon_split(block) for block in split_blocks]
-
-    if "polygon_additions" in data:
-        addition_blocks = data["polygon_additions"]
-        if not isinstance(addition_blocks, list):
-            msg = "'polygon_additions' block must be a list"
-            raise TypeError(msg)
-        polygon_additions = [
-            _parse_polygon_addition(block) for block in addition_blocks
-        ]
+    polygon_splits, polygon_additions, polygon_merges = _parse_polygon_corrections(data)
 
     return ExtractionConfig(
         polygons=polygons_cfg,
@@ -328,6 +326,37 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
         shared_walls=shared_wall_config,
         polygon_splits=polygon_splits,
         polygon_additions=polygon_additions,
+        polygon_merges=polygon_merges,
+    )
+
+
+def _parse_polygon_corrections(
+    data: dict[str, Any],
+) -> tuple[
+    list[PolygonSplitConfig],
+    list[PolygonAdditionConfig],
+    list[PolygonMergeConfig],
+]:
+    """Parse optional floorplan-specific polygon correction blocks."""
+    split_blocks = data.get("polygon_splits", [])
+    if not isinstance(split_blocks, list):
+        msg = "'polygon_splits' block must be a list"
+        raise TypeError(msg)
+
+    addition_blocks = data.get("polygon_additions", [])
+    if not isinstance(addition_blocks, list):
+        msg = "'polygon_additions' block must be a list"
+        raise TypeError(msg)
+
+    merge_blocks = data.get("polygon_merges", [])
+    if not isinstance(merge_blocks, list):
+        msg = "'polygon_merges' block must be a list"
+        raise TypeError(msg)
+
+    return (
+        [_parse_polygon_split(block) for block in split_blocks],
+        [_parse_polygon_addition(block) for block in addition_blocks],
+        [_parse_polygon_merge(block) for block in merge_blocks],
     )
 
 
@@ -405,6 +434,38 @@ def _parse_polygon_addition(block: object) -> PolygonAdditionConfig:
         coordinates=[
             _parse_xy(coordinate, "coordinates") for coordinate in raw_coordinates
         ],
+    )
+
+
+def _parse_polygon_merge(block: object) -> PolygonMergeConfig:
+    """Parse one configured merge of labelled polygons."""
+    if not isinstance(block, dict):
+        msg = "Each 'polygon_merges' entry must be a mapping"
+        raise TypeError(msg)
+
+    target_label = block.get("target_label")
+    if not isinstance(target_label, str) or not target_label.strip():
+        msg = "Polygon merge 'target_label' must be a non-empty string"
+        raise ValueError(msg)
+
+    source_labels = block.get("source_labels")
+    if (
+        not isinstance(source_labels, list)
+        or not source_labels
+        or not all(isinstance(label, str) and label.strip() for label in source_labels)
+    ):
+        msg = "Polygon merge 'source_labels' must be a non-empty list of strings"
+        raise ValueError(msg)
+
+    clean_target = target_label.strip()
+    clean_sources = [label.strip() for label in source_labels]
+    if clean_target in clean_sources:
+        msg = "Polygon merge target cannot also be a source label"
+        raise ValueError(msg)
+
+    return PolygonMergeConfig(
+        target_label=clean_target,
+        source_labels=clean_sources,
     )
 
 
@@ -833,6 +894,67 @@ def _apply_addition_labels(
     return result
 
 
+def _apply_polygon_merges(
+    polygons: gpd.GeoDataFrame,
+    merge_configs: list[PolygonMergeConfig],
+    polygon_label_target: str,
+) -> gpd.GeoDataFrame:
+    """Merge configured source polygons into a single labelled target polygon."""
+    result = polygons.copy()
+
+    for merge_config in merge_configs:
+        target_indices = result.index[
+            result[polygon_label_target] == merge_config.target_label
+        ]
+        if len(target_indices) != 1:
+            msg = (
+                "Polygon merge target must identify exactly one polygon; "
+                f"label {merge_config.target_label!r} found {len(target_indices)}"
+            )
+            raise ValueError(msg)
+
+        source_indices: list[int] = []
+        for source_label in merge_config.source_labels:
+            matching_indices = result.index[
+                result[polygon_label_target] == source_label
+            ].to_list()
+            if not matching_indices:
+                msg = (
+                    "Polygon merge source must identify at least one polygon; "
+                    f"label {source_label!r} found 0"
+                )
+                raise ValueError(msg)
+            source_indices.extend(matching_indices)
+
+        target_index = target_indices[0]
+        merged_geometry = unary_union(
+            result.loc[[target_index, *source_indices], "geometry"].to_list()
+        )
+        if (
+            not isinstance(merged_geometry, Polygon)
+            or merged_geometry.is_empty
+            or not merged_geometry.is_valid
+        ):
+            msg = (
+                "Polygon merge must produce one valid Polygon; "
+                f"got {merged_geometry.geom_type}"
+            )
+            raise ValueError(msg)
+
+        result.loc[target_index, "geometry"] = merged_geometry
+        result.loc[
+            target_index,
+            [polygon_label_target, "label_count", "label_ambiguous"],
+        ] = [merge_config.target_label, 1, False]
+        result.loc[[target_index], "label_candidates"] = pd.Series(
+            [[merge_config.target_label]],
+            index=[target_index],
+        )
+        result = result.drop(index=source_indices)
+
+    return result.reset_index(drop=True)
+
+
 def _generate_room_numbers(
     gdf: gpd.GeoDataFrame,
     label_layer_name: str,
@@ -1126,6 +1248,11 @@ def extract_polygons(
     labelled_polygons = _apply_addition_labels(
         labelled_polygons,
         config.polygon_additions,
+        config.polygons.polygon_label_target,
+    )
+    labelled_polygons = _apply_polygon_merges(
+        labelled_polygons,
+        config.polygon_merges,
         config.polygons.polygon_label_target,
     )
 

@@ -15,11 +15,13 @@ from floorplan_extractor.dxf_polygon_extraction import (
     ExtractionConfig,
     PolygonAdditionConfig,
     PolygonExtractionConfig,
+    PolygonMergeConfig,
     PolygonSplitConfig,
     PolygonSplitRegionConfig,
     SharedWallConfig,
     _apply_addition_labels,
     _apply_polygon_additions,
+    _apply_polygon_merges,
     _apply_polygon_splits,
     _apply_split_region_labels,
     _attach_polygon_labels,
@@ -317,6 +319,28 @@ def test_config_from_yaml_loads_polygon_additions(tmp_path: Path) -> None:
     ]
 
 
+def test_config_from_yaml_loads_polygon_merges(tmp_path: Path) -> None:
+    """Configured source labels and target label are parsed."""
+    config_data = _base_config_data()
+    config_data["polygon_merges"] = [
+        {
+            "target_label": "101",
+            "source_labels": ["CORRIDOR"],
+        }
+    ]
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
+
+    config = config_from_yaml(config_path)
+
+    assert config.polygon_merges == [
+        PolygonMergeConfig(
+            target_label="101",
+            source_labels=["CORRIDOR"],
+        )
+    ]
+
+
 def test_config_from_yaml_rejects_invalid_shared_wall_canonical_line(
     tmp_path: Path,
 ) -> None:
@@ -500,6 +524,151 @@ def test_polygon_addition_creates_and_labels_missing_region() -> None:
     assert result.loc[0, "label_candidates"] == ["CORRIDOR"]
     assert result.loc[0, "label_count"] == 1
     assert not result.loc[0, "label_ambiguous"]
+
+
+def test_polygon_merge_combines_multiple_source_polygons() -> None:
+    """All matching source polygons are absorbed into the target polygon."""
+    polygons = gpd.GeoDataFrame(
+        {
+            POLYGON_LABEL_TARGET: ["101", "CORRIDOR", "CORRIDOR"],
+            "label_candidates": [["101"], ["CORRIDOR"], ["CORRIDOR"]],
+            "label_count": [1, 1, 1],
+            "label_ambiguous": [False, False, False],
+            GEOMETRY_COLUMN: [
+                Polygon([(0, 0), (1, 0), (1, 1), (0, 1)]),
+                Polygon([(1, 0), (2, 0), (2, 1), (1, 1)]),
+                Polygon([(2, 0), (3, 0), (3, 1), (2, 1)]),
+            ],
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+
+    result = _apply_polygon_merges(
+        polygons,
+        [PolygonMergeConfig(target_label="101", source_labels=["CORRIDOR"])],
+        POLYGON_LABEL_TARGET,
+    )
+
+    assert len(result) == 1
+    assert result.loc[0, POLYGON_LABEL_TARGET] == "101"
+    assert result.loc[0, "label_candidates"] == ["101"]
+    assert result.loc[0, "label_count"] == 1
+    assert not result.loc[0, "label_ambiguous"]
+    assert result.geometry.iloc[0].area == pytest.approx(3.0)
+
+
+@pytest.mark.parametrize(
+    ("labels", "geometries", "expected_message"),
+    [
+        (
+            ["CORRIDOR"],
+            [Polygon([(1, 0), (2, 0), (2, 1), (1, 1)])],
+            "target must identify exactly one polygon",
+        ),
+        (
+            ["101", "101", "CORRIDOR"],
+            [
+                Polygon([(0, 0), (1, 0), (1, 1), (0, 1)]),
+                Polygon([(0, 1), (1, 1), (1, 2), (0, 2)]),
+                Polygon([(1, 0), (2, 0), (2, 1), (1, 1)]),
+            ],
+            "target must identify exactly one polygon",
+        ),
+        (
+            ["101"],
+            [Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])],
+            "source must identify at least one polygon",
+        ),
+        (
+            ["101", "CORRIDOR"],
+            [
+                Polygon([(0, 0), (1, 0), (1, 1), (0, 1)]),
+                Polygon([(2, 0), (3, 0), (3, 1), (2, 1)]),
+            ],
+            "must produce one valid Polygon",
+        ),
+    ],
+)
+def test_polygon_merge_rejects_invalid_selection_or_geometry(
+    labels: list[str],
+    geometries: list[Polygon],
+    expected_message: str,
+) -> None:
+    """Invalid or disconnected merge selections fail rather than losing geometry."""
+    polygons = gpd.GeoDataFrame(
+        {
+            POLYGON_LABEL_TARGET: labels,
+            "label_candidates": [[label] for label in labels],
+            "label_count": [1] * len(labels),
+            "label_ambiguous": [False] * len(labels),
+            GEOMETRY_COLUMN: geometries,
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+
+    with pytest.raises(ValueError, match=expected_message):
+        _apply_polygon_merges(
+            polygons,
+            [PolygonMergeConfig(target_label="101", source_labels=["CORRIDOR"])],
+            POLYGON_LABEL_TARGET,
+        )
+
+
+def test_extract_polygons_applies_merges_before_shared_walls(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Shared-wall normalisation receives the final merged room geometry."""
+    monkeypatch.setattr(
+        dxf_extraction.gpd,
+        "read_file",
+        lambda _: _shared_wall_extraction_gdf(),
+    )
+    observed_labels: list[str] = []
+
+    def record_shared_wall_input(
+        rooms: gpd.GeoDataFrame,
+        _config: SharedWallConfig,
+    ) -> gpd.GeoDataFrame:
+        observed_labels.extend(rooms[POLYGON_LABEL_TARGET].to_list())
+        return rooms
+
+    monkeypatch.setattr(
+        dxf_extraction,
+        "normalise_shared_walls",
+        record_shared_wall_input,
+    )
+    config = ExtractionConfig(
+        polygons=_polygon_config(),
+        shared_walls=_shared_wall_config(enabled=True),
+        polygon_additions=[
+            PolygonAdditionConfig(
+                label="CORRIDOR",
+                coordinates=[
+                    (400.0, 0.0),
+                    (500.0, 0.0),
+                    (500.0, 400.0),
+                    (400.0, 400.0),
+                ],
+            )
+        ],
+        polygon_merges=[
+            PolygonMergeConfig(
+                target_label="101",
+                source_labels=["CORRIDOR"],
+            )
+        ],
+    )
+
+    result = extract_polygons(tmp_path / "floorplan.dxf", config)
+
+    assert observed_labels == ["101", "102"]
+    assert result[POLYGON_LABEL_TARGET].to_list() == ["101", "102"]
+    target_geometry = result.loc[
+        result[POLYGON_LABEL_TARGET] == "101",
+        "geometry",
+    ].iloc[0]
+    assert target_geometry.area == pytest.approx(200000.0)
 
 
 def test_generate_room_numbers_extracts_codes_from_multiline_labels() -> None:
