@@ -8,7 +8,7 @@ focused on architectural topology rather than geospatial metadata.
 
 Responsibilities of this module include:
 - Converting polygon exteriors into ordered wall segments.
-- Mapping labelled polygons to room definitions.
+- Mapping labelled polygons and canonical door segments to room definitions.
 - Assembling building- and floor-level metadata into a serialisable form.
 - Writing the resulting structure to disk as YAML.
 
@@ -113,11 +113,15 @@ def polygons_to_rooms(
         GeoDataFrame containing polygon geometries.
     room_name_column : str
         Column containing room names.
+    door_column : str or None
+        Optional column containing lists of canonical door segments represented
+        as ``[x1, y1, x2, y2]``.
 
     Returns
     -------
     list[dict]
-        Room definitions suitable for YAML serialisation.
+        Room definitions containing ``name``, ``walls``, and ``doors`` values
+        suitable for YAML serialisation.
 
     """
     rooms = []

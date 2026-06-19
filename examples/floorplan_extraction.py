@@ -1,4 +1,10 @@
-"""Run DXF floorplan extraction and write YAML plus diagnostics."""
+"""
+Extract a configured DXF floorplan into simulation YAML.
+
+Run this example from the ``python-code`` directory. By default it reads
+``floorplan.dxf`` and ``config.yaml``, then writes ``output.yaml`` and
+``output_diagnostic.png`` in the same directory.
+"""
 
 import argparse
 import logging
@@ -39,17 +45,41 @@ register_yaml_representers()
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments for the local extraction example."""
+    """
+    Parse command-line arguments for the floorplan extraction example.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed input, configuration, YAML output, and diagnostic image paths.
+
+    """
     parser = argparse.ArgumentParser(
         description="Extract room polygons from a DXF floorplan.",
     )
-    parser.add_argument("--dxf", type=Path, default=DEFAULT_DXF_PATH)
-    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH)
+    parser.add_argument(
+        "--dxf",
+        type=Path,
+        default=DEFAULT_DXF_PATH,
+        help="Input DXF path (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=DEFAULT_CONFIG_PATH,
+        help="Extraction configuration path (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=DEFAULT_OUTPUT_PATH,
+        help="Output YAML path (default: %(default)s).",
+    )
     parser.add_argument(
         "--diagnostic",
         type=Path,
         default=DEFAULT_DIAGNOSTIC_PATH,
+        help="Diagnostic image path (default: %(default)s).",
     )
 
     return parser.parse_args()
@@ -62,7 +92,24 @@ def plot_extracted_floorplan(
     door_column: str | None,
     output_path: Path,
 ) -> None:
-    """Plot rooms, doors, and shared-wall decisions to a static image."""
+    """
+    Plot extracted rooms and canonical doors to a static image.
+
+    Door segments are deduplicated because a shared door is attached to both
+    connected rooms in the extracted data.
+
+    Parameters
+    ----------
+    production_gdf : geopandas.GeoDataFrame
+        Labelled room polygons selected for serialisation.
+    room_name_column : str
+        Column containing the room label shown on the plot.
+    door_column : str or None
+        Optional column containing canonical door segments.
+    output_path : pathlib.Path
+        Destination path for the PNG image.
+
+    """
     fig, ax = plt.subplots(figsize=(12, 10))
 
     production_gdf.plot(
@@ -209,7 +256,7 @@ def _plot_shared_wall_diagnostics(
 
 
 def main() -> None:
-    """Run main routine."""
+    """Extract the configured floorplan and write YAML plus diagnostics."""
     args = parse_args()
 
     pec = config_from_yaml(args.config)

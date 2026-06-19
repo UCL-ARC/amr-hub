@@ -1,4 +1,12 @@
-"""Candidate detection for shared wall-face normalisation."""
+"""
+Shared wall-face detection and normalisation.
+
+Architectural room polygons commonly follow opposite faces of the same
+physical wall. This module identifies compatible parallel overlaps and moves
+accepted pairs to one common midline. Rejected candidates are retained as
+diagnostic metadata so uncertain geometry can be reviewed without silently
+changing room boundaries.
+"""
 
 from collections.abc import Hashable, Iterable
 from dataclasses import dataclass
@@ -121,7 +129,7 @@ class SharedWallPairMetrics:
 
 @dataclass(frozen=True)
 class SharedWallDetectionResult:
-    """Candidate detection output for downstream diagnostics."""
+    """Accepted and rejected shared-wall records for downstream diagnostics."""
 
     candidates: list[SharedWallCandidate]
     rejections: list[SharedWallRejection]
@@ -195,7 +203,10 @@ def normalise_shared_walls(
     Returns
     -------
     geopandas.GeoDataFrame
-        A copy of ``rooms`` with updated geometries and shared-wall metadata.
+        A copy of ``rooms`` with updated geometries and the columns
+        ``shared_wall_count``, ``shared_wall_rejections``, and
+        ``shared_wall_review``. The complete detection result is also stored in
+        ``result.attrs["shared_wall_detection"]``.
 
     """
     result = rooms.copy()

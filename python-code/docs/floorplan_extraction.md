@@ -1,82 +1,179 @@
 # Floorplan extraction
 
-The floorplan extractor converts labelled DXF room polygons into the YAML wall
-format used by the simulation. Source polygons can follow opposite faces of the
-same physical wall, leaving a wall-thickness gap between adjacent rooms.
+The floorplan extractor converts labelled DXF geometry into the YAML room
+format used by the simulation. It is intended for local Cartesian floorplans;
+no coordinate reference system is required.
 
-Shared-wall normalisation detects plausible pairs of parallel wall faces and
-moves accepted overlaps to a common midline. The example script writes:
+The extraction pipeline:
 
-- `output.yaml`, containing the resulting room geometry;
-- `output_diagnostic.png`, showing the extraction and shared-wall decisions.
+1. reads room boundary linework and polygonises it;
+2. filters and attaches room labels for the configured floor;
+3. applies configured polygon splits, additions, and merges;
+4. normalises accepted adjacent wall faces to a shared midline;
+5. projects CAD door symbols onto subsections of the final room boundaries;
+6. serialises labelled rooms as wall and door line segments.
 
-Run the example from `python-code`:
+The resulting geometry represents walls and doors as zero-thickness lines.
+Physical wall thickness can be applied when the YAML is loaded into another
+model.
+
+## Running the example
+
+Run the example from the `python-code` directory:
 
 ```sh
 uv run python ../examples/floorplan_extraction.py
 ```
 
-## Diagnostic classes
+The default paths are relative to the current directory:
 
-The coloured lines in `output_diagnostic.png` explain the outcome of
-shared-wall processing. They are diagnostic overlays; the underlying polygon
-geometry is already normalised before plotting.
+- `floorplan.dxf`: source floorplan;
+- `config.yaml`: extraction configuration;
+- `output.yaml`: extracted simulation geometry;
+- `output_diagnostic.png`: labelled room and door diagnostic.
 
-### Green: accepted shared wall
+Alternative paths can be supplied explicitly:
 
-A green solid line is an overlap that passed candidate detection and was
-successfully applied to both room polygons. Both final polygon boundaries
-contain the same midline coordinates.
+```sh
+uv run python ../examples/floorplan_extraction.py \
+  --dxf path/to/floorplan.dxf \
+  --config path/to/config.yaml \
+  --output path/to/output.yaml \
+  --diagnostic path/to/output_diagnostic.png
+```
 
-These arise when the wall faces:
+The example writes parent directories for the output files when required.
+Building name, address, and floor level are example constants in the script
+and should be adapted for production use.
 
-- are sufficiently parallel;
-- have a gap within the configured range;
-- have enough overlapping length or aggregate wall coverage;
-- are not blocked by another room;
-- do not conflict with a competing match; and
-- can be applied while keeping both polygons valid.
+## Configuration
 
-### Yellow: rejected shared wall
+The configuration is a YAML mapping. The `polygons` block is required; all
+other blocks are optional.
 
-A yellow dashed line is the actual overlap portion of a pair rejected during
-candidate detection. It does not alter either polygon.
+```yaml
+polygons:
+  polygon_layer_name: "ROOM_BOUNDARIES"
+  label_layer_name: "ROOM_LABELS"
+  polygon_label_column: "Text"
+  polygon_label_target: "room_numbers"
+  floor_filter: "E02"
+  excluded_room_numbers: []
 
-Common causes are:
+doors:
+  layer_name: "Internal doors"
+  entity_col: "EntityHandle"
+  out_col: "doors"
+  predicate: "intersects"
 
-- the overlap is shorter than `min_overlap_length`;
-- the overlap ratio is below `min_overlap_ratio`;
-- the gap is outside the configured range; or
-- another room intersects the strip between the proposed wall faces.
+shared_walls:
+  enabled: true
+  min_gap: 50.0
+  max_gap: 250.0
+  angle_tolerance_degrees: 2.0
+  min_overlap_ratio: 0.5
+  min_overlap_length: 150.0
+  canonical_line: "midline"
+```
 
-Yellow can appear next to green when different intervals of the same original
-wall segment receive different decisions.
+### Room polygons and labels
 
-### Purple: rejected because geometry would become invalid
+`polygon_layer_name` identifies the linework used to construct room polygons.
+`label_layer_name` identifies the room-label geometries. Labels are normalised
+to the line beginning with `floor_filter`, then excluded room numbers are
+removed before spatial attachment.
 
-A purple dotted line passed geometric candidate detection, but applying it
-would make at least one room polygon invalid, for example by creating a
-self-intersection. It is therefore excluded from the final geometry.
+Polygons with no label, ambiguous labels, no attached doors, or unresolved
+shared-wall decisions are marked for review by the returned GeoDataFrame.
 
-Candidates are attempted transactionally, longest overlap first. A candidate
-is marked green only when both affected polygons remain valid; otherwise it is
-recorded as `normalisation_invalid_geometry` and shown in purple.
+### Explicit polygon corrections
 
-### Red: ambiguous match
+Floorplan-specific corrections are applied through three optional lists:
 
-If present, a red dashed line indicates competing candidates that overlap on
-the same source wall interval. The extractor cannot safely select one match, so
-none of the competing overlaps are applied.
+- `polygon_splits` divides a selected polygon with configured cut lines and
+  assigns labels using seed points;
+- `polygon_additions` creates a missing polygon from explicit coordinates;
+- `polygon_merges` combines labelled source polygons into one target polygon.
 
-## Interpreting the image
+Splits and additions occur before label attachment. Merges occur before
+shared-wall and door normalisation.
 
-The diagnostic should be read as follows:
+### Shared walls
 
-- green confirms a shared boundary in the generated polygons;
-- yellow indicates a threshold or obstruction decision to review;
-- purple identifies a candidate that needs safer polygon-rewriting logic or
-  source-geometry investigation;
-- red identifies a matching ambiguity that requires disambiguation.
+Source room polygons often follow opposite faces of the same physical wall.
+Shared-wall normalisation detects plausible parallel overlaps and moves both
+room boundaries to a common midline.
 
-Removing the diagnostic overlay does not undo normalisation. It only removes
-the coloured explanation of decisions from the plot.
+Candidates must satisfy the configured gap, angle, overlap length, and overlap
+ratio thresholds. Candidates are rejected when another room occupies the strip
+between the wall faces, when matches are ambiguous, or when applying the
+midline would invalidate a room polygon.
+
+The result includes:
+
+- `shared_wall_count`;
+- `shared_wall_review`;
+- `shared_wall_rejections`;
+- detailed detection records in
+  `GeoDataFrame.attrs["shared_wall_detection"]`.
+
+### Doors
+
+Door entities in architectural DXF files may contain leaf edges, frames, swing
+arcs, and other symbol geometry. The extractor groups geometry by
+`entity_col`, then projects each door onto a matching final room-boundary
+segment.
+
+The output door is therefore a canonical line:
+
+- it lies on a room wall;
+- its length represents the detected opening along that wall;
+- the same coordinates are attached to both connected rooms where possible;
+- CAD swing and leaf geometry is not written to the simulation YAML.
+
+Attachment diagnostics are stored in
+`GeoDataFrame.attrs["door_attachment_report"]`. A warning is recorded when a
+door cannot be projected onto any room or is attached to more rooms than the
+configured maximum.
+
+## Output YAML
+
+Each room contains a name, ordered wall segments, and door segments:
+
+```yaml
+rooms:
+  - name: E02NN012
+    walls:
+      - [x1, y1, x2, y2]
+    doors:
+      - [x1, y1, x2, y2]
+```
+
+Door coordinates overlay subsections of the corresponding wall boundaries.
+Shared doors are repeated in each connected room because room construction
+uses those coordinates to identify connectivity.
+
+## Diagnostic image
+
+The example plots:
+
+- room polygons in pale blue;
+- final room boundaries in grey;
+- room labels at representative interior points;
+- canonical door openings as solid red overlays on the wall boundaries.
+
+A white underlay makes door segments visible against the room boundary.
+Shared doors are deduplicated for plotting, so each physical opening appears
+once even though it is present in both room records.
+
+The example also contains an optional shared-wall diagnostic helper. When
+enabled, it can display accepted midlines and rejected candidate overlaps.
+This overlay is intended for extraction review rather than production output.
+
+## API reference
+
+The generated API documentation covers:
+
+- [DXF extraction](api/floorplan_dxf_extraction.md);
+- [shared-wall normalisation](api/floorplan_shared_walls.md);
+- [YAML construction](api/floorplan_yaml_construction.md).

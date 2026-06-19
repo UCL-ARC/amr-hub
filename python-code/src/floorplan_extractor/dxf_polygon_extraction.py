@@ -15,7 +15,10 @@ Typical workflow:
 2. Polygonise linework from a specified DXF layer.
 3. Extract room label point geometries from another layer.
 4. Filter labels by floor using a string prefix.
-5. Spatially join labels to polygons and aggregate them deterministically.
+5. Apply configured polygon corrections.
+6. Spatially join labels to polygons and aggregate them deterministically.
+7. Normalise accepted shared walls to common midlines.
+8. Project door symbols onto the final room boundaries.
 
 The module makes the following assumptions:
 - DXF layer names are stable and known in advance.
@@ -89,20 +92,27 @@ class PolygonExtractionConfig:
 @dataclass(frozen=True)
 class DoorAttachmentConfig:
     """
-    Configuration for extracting and attaching paired door endpoints.
+    Configuration for extracting and attaching canonical door segments.
 
     Attributes
     ----------
     entity_col : str
-        Column linking the two rows that represent the same door.
+        Column linking the CAD geometries that represent the same door.
     x_col : str
-        Column containing centroid x coordinates.
+        Column containing centroid x coordinates retained for compatibility.
     y_col : str
-        Column containing centroid y coordinates.
+        Column containing centroid y coordinates retained for compatibility.
     out_col : str
         Name of the output column added to the room polygons.
     predicate : str
-        Spatial predicate passed to ``geopandas.sjoin``.
+        Spatial predicate retained for configuration compatibility.
+    boundary_tolerance : float
+        Maximum distance from a room-boundary segment used when projecting
+        source door geometry.
+    min_door_length : float
+        Minimum projected door length to retain.
+    max_attached_rooms : int
+        Maximum expected number of rooms connected by one door.
 
     """
 
@@ -668,7 +678,13 @@ def attach_room_doors(
     config: DoorAttachmentConfig | None = None,
 ) -> gpd.GeoDataFrame:
     """
-    Attach paired door endpoint coordinates to room polygons.
+    Project CAD door geometry onto room boundaries and attach the segments.
+
+    Source geometries belonging to the same door are combined using
+    ``config.entity_col``. Candidate spans are projected onto straight
+    exterior segments of the final room polygons. The preferred projection is
+    the segment shared by the greatest number of rooms, with projected length
+    used as a secondary ranking criterion.
 
     Parameters
     ----------
@@ -686,7 +702,8 @@ def attach_room_doors(
     geopandas.GeoDataFrame
         Copy of ``labelled_polygons`` with an added column ``config.out_col``.
         Each value is a list of ``[x1, y1, x2, y2]`` lists. Rooms with no doors
-        contain an empty list.
+        contain an empty list. Attachment diagnostics are stored in
+        ``result.attrs["door_attachment_report"]``.
 
     Raises
     ------
@@ -1309,9 +1326,10 @@ def extract_polygons(
     """
     Extract labelled polygons from a DXF floorplan.
 
-    The DXF file is read into a GeoDataFrame, polygon geometries are
-    generated from linework, room label points are filtered by floor,
-    and labels are spatially joined to the resulting polygons.
+    The DXF file is read into a GeoDataFrame, polygon geometries are generated
+    from linework, and room labels are filtered and attached. Configured
+    polygon corrections are applied before optional shared-wall
+    normalisation and canonical door projection.
 
     Parameters
     ----------
@@ -1324,7 +1342,9 @@ def extract_polygons(
     Returns
     -------
     geopandas.GeoDataFrame
-        A GeoDataFrame containing labelled polygon geometries.
+        Labelled room polygons with extraction metadata. The columns include
+        ``has_label`` and ``needs_review``. Door and shared-wall columns are
+        included when their corresponding configuration blocks are enabled.
 
     """
     gdf = gpd.read_file(input_dxf_path)
