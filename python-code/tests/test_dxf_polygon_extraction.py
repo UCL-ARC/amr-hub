@@ -225,9 +225,9 @@ def test_config_from_yaml_loads_shared_wall_config(tmp_path: Path) -> None:
     assert config.shared_walls.canonical_line == SHARED_WALL_CANONICAL_LINE
 
 
-def test_example_config_loads_shared_wall_config() -> None:
-    """The example extraction configuration includes shared-wall settings."""
-    config_path = Path(__file__).parents[1] / "config.yaml"
+def test_mock_config_loads_shared_wall_config() -> None:
+    """The mock extraction configuration includes shared-wall settings."""
+    config_path = Path(__file__).parent / "inputs" / "config.yaml"
 
     config = config_from_yaml(config_path)
 
