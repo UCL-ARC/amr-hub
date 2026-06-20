@@ -16,9 +16,12 @@ from math import atan2, cos, pi, radians, sin
 import geopandas as gpd
 import shapely
 from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry.base import BaseGeometry
+from shapely.strtree import STRtree
 
 XY = tuple[float, float]
 SegmentReplacement = tuple[float, XY, XY, XY, XY]
+SegmentPair = tuple["WallSegment", "WallSegment"]
 MIN_SEGMENT_COORDINATES = 2
 GEOMETRY_TOLERANCE = 1e-9
 COORDINATE_TOLERANCE = 1e-6
@@ -135,6 +138,15 @@ class SharedWallDetectionResult:
     rejections: list[SharedWallRejection]
 
 
+@dataclass(frozen=True)
+class _RoomSpatialIndex:
+    """Room geometries and their STRtree positions for obstruction checks."""
+
+    room_ids: list[Hashable]
+    geometries: list[BaseGeometry]
+    tree: STRtree
+
+
 def detect_shared_wall_candidates(
     rooms: gpd.GeoDataFrame,
     config: SharedWallConfig,
@@ -157,14 +169,45 @@ def detect_shared_wall_candidates(
 
     """
     segments = _extract_wall_segments(rooms)
+    pairs = _indexed_segment_pairs(segments, config.max_gap)
+    room_index = _build_room_spatial_index(rooms)
+    return _detect_shared_wall_candidates_from_pairs(
+        config,
+        pairs,
+        room_index,
+    )
+
+
+def _detect_shared_wall_candidates_exhaustive(
+    rooms: gpd.GeoDataFrame,
+    config: SharedWallConfig,
+) -> SharedWallDetectionResult:
+    """Return reference detection results using every cross-room segment pair."""
+    segments = _extract_wall_segments(rooms)
+    pairs = (
+        (first, second)
+        for first, second in combinations(segments, 2)
+        if first.room_id != second.room_id
+    )
+    room_index = _build_room_spatial_index(rooms)
+    return _detect_shared_wall_candidates_from_pairs(
+        config,
+        pairs,
+        room_index,
+    )
+
+
+def _detect_shared_wall_candidates_from_pairs(
+    config: SharedWallConfig,
+    pairs: Iterable[SegmentPair],
+    room_index: _RoomSpatialIndex,
+) -> SharedWallDetectionResult:
+    """Apply authoritative geometric checks to ordered segment pairs."""
     candidates: list[SharedWallCandidate] = []
     rejections: list[SharedWallRejection] = []
 
-    for first, second in combinations(segments, 2):
-        if first.room_id == second.room_id:
-            continue
-
-        candidate, rejection = _evaluate_pair(first, second, rooms, config)
+    for first, second in pairs:
+        candidate, rejection = _evaluate_pair(first, second, room_index, config)
         if candidate is not None:
             candidates.append(candidate)
         elif rejection is not None:
@@ -180,6 +223,54 @@ def detect_shared_wall_candidates(
     rejections.extend(ambiguity_rejections)
 
     return SharedWallDetectionResult(candidates=accepted, rejections=rejections)
+
+
+def _indexed_segment_pairs(
+    segments: list[WallSegment],
+    max_gap: float,
+) -> list[SegmentPair]:
+    """Return unique cross-room pairs selected by expanded segment envelopes."""
+    if not segments:
+        return []
+
+    expanded_envelopes = [
+        shapely.box(
+            segment.line.bounds[0] - max_gap,
+            segment.line.bounds[1] - max_gap,
+            segment.line.bounds[2] + max_gap,
+            segment.line.bounds[3] + max_gap,
+        )
+        for segment in segments
+    ]
+    tree = STRtree(expanded_envelopes)
+    pairs: list[SegmentPair] = []
+
+    for first_index, first in enumerate(segments):
+        matching_indices = sorted(
+            int(index) for index in tree.query(first.line.envelope)
+        )
+        for second_index in matching_indices:
+            if second_index <= first_index:
+                continue
+
+            second = segments[second_index]
+            if first.room_id == second.room_id:
+                continue
+
+            pairs.append((first, second))
+
+    return pairs
+
+
+def _build_room_spatial_index(rooms: gpd.GeoDataFrame) -> _RoomSpatialIndex:
+    """Build one ordered room index for exact third-room obstruction checks."""
+    room_ids = list(rooms.index)
+    geometries = list(rooms.geometry)
+    return _RoomSpatialIndex(
+        room_ids=room_ids,
+        geometries=geometries,
+        tree=STRtree(geometries),
+    )
 
 
 def normalise_shared_walls(
@@ -331,7 +422,7 @@ def _extract_wall_segments(rooms: gpd.GeoDataFrame) -> list[WallSegment]:
 def _evaluate_pair(
     first: WallSegment,
     second: WallSegment,
-    rooms: gpd.GeoDataFrame,
+    room_index: _RoomSpatialIndex,
     config: SharedWallConfig,
 ) -> tuple[SharedWallCandidate | None, SharedWallRejection | None]:
     if not _is_near_parallel(first, second, config.angle_tolerance_degrees):
@@ -367,7 +458,7 @@ def _evaluate_pair(
     return _evaluate_overlapping_pair(
         first,
         second,
-        rooms,
+        room_index,
         config,
         metrics,
     )
@@ -376,7 +467,7 @@ def _evaluate_pair(
 def _evaluate_overlapping_pair(
     first: WallSegment,
     second: WallSegment,
-    rooms: gpd.GeoDataFrame,
+    room_index: _RoomSpatialIndex,
     config: SharedWallConfig,
     metrics: SharedWallPairMetrics,
 ) -> tuple[SharedWallCandidate | None, SharedWallRejection | None]:
@@ -391,7 +482,11 @@ def _evaluate_overlapping_pair(
         )
 
     strip = _overlap_strip(first, second, metrics.overlap)
-    blocking_room_id = _blocking_room_id(rooms, strip, {first.room_id, second.room_id})
+    blocking_room_id = _blocking_room_id(
+        room_index,
+        strip,
+        {first.room_id, second.room_id},
+    )
     if blocking_room_id is not None:
         return None, SharedWallRejection(
             first,
@@ -468,17 +563,20 @@ def _overlap_strip(
 
 
 def _blocking_room_id(
-    rooms: gpd.GeoDataFrame,
+    room_index: _RoomSpatialIndex,
     strip: Polygon,
     paired_room_ids: set[Hashable],
 ) -> Hashable | None:
     if not strip.is_valid:
         strip = shapely.make_valid(strip)
 
-    for room_id, geometry in rooms.geometry.items():
+    matching_indices = sorted(int(index) for index in room_index.tree.query(strip))
+    for room_index_position in matching_indices:
+        room_id = room_index.room_ids[room_index_position]
         if room_id in paired_room_ids:
             continue
 
+        geometry = room_index.geometries[room_index_position]
         room_geometry = (
             shapely.make_valid(geometry) if not geometry.is_valid else geometry
         )

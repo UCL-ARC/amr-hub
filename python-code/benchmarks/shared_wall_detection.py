@@ -1,10 +1,10 @@
-"""Measure exhaustive shared-wall candidate detection on synthetic room grids."""
+"""Compare indexed and exhaustive shared-wall detection on synthetic room grids."""
 
 # ruff: noqa: T201
 
 import argparse
 import platform
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from statistics import median
 from time import perf_counter
 
@@ -13,10 +13,17 @@ import shapely
 from shapely.geometry import Polygon
 
 from floorplan_extractor.shared_walls import (
+    REVIEW_REJECTION_REASONS,
     SharedWallConfig,
+    SharedWallDetectionResult,
+    _detect_shared_wall_candidates_exhaustive,
     detect_shared_wall_candidates,
 )
 
+Detector = Callable[
+    [gpd.GeoDataFrame, SharedWallConfig],
+    SharedWallDetectionResult,
+]
 DEFAULT_GRID_SIZES = (4, 8, 12)
 DEFAULT_REPEAT = 3
 DEFAULT_WARMUP = 1
@@ -28,8 +35,8 @@ SEGMENTS_PER_ROOM = 4
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Benchmark exhaustive shared-wall detection using non-sensitive "
-            "synthetic square-room grids."
+            "Compare indexed and exhaustive shared-wall detection using "
+            "non-sensitive synthetic square-room grids."
         )
     )
     parser.add_argument(
@@ -88,6 +95,7 @@ def _room_grid(side_length: int) -> gpd.GeoDataFrame:
 
 
 def _measure(
+    detector: Detector,
     rooms: gpd.GeoDataFrame,
     config: SharedWallConfig,
     *,
@@ -95,17 +103,20 @@ def _measure(
     warmup: int,
 ) -> tuple[float, float, int, int]:
     for _ in range(warmup):
-        detect_shared_wall_candidates(rooms, config)
+        detector(rooms, config)
 
     timings: list[float] = []
     candidate_count = 0
     rejection_count = 0
     for _ in range(repeat):
         start = perf_counter()
-        result = detect_shared_wall_candidates(rooms, config)
+        result = detector(rooms, config)
         timings.append(perf_counter() - start)
         candidate_count = len(result.candidates)
-        rejection_count = len(result.rejections)
+        rejection_count = sum(
+            rejection.reason in REVIEW_REJECTION_REASONS
+            for rejection in result.rejections
+        )
 
     return median(timings), min(timings), candidate_count, rejection_count
 
@@ -133,22 +144,41 @@ def main() -> None:
     print(f"Shapely: {shapely.__version__}")
     print(f"Repeats: {args.repeat}; warm-up runs: {args.warmup}")
     print()
-    print("| Grid | Rooms | Segments | Median (s) | Best (s) | Accepted | Rejected |")
-    print("| ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+    print(
+        "| Grid | Rooms | Segments | Indexed median (s) | "
+        "Exhaustive median (s) | Speed-up | Accepted | Material rejected |"
+    )
+    print("| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
 
     for side_length in args.grid_sizes:
         rooms = _room_grid(side_length)
-        median_seconds, best_seconds, candidates, rejections = _measure(
+        indexed_median, _, indexed_candidates, indexed_rejections = _measure(
+            detect_shared_wall_candidates,
             rooms,
             config,
             repeat=args.repeat,
             warmup=args.warmup,
         )
+        exhaustive_median, _, exhaustive_candidates, exhaustive_rejections = _measure(
+            _detect_shared_wall_candidates_exhaustive,
+            rooms,
+            config,
+            repeat=args.repeat,
+            warmup=args.warmup,
+        )
+        if (indexed_candidates, indexed_rejections) != (
+            exhaustive_candidates,
+            exhaustive_rejections,
+        ):
+            msg = "Indexed and exhaustive material result counts differ"
+            raise RuntimeError(msg)
+
         room_count = len(rooms)
         print(
             f"| {side_length}x{side_length} | {room_count} | "
-            f"{room_count * SEGMENTS_PER_ROOM} | {median_seconds:.6f} | "
-            f"{best_seconds:.6f} | {candidates} | {rejections} |"
+            f"{room_count * SEGMENTS_PER_ROOM} | {indexed_median:.6f} | "
+            f"{exhaustive_median:.6f} | {exhaustive_median / indexed_median:.2f}x | "
+            f"{indexed_candidates} | {indexed_rejections} |"
         )
 
 

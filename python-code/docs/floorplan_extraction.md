@@ -109,6 +109,12 @@ ratio thresholds. Candidates are rejected when another room occupies the strip
 between the wall faces, when matches are ambiguous, or when applying the
 midline would invalidate a room polygon.
 
+Candidate selection uses a Shapely spatial index before the exact geometric
+checks. Accepted candidates and rejection reasons that can require review are
+the supported diagnostic contract. `gap_too_large` records for distant segment
+pairs are broad-phase implementation details and are not guaranteed, because
+those pairs may be excluded before exact evaluation.
+
 The result includes:
 
 - `shared_wall_count`;
@@ -179,10 +185,10 @@ suite using synthetic square-room grids:
 uv run python benchmarks/shared_wall_detection.py
 ```
 
-The script reports room and wall-segment counts, accepted and rejected records,
-and median and best timings for three input sizes. Use `--grid-sizes`,
-`--repeat`, and `--warmup` to control a run. It uses generated local Cartesian
-geometry only; no real or sensitive floorplan data is loaded.
+The script reports room and wall-segment counts, indexed and exhaustive median
+timings, speed-up, and material result counts for three input sizes. Use
+`--grid-sizes`, `--repeat`, and `--warmup` to control a run. It uses generated
+local Cartesian geometry only; no real or sensitive floorplan data is loaded.
 
 The baseline recorded on 20 June 2026 for the exhaustive implementation is:
 
@@ -199,6 +205,21 @@ runs.
 | 12x12 |   144 |      576 |   0.793025 | 0.786961 |      264 |   76,032 |
 
 <!-- shared-wall-baseline-end -->
+
+The indexed implementation was compared with the retained exhaustive reference
+on the same environment and benchmark settings:
+
+|  Grid | Rooms | Segments | Indexed median (s) | Exhaustive median (s) | Speed-up |
+| ----: | ----: | -------: | -----------------: | --------------------: | -------: |
+|   4x4 |    16 |       64 |           0.011804 |              0.011553 |    0.98x |
+|   8x8 |    64 |      256 |           0.048875 |              0.095364 |    1.95x |
+| 12x12 |   144 |      576 |           0.110366 |              0.383982 |    3.48x |
+
+All three comparisons produced the same accepted and material rejection counts.
+The small layout is effectively unchanged, while the benefit increases with
+the number of wall segments. At 12x12, the indexed result is about 7.2 times
+faster than the original task-1 exhaustive baseline of 0.793025 seconds; part
+of that additional gain comes from indexing third-room obstruction queries.
 
 Timings are descriptive rather than test thresholds because they depend on the
 machine and runtime environment. Candidate and rejection counts provide a
