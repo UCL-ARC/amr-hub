@@ -170,6 +170,40 @@ The example also contains an optional shared-wall diagnostic helper. When
 enabled, it can display accepted midlines and rejected candidate overlaps.
 This overlay is intended for extraction review rather than production output.
 
+## Shared-wall performance baseline
+
+Shared-wall candidate detection can be measured independently of the unit-test
+suite using synthetic square-room grids:
+
+```sh
+uv run python benchmarks/shared_wall_detection.py
+```
+
+The script reports room and wall-segment counts, accepted and rejected records,
+and median and best timings for three input sizes. Use `--grid-sizes`,
+`--repeat`, and `--warmup` to control a run. It uses generated local Cartesian
+geometry only; no real or sensitive floorplan data is loaded.
+
+The baseline recorded on 20 June 2026 for the exhaustive implementation is:
+
+<!-- shared-wall-baseline-start -->
+
+Environment: Python 3.13.11, Shapely 2.1.2,
+Linux 7.0.10-1-MANJARO x86-64. Each size used one warm-up and three measured
+runs.
+
+|  Grid | Rooms | Segments | Median (s) | Best (s) | Accepted | Rejected |
+| ----: | ----: | -------: | ---------: | -------: | -------: | -------: |
+|   4x4 |    16 |       64 |   0.013184 | 0.012707 |       24 |      768 |
+|   8x8 |    64 |      256 |   0.162462 | 0.155485 |      112 |   14,336 |
+| 12x12 |   144 |      576 |   0.793025 | 0.786961 |      264 |   76,032 |
+
+<!-- shared-wall-baseline-end -->
+
+Timings are descriptive rather than test thresholds because they depend on the
+machine and runtime environment. Candidate and rejection counts provide a
+deterministic correctness check alongside the regression tests.
+
 ## API reference
 
 The generated API documentation covers:
