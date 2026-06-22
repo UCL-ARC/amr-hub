@@ -56,7 +56,7 @@ dependencies = [
   "shapely>=2.1.2",
   "solara>=1.57.3",
   "types-pyyaml>=6.0.12.20250915",
-  "warp-lang>=1.13.0"
+  "tk>=0.1.0"
 ]
 description = "An agent based model for spread of Anti Microbial Resistant infections in hospitals"
 dynamic = [

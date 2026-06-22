@@ -104,7 +104,7 @@ def simulate(  # noqa: PLR0912, PLR0913
     # NG: Writes Results to Disk
     if getattr(simulation, "use_gpu", False) and simulation.gpu_engine is not None:
         logger.info("Exporting GPU Telemetry to disk")
-        simulation.gpu_engine.export_data(output_dir="simulation_outputs")
+        # NG ADD #128 Add GPU Engine
 
     logger.info("Simulation completed successfully...")
 
@@ -147,4 +147,4 @@ def run_steps(
 
 # Make True for GPU
 if __name__ == "__main__":
-    simulate(use_gpu=True, record=True)
+    simulate(use_gpu=False, record=True)

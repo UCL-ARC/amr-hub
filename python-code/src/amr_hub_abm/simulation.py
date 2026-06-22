@@ -111,20 +111,8 @@ class Simulation:
         for agent in self.agents:
             agent.perform_task(current_time=self.time, record=record)
 
-        # NG Added Physics Solver
-        if self.use_gpu:
-            # Take GPU Path
-            if self.gpu_engine is None:
-                # ruff: noqa: PLC0415
-                from amr_hub_abm.gpu_physics import (
-                    GPUPhysicsEngine,
-                )
-
-                self.gpu_engine = GPUPhysicsEngine()  # Loads npz floor plan
-
-            self.gpu_engine.step_physics(self.agents)  # Takes the step and query
-        # Take CPU Path writing all the pngs
-        elif plot_path is not None:
+        # NG ADD: #128 Add GPU Engine
+        if plot_path is not None:
             self.plot_current_state(directory_path=plot_path)
 
         self.time += 1
@@ -156,7 +144,9 @@ class Simulation:
         directory_path.mkdir(parents=True, exist_ok=True)
 
         for building in self.space:
-            axes: list[Axes] = [plt.subplots(nrows=len(building.floors), ncols=1)[1]]
+            axes: list[Axes] = [
+                plt.subplots(nrows=len(building.floors), ncols=1)[1]  # pyright: ignore[reportAssignmentType]
+            ]  # pyright: ignore[reportAssignmentType]
             building.plot_building(axes=axes, agents=self.agents, trajectory=trajectory)
             simulation_name = f"Simulation: {self.name}"
             if trajectory:
