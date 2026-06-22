@@ -1,0 +1,147 @@
+# AMR Hub TRE Docker Image
+
+This directory contains the Docker configuration used to build a self-contained AMR Hub environment for deployment within a Trusted Research Environment (TRE).
+
+The image includes:
+
+- Python 3.13
+- uv package manager
+- AMR Hub Python package
+- Project dependencies locked via `uv.lock`
+- Project examples
+- Empty simulation output directory
+
+The image is designed to run without internet access once built.
+
+## Directory Structure
+
+The resulting container contains the following directories:
+
+```text
+/app
+├── examples
+│   ├── simple.py
+│   ├── floorplan_extractor.py
+│   └── solara_app.py
+├── simulation_outputs
+└── python-code
+    ├── src
+    ├── tests
+    ├── pyproject.toml
+    └── uv.lock
+```
+
+## Building the Image
+
+From the repository root:
+
+```bash
+docker build \
+  -f docker/tre/Dockerfile \
+  -t amr-hub-tre:latest \
+  .
+```
+
+## Running Tests
+
+To verify that the image has been built correctly:
+
+```bash
+docker run --rm amr-hub-tre:latest -m pytest
+```
+
+All tests should pass successfully.
+
+## Exploring the Container
+
+Start an interactive Python session:
+
+```bash
+docker run -it --rm amr-hub-tre:latest
+```
+
+Because the image's default command is:
+
+```bash
+uv run python
+```
+
+this will start a Python interpreter inside the container.
+
+## Running Examples
+
+List available examples:
+
+```bash
+docker run --rm amr-hub-tre:latest ls /app/examples
+```
+
+Run an example:
+
+```bash
+docker run --rm amr-hub-tre:latest \
+  uv run python /app/examples/<example_file>.py
+```
+
+Replace `<example_file>.py` with the desired example.
+
+## Exporting the Image
+
+To create a portable image archive suitable for transfer into a TRE:
+
+```bash
+docker save amr-hub-tre:latest -o amr-hub-tre.tar
+```
+
+Verify the archive:
+
+```bash
+ls -lh amr-hub-tre.tar
+```
+
+## Loading the Image
+
+On the target system:
+
+```bash
+docker load -i amr-hub-tre.tar
+```
+
+Verify the installation:
+
+```bash
+docker run --rm amr-hub-tre:latest -m pytest
+```
+
+## Simulation Outputs
+
+The image creates the directory:
+
+```text
+/app/simulation_outputs
+```
+
+for storing simulation outputs.
+
+In production deployments, this directory may be replaced by a mounted host directory:
+
+```bash
+docker run \
+  -v /path/to/output:/app/simulation_outputs \
+  amr-hub-tre:latest \
+  /app/examples/<example_file>.py
+```
+
+This allows simulation results to persist outside the container.
+
+## Reproducibility
+
+Dependencies are installed using:
+
+```bash
+uv sync --frozen
+```
+
+which ensures that package versions exactly match those recorded in `uv.lock`.
+
+This guarantees that the environment used within the TRE is reproducible and consistent with local development and continuous integration environments.

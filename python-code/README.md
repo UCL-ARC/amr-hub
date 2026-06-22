@@ -4,7 +4,7 @@
 [![Tests status][tests-badge]][tests-link]
 [![Linting status][linting-badge]][linting-link]
 [![Documentation status][documentation-badge]][documentation-link]
-[![License][license-badge]](./LICENSE.md)
+[![License][license-badge]][license-link]
 
 <!-- prettier-ignore-start -->
 [tests-badge]:              https://github.com/UCL-ARC/amr-hub/actions/workflows/tests.yml/badge.svg
@@ -14,6 +14,7 @@
 [documentation-badge]:      https://github.com/UCL-ARC/amr-hub/actions/workflows/docs.yml/badge.svg
 [documentation-link]:       https://github.com/UCL-ARC/amr-hub/actions/workflows/docs.yml
 [license-badge]:            https://img.shields.io/badge/License-MIT-yellow.svg
+[license-link]:             https://github.com/UCL-ARC/amr-hub/blob/main/LICENSE
 <!-- prettier-ignore-end -->
 
 An agent-based model (ABM) for simulating the spread of Antimicrobial Resistant (AMR) infections in hospital settings.
@@ -238,6 +239,7 @@ Please make sure to:
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/p-j-smith"><img src="https://avatars.githubusercontent.com/u/29753790?v=4?s=100" width="100px;" alt="Paul Smith"/><br /><sub><b>Paul Smith</b></sub></a><br /><a href="#data-p-j-smith" title="Data">🔣</a> <a href="#infra-p-j-smith" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/skeating"><img src="https://avatars.githubusercontent.com/u/1736558?v=4?s=100" width="100px;" alt="Sarah Keating"/><br /><sub><b>Sarah Keating</b></sub></a><br /><a href="#infra-skeating" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/swise5"><img src="https://avatars.githubusercontent.com/u/1005676?v=4?s=100" width="100px;" alt="Sarah Wise"/><br /><sub><b>Sarah Wise</b></sub></a><br /><a href="#ideas-swise5" title="Ideas, Planning, & Feedback">🤔</a> <a href="#mentoring-swise5" title="Mentoring">🧑‍🏫</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/nicolin"><img src="https://avatars.githubusercontent.com/u/6137757?v=4?s=100" width="100px;" alt="nicolin"/><br /><sub><b>nicolin</b></sub></a><br /><a href="https://github.com/UCL-ARC/amr-hub/pulls?q=is%3Apr+reviewed-by%3Anicolin" title="Reviewed Pull Requests">👀</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/yidilozdemir"><img src="https://avatars.githubusercontent.com/u/30597301?v=4?s=100" width="100px;" alt="yidilozdemir"/><br /><sub><b>yidilozdemir</b></sub></a><br /><a href="https://github.com/UCL-ARC/amr-hub/commits?author=yidilozdemir" title="Documentation">📖</a> <a href="#research-yidilozdemir" title="Research">🔬</a> <a href="https://github.com/UCL-ARC/amr-hub/commits?author=yidilozdemir" title="Code">💻</a></td>
     </tr>
   </tbody>
@@ -250,7 +252,7 @@ Please make sure to:
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the MIT License.
 
 ## Acknowledgments
 

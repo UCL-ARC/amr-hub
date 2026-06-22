@@ -19,14 +19,32 @@ if TYPE_CHECKING:
 
 @dataclass
 class Floor:
-    """Representation of a floor in a building."""
+    """
+    Representation of a floor in a building.
+
+    Parameters
+    ----------
+    floor_number : int
+        The number of the floor within the building.
+    rooms : list[Room]
+        The list of rooms on the floor.
+
+    """
 
     floor_number: int
     rooms: list[Room]
     pseudo_rooms: list[Room] = field(init=False, default_factory=list)
 
     def __post_init__(self) -> None:
-        """Post-initialization to validate floor attributes."""
+        """
+        Post-initialization to validate floor attributes.
+
+        Raises
+        ------
+        InvalidRoomError
+            If there are duplicate room IDs on the floor.
+
+        """
         room_ids = [room.room_id for room in self.rooms]
         if len(room_ids) != len(set(room_ids)):
             msg = f"Duplicate room IDs found on floor {self.floor_number}."
@@ -73,7 +91,19 @@ class Floor:
     def plot(
         self, ax: Axes, agents: list[Agent] | None = None, *, trajectory: bool = False
     ) -> None:
-        """Plot the floor layout including rooms and doors."""
+        """
+        Plot the floor layout including rooms and doors.
+
+        Parameters
+        ----------
+        ax : Axes
+            The matplotlib Axes object to plot on.
+        agents : list[Agent] | None, optional
+            A list of agents to plot on the floor. Defaults to None.
+        trajectory : bool, optional
+            Whether to plot the trajectories of the agents. Defaults to False.
+
+        """
         for room in self.rooms:
             room.plot(ax=ax, agents=agents, trajectory=trajectory)
 
@@ -89,16 +119,25 @@ class Floor:
         """
         Create a spatial room from a pseudo-room based on area.
 
-        Args:
-            room (Room): The pseudo-room to convert.
+        Parameters
+        ----------
+        room : Room
+            A pseudo-room with defined area and doors but no walls.
 
-        Returns:
-            Room: A spatial room with walls and doors based on the pseudo-room's area.
+        Returns
+        -------
+        Room
+            A spatial room with walls and doors positioned based on the area of the
+            pseudo-room.
 
-        Raises:
-            InvalidRoomError: If the pseudo-room does not have a valid positive area.
 
-        Note:
+        Raises
+        ------
+        InvalidRoomError
+            If the pseudo-room does not have a valid positive area.
+
+        Note
+        ----
             This method generates a rectangular room layout based on the area of the
             pseudo-room. The doors are positioned along one side of the rectangle. This
             function is not complete. Currently it only creates single simple
@@ -143,7 +182,20 @@ class Floor:
         )
 
     def find_room_by_location(self, location: tuple[float, float]) -> Room | None:
-        """Find the room that contains the given location."""
+        """
+        Find the room that contains the given location.
+
+        Parameters
+        ----------
+        location : tuple[float, float]
+            The (x, y) coordinates of the location to search for.
+
+        Returns
+        -------
+        Room | None
+            The room that contains the location, or None if no such room exists.
+
+        """
         for room in self.rooms:
             if room.walls and room.contains_point(location):
                 return room

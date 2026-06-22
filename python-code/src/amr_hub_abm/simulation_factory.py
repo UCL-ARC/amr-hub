@@ -51,13 +51,20 @@ def create_simulation(
     """
     Create a simulation instance from a configuration file.
 
-    Args:
-        config_file (Path): Path to the configuration file.
-        agent_speed (float): The speed at which agents move.
-        agent_stochasticity (float): The degree of randomness in agent movement.
+    Parameters
+    ----------
+    config_file : Path
+        Path to the YAML configuration file containing simulation parameters and
+        data paths.
+    agent_speed : float, optional
+        The speed at which agents move, by default 0.001
+    agent_stochasticity : float, optional
+        The degree of randomness in agent movement, by default 5.0
 
-    Returns:
-        Simulation: An instance of the Simulation class.
+    Returns
+    -------
+    Simulation
+        An instance of the Simulation class.
 
     """
     if not config_file.exists():
@@ -117,11 +124,15 @@ def parse_location_string(location_str: str) -> tuple[str, int, str]:
     """
     Parse a location string into its components.
 
-    Args:
-        location_str (str): The location string in the format "BuildingName:x,y".
+    Parameters
+    ----------
+    location_str : str
+        The location string in the format "BuildingName:x,y".
 
-    Returns:
-        tuple[str, int, str]: A tuple containing the building name, floor number,
+    Returns
+    -------
+    tuple[str, int, str]
+        A tuple containing the building name, floor number,
         and room name.
 
     """
@@ -130,7 +141,24 @@ def parse_location_string(location_str: str) -> tuple[str, int, str]:
 
 
 def get_random_location(room: Room, building: str, floor: int) -> Location:
-    """Get a random location within a room."""
+    """
+    Get a random location within a room.
+
+    Parameters
+    ----------
+    room : Room
+        The Room instance to get a random location from.
+    building : str
+        The name of the building the room is in.
+    floor : int
+        The floor number the room is on.
+
+    Returns
+    -------
+    Location
+        A Location instance with random coordinates within the room.
+
+    """
     point = room.get_random_point()
     return Location(
         building=building,
@@ -150,7 +178,29 @@ def update_patient(  # noqa: PLR0913
     agent_speed: float = 0.001,
     agent_stochasticity: float = 5.0,
 ) -> None:
-    """Update patient information from data."""
+    """
+    Update patient information from data.
+
+    Parameters
+    ----------
+    patient_id : int
+        The ID of the patient.
+    space_tuple : tuple[str, int, Room]
+        A tuple containing the building name, floor number, and Room instance.
+    patient_dict : dict[int, Agent]
+        A dictionary mapping patient IDs to Agent instances.
+    total_time_steps : int
+        The total number of time steps in the simulation.
+    space : list[Building]
+        The simulation space represented as a list of Building instances.
+    rng_generator : np.random.Generator
+        Random number generator for reproducibility.
+    agent_speed : float, optional
+        The speed at which agents move, by default 0.001
+    agent_stochasticity : float, optional
+        The degree of randomness in agent movement, by default 5.0
+
+    """
     building, floor, room = space_tuple
 
     if patient_id is not None and patient_id not in patient_dict:
@@ -196,7 +246,33 @@ def update_hcw(  # noqa: PLR0913
     agent_speed: float = 0.001,
     agent_stochasticity: float = 5.0,
 ) -> None:
-    """Update healthcare worker information from data."""
+    """
+    Update healthcare worker information from data.
+
+    Parameters
+    ----------
+    hcw_id : int
+        The ID of the healthcare worker.
+    space_tuple : tuple[str, int, Room]
+        A tuple containing the building name, floor number, and Room instance.
+    event_tuple : tuple[Location, int, str]
+        A tuple containing the event location, time step index, and event type.
+    hcw_dict : dict[int, Agent]
+        A dictionary mapping healthcare worker IDs to Agent instances.
+    total_time_steps : int
+        The total number of time steps in the simulation.
+    space : list[Building]
+        The simulation space represented as a list of Building instances.
+    rng_generator : np.random.Generator
+        Random number generator for reproducibility.
+    additional_info : dict | None, optional
+        Additional information related to the event, by default None.
+    agent_speed : float, optional
+        The speed at which agents move, by default 0.001
+    agent_stochasticity : float, optional
+        The degree of randomness in agent movement, by default 5.0
+
+    """
     building, floor, room = space_tuple
     location, timestep_index, event_type = event_tuple
 
@@ -238,11 +314,15 @@ def read_location_timeseries(
     """
     Read a CSV file containing location time series data for agents.
 
-    Args:
-        file_path (Path): Path to the CSV file.
+    Parameters
+    ----------
+    file_path : Path
+        Path to the CSV file.
 
-    Returns:
-        pd.DataFrame: DataFrame containing the location time series data.
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the location time series data.
 
     """
     if not file_path.exists():
@@ -436,13 +516,19 @@ def timestamp_to_timestep(
     """
     Convert a timestamp to a simulation time step index.
 
-    Args:
-        timestamp (pd.Timestamp): The timestamp to convert.
-        start_time (pd.Timestamp): The simulation start time.
-        time_scaling_factor (int): The duration of timestep in seconds.
+    Parameters
+    ----------
+    timestamp : pd.Timestamp
+        The timestamp to convert.
+    start_time : pd.Timestamp
+        The simulation start time.
+    time_scaling_factor : int
+        The duration of timestep in seconds.
 
-    Returns:
-        int: The corresponding time step index.
+    Returns
+    -------
+    int
+        The corresponding time step index.
 
     """
     delta = timestamp - start_time

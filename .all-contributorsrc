@@ -102,6 +102,13 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/27347476?v=4",
       "profile": "https://github.com/features/security",
       "contributions": ["security"]
+    },
+    {
+      "login": "nicolin",
+      "name": "nicolin",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6137757?v=4",
+      "profile": "https://github.com/nicolin",
+      "contributions": ["review"]
     }
   ],
   "contributorsPerLine": 7,
