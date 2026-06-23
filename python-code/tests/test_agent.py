@@ -10,36 +10,48 @@ import pytest
 from amr_hub_abm.agent.agent import Agent
 from amr_hub_abm.agent.enums import ROLE_COLOUR_MAP, AgentType, InfectionStatus
 from amr_hub_abm.agent.plotter import plot_agent
-from amr_hub_abm.exceptions import SimulationModeError
+from amr_hub_abm.exceptions import NonNegativeValueError, SimulationModeError
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.location import Location
+from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
 
 
-def test_agent_creation() -> None:
-    """Test the creation of an Agent instance."""
-    agent = Agent(
+@pytest.fixture
+def correct_agent() -> Agent:
+    """Create a sample Agent for testing."""
+    return Agent(
         idx=1,
         agent_type=AgentType.PATIENT,
         infection_status=InfectionStatus.SUSCEPTIBLE,
-        location=Location(
-            x=0.0, y=0.0, floor=1, building=Building(name="Hospital", floors=[]).name
-        ),
+        location=Location(x=0.0, y=0.0, floor=1, building="Hospital"),
         heading_rad=math.pi / 2,  # 90 degrees in radians
         rooms=[],
         rng_generator=np.random.default_rng(),
     )
+
+
+def test_agent_creation(correct_agent: Agent) -> None:
+    """Test the creation of an Agent instance."""
+    expected_location = Location(x=0.0, y=0.0, floor=1, building="Hospital")
+    expected_heading = 90.0
+
+    assert correct_agent.idx == 1
+    assert correct_agent.agent_type == AgentType.PATIENT
+    assert correct_agent.infection_status == InfectionStatus.SUSCEPTIBLE
+    assert correct_agent.location == expected_location
+    assert correct_agent.heading_degrees == expected_heading
 
     expected_location = Location(
         x=0.0, y=0.0, floor=1, building=Building(name="Hospital", floors=[]).name
     )
     expected_heading = 90.0
 
-    assert agent.idx == 1
-    assert agent.agent_type == AgentType.PATIENT
-    assert agent.infection_status == InfectionStatus.SUSCEPTIBLE
-    assert agent.location == expected_location
-    assert agent.heading_degrees == expected_heading
+    assert correct_agent.idx == 1
+    assert correct_agent.agent_type == AgentType.PATIENT
+    assert correct_agent.infection_status == InfectionStatus.SUSCEPTIBLE
+    assert correct_agent.location == expected_location
+    assert correct_agent.heading_degrees == expected_heading
 
 
 def test_heading_modulo() -> None:
@@ -60,6 +72,45 @@ def test_heading_modulo() -> None:
     expected_heading = 90.0
 
     assert agent.heading_degrees == expected_heading
+
+
+def test_agent_heading(correct_agent: Agent) -> None:
+    """Test that the heading degrees are correctly calculated."""
+    assert correct_agent.heading_degrees == 90.0
+
+    correct_agent.heading_rad = math.radians(180)
+    assert correct_agent.heading_degrees == 180.0
+
+    correct_agent.heading_degrees = 270.0
+    assert math.isclose(correct_agent.heading_rad, math.radians(270), rel_tol=1e-9)
+
+
+def test_agent_negative_trajectory_length() -> None:
+    """Test that a negative trajectory length raises a NonNegativeValueError."""
+    with pytest.raises(NonNegativeValueError) as exc_info:
+        Agent(
+            idx=3,
+            agent_type=AgentType.GENERIC,
+            infection_status=InfectionStatus.RECOVERED,
+            location=Location(x=1.0, y=1.0, floor=1, building="Hospital"),
+            heading_rad=0.0,
+            rooms=[],
+            rng_generator=np.random.default_rng(),
+            trajectory_length=-5,  # Invalid negative trajectory length
+        )
+
+    assert "trajectory_length must be non-negative." in str(exc_info.value)
+
+
+def test_head_to_point(correct_agent: Agent) -> None:
+    """Test that the agent correctly heads towards a specified point."""
+    target_x, target_y = 1.0, 1.0
+    correct_agent.head_to_point((target_x, target_y))
+
+    expected_heading_rad = math.atan2(
+        target_y - correct_agent.location.y, target_x - correct_agent.location.x
+    )
+    assert math.isclose(correct_agent.heading_rad, expected_heading_rad, rel_tol=1e-9)
 
 
 def test_agent_intersection_with_walls() -> None:
@@ -305,3 +356,30 @@ def test_add_task_with_not_implemented_task_type(
         )
 
     assert "Task type GENERIC not implemented yet." in str(exc_info.value)
+
+
+@pytest.fixture
+def large_room() -> Room:
+    """Create a large room location for testing."""
+    return Room(
+        room_id=1,
+        name="LargeRoom",
+        floor=1,
+        building="TestBuilding",
+        contents=[],
+        walls=[
+            Wall(start=(0, 0), end=(0, 100)),
+            Wall(start=(0, 100), end=(100, 100)),
+            Wall(start=(100, 100), end=(100, 0)),
+            Wall(start=(100, 0), end=(0, 0)),
+        ],
+        doors=[],
+        rng_generator=np.random.default_rng(),
+    )
+
+
+def test_try_moving_one_step(sample_agent: Agent, large_room: Room) -> None:
+    """Test that try_moving_one_step raises NotImplementedError."""
+    sample_agent.location = Location(x=50.0, y=50.0, floor=1, building="TestBuilding")
+    sample_agent.rooms = [large_room]
+    sample_agent.try_move_one_step(0.1)

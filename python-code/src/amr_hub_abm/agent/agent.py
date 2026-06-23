@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 
 from amr_hub_abm.agent.enums import AgentType, InfectionStatus
 from amr_hub_abm.agent.output import Record, record_state
-from amr_hub_abm.exceptions import SimulationModeError
+from amr_hub_abm.exceptions import NonNegativeValueError, SimulationModeError
 from amr_hub_abm.space.content import ContentType
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.space import (
@@ -129,7 +129,7 @@ class Agent:
 
         if self.trajectory_length < 0:
             msg = "trajectory_length must be non-negative."
-            raise ValueError(msg)
+            raise NonNegativeValueError(msg)
 
         if self.trajectory_length > 0:
             self.trajectory = Record(total_time=self.trajectory_length)
