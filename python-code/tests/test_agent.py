@@ -378,8 +378,69 @@ def large_room() -> Room:
     )
 
 
-def test_try_moving_one_step(sample_agent: Agent, large_room: Room) -> None:
-    """Test that try_moving_one_step raises NotImplementedError."""
+@pytest.fixture
+def small_room() -> Room:
+    """Create a small room location for testing."""
+    return Room(
+        room_id=2,
+        name="SmallRoom",
+        floor=1,
+        building="TestBuilding",
+        contents=[],
+        walls=[
+            Wall(start=(0, 0), end=(0, 1)),
+            Wall(start=(0, 1), end=(1, 1)),
+            Wall(start=(1, 1), end=(1, 0)),
+            Wall(start=(1, 0), end=(0, 0)),
+        ],
+        doors=[],
+        rng_generator=np.random.default_rng(),
+    )
+
+
+def test_try_moving_one_step(
+    sample_agent: Agent,
+    large_room: Room,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that try_moving_one_step successfully moves the agent when inside a room."""
     sample_agent.location = Location(x=50.0, y=50.0, floor=1, building="TestBuilding")
     sample_agent.rooms = [large_room]
-    sample_agent.try_move_one_step(0.1)
+
+    def fake_propose_new_location(*args, **kwargs) -> tuple[float, float]:  # noqa: ANN002, ANN003, ARG001
+        return (50.5, 50.5)  # A location inside the large room
+
+    monkeypatch.setattr(
+        "amr_hub_abm.space.space.propose_new_coordinates", fake_propose_new_location
+    )
+
+    with caplog.at_level("INFO"):
+        sample_agent.try_move_one_step(0.1)
+
+        assert not any(
+            "not located in any room." in message for message in caplog.messages
+        )
+
+
+def test_try_moving_one_step_outside_room(
+    sample_agent: Agent,
+    small_room: Room,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that try_moving_one_step raises NotImplementedError when outside room."""
+    sample_agent.location = Location(x=2.0, y=2.0, floor=1, building="TestBuilding")
+    sample_agent.rooms = [small_room]
+
+    def fake_propose_new_location(*args, **kwargs) -> tuple[float, float]:  # noqa: ANN002, ANN003, ARG001
+        return (10, 10)  # A location outside the small room
+
+    monkeypatch.setattr(
+        "amr_hub_abm.space.space.propose_new_coordinates", fake_propose_new_location
+    )
+
+    with caplog.at_level("INFO"):
+        sample_agent.try_move_one_step(0.1)
+
+        assert any("not located in any room." in message for message in caplog.messages)
