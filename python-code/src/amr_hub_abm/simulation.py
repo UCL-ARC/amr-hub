@@ -11,6 +11,7 @@ from matplotlib import pyplot as plt
 
 from amr_hub_abm.exceptions import TimeError
 from amr_hub_abm.gpu_physics import GPUPhysicsEngine
+from amr_hub_abm.space.space import SpatialQuery
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -59,6 +60,7 @@ class Simulation:
 
     """
 
+    # ------------------------------------------------------------------------------
     name: str
     description: str
     mode: SimulationMode
@@ -73,7 +75,19 @@ class Simulation:
     # NG Added Flag for GPU Acceleration
     use_gpu: bool = field(default=False)
     gpu_engine: Any = field(default=None, init=False)
+    spatial_engine: Any = field(default=None, init=False)
+    # ------------------------------------------------------------------------------
 
+    def __post_init__(self) -> None:
+        """Init for GPU to load CAD once at the start."""
+        if self.use_gpu:
+            self.gpu_engine = GPUPhysicsEngine()
+        # Initialize the CPU engine
+        else:
+            self.spatial_engine = SpatialQuery(space=self.space)
+            self._agent_store = None
+
+    # ------------------------------------------------------------------------------
     def step(self, plot_path: Path | None = None, *, record: bool = False) -> None:
         """
         Advance the simulation by one time step.
@@ -109,22 +123,23 @@ class Simulation:
         # randomize agent order each step to avoid bias
         self.rng_generator.shuffle(self.agents)
 
-        # CPU Updates all agents
-        for agent in self.agents:
-            agent.perform_task(current_time=self.time, record=record)
-
-        # NG Added Physics Solver
+        # NG: GPU Updates Agents
         if self.use_gpu:
-            # Take GPU Path
-            if self.gpu_engine is None:
-                self.gpu_engine = GPUPhysicsEngine()  # Loads npz floor plan
-
             self.gpu_engine.step_physics(self.agents)  # Takes the step and query
-        # Take CPU Path writing all the pngs
-        elif plot_path is not None:
-            self.plot_current_state(directory_path=plot_path)
+
+        # CPU Updates all agents
+        else:
+            for agent in self.agents:
+                agent.perform_task(
+                    current_time=self.time, engine=self.spatial_engine, record=record
+                )
+
+            if plot_path is not None:
+                self.plot_current_state(directory_path=plot_path)
 
         self.time += 1
+
+    # ------------------------------------------------------------------------------
 
     def plot_current_state(
         self, directory_path: Path, *, trajectory: bool = False

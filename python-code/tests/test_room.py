@@ -8,12 +8,12 @@ import pytest
 import shapely
 
 from amr_hub_abm.agent.agent import Agent
+from amr_hub_abm.agent.plotter import plot_agents_in_room
 from amr_hub_abm.exceptions import InvalidRoomError, SimulationModeError
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.content import Content
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.plotter import plot_agents_in_room
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
 
@@ -372,13 +372,15 @@ def test_plot_room(simple_room: Room) -> None:
 def test_plot_room_with_agent_inside(simple_room: Room) -> None:
     """Test plotting includes agents located inside the room."""
     fig, ax = plt.subplots()
+    # FIX: Agent no longer accepts 'rooms' list.
     agent = Agent(
         idx=1,
         location=Location(1.0, 1.0, floor=1, building=simple_room.building),
         heading_rad=0.0,
-        rooms=[simple_room],
         rng_generator=np.random.default_rng(),
     )
+    # We pass the room to the plotter explicitly,
+    # mirroring how the simulation engine handles spatial lookup now.
     plot_agents_in_room(simple_room, ax, agents=[agent])
 
     plt.close(fig)

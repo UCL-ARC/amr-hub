@@ -20,20 +20,26 @@ logger = logging.getLogger(__name__)
 
 
 def create_simulation(
-    config_file: Path, agent_speed: float = 0.001, agent_stochasticity: float = 5.0
+    config_path: Path,
+    agent_speed: float = 0.001,
+    agent_stochasticity: float = 5.0,
+    *,
+    use_gpu: bool = False,
 ) -> Simulation:
     """
     Create a simulation instance from a configuration file.
 
     Parameters
     ----------
-    config_file : Path
+    config_path : Path
         Path to the YAML configuration file containing simulation parameters and
         data paths.
     agent_speed : float, optional
         The speed at which agents move, by default 0.001
     agent_stochasticity : float, optional
         The degree of randomness in agent movement, by default 5.0
+    use_gpu : bool, optional
+        Flag to enable GPU acceleration, by default False
 
     Returns
     -------
@@ -41,11 +47,11 @@ def create_simulation(
         An instance of the Simulation class.
 
     """
-    if not config_file.exists():
-        msg = f"Configuration file not found: {config_file}"
+    if not config_path.exists():
+        msg = f"Configuration file not found: {config_path}"
         raise FileNotFoundError(msg)
 
-    with config_file.open(encoding="utf-8") as file:
+    with config_path.open(encoding="utf-8") as file:
         config_data = yaml.safe_load(file)
 
     rng_generator = np.random.default_rng()
@@ -91,6 +97,7 @@ def create_simulation(
         agents=agents,
         total_simulation_time=total_steps,
         rng_generator=rng_generator,
+        use_gpu=use_gpu,
     )
 
 
@@ -147,7 +154,6 @@ def update_patient(  # noqa: PLR0913
     space_tuple: tuple[str, int, Room],
     patient_dict: dict[int, Agent],
     total_time_steps: int,
-    rooms: list[Room],
     rng_generator: np.random.Generator,
     agent_speed: float = 0.001,
     agent_stochasticity: float = 5.0,
@@ -193,13 +199,13 @@ def update_patient(  # noqa: PLR0913
             bed.occupier_id = (patient_id, AgentType.PATIENT)
             location = bed.location
 
+        # FIX: Removed `rooms=rooms`
         patient_dict[patient_id] = Agent(
             idx=patient_id,
             location=location,
             heading_rad=0.0,
             agent_type=AgentType.PATIENT,
             trajectory_length=total_time_steps,
-            rooms=rooms,
             rng_generator=rng_generator,
             movement_speed=agent_speed,
             stochasticity=agent_stochasticity,
@@ -212,7 +218,6 @@ def update_hcw(  # noqa: PLR0913
     event_tuple: tuple[Location, int, str],
     hcw_dict: dict[int, Agent],
     total_time_steps: int,
-    rooms: list[Room],
     rng_generator: np.random.Generator,
     additional_info: dict | None = None,
     agent_speed: float = 0.001,
@@ -233,8 +238,6 @@ def update_hcw(  # noqa: PLR0913
         A dictionary mapping healthcare worker IDs to Agent instances.
     total_time_steps : int
         The total number of time steps in the simulation.
-    rooms : list[Room]
-        The list of rooms in the simulation.
     rng_generator : np.random.Generator
         Random number generator for reproducibility.
     additional_info : dict | None, optional
@@ -265,13 +268,13 @@ def update_hcw(  # noqa: PLR0913
             chair.occupier_id = (hcw_id, AgentType.HEALTHCARE_WORKER)
             hcw_location = chair.location
 
+        # FIX: Removed `rooms=rooms`
         hcw_dict[hcw_id] = Agent(
             idx=hcw_id,
             location=hcw_location,
             heading_rad=0.0,
             agent_type=AgentType.HEALTHCARE_WORKER,
             trajectory_length=total_time_steps,
-            rooms=rooms,
             rng_generator=rng_generator,
             movement_speed=agent_speed,
             stochasticity=agent_stochasticity,
@@ -384,7 +387,6 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
                 space_tuple=(building, floor, room),
                 patient_dict=patient_dict,
                 total_time_steps=total_time_steps,
-                rooms=rooms,
                 rng_generator=rng_generator,
                 agent_speed=agent_speed,
                 agent_stochasticity=agent_stochasticity,
@@ -471,7 +473,6 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
             hcw_dict=hcw_dict,
             additional_info=additional_info or None,
             total_time_steps=total_time_steps,
-            rooms=rooms,
             rng_generator=rng_generator,
             agent_speed=agent_speed,
             agent_stochasticity=agent_stochasticity,

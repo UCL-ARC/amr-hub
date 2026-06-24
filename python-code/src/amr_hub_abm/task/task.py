@@ -9,10 +9,9 @@ from typing import TYPE_CHECKING, ClassVar
 
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.space import check_if_location_reached, get_room
 
 if TYPE_CHECKING:
-    from amr_hub_abm.agent.agent import Agent
+    from amr_hub_abm.agent.agent import Agent, SpatialEngineProtocol
     from amr_hub_abm.space.content import Content
     from amr_hub_abm.space.door import Door
     from amr_hub_abm.space.room import Room
@@ -21,19 +20,22 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
+def remove_agent_occupancy(
+    agent: Agent, current_time: int, engine: SpatialEngineProtocol
+) -> None:
     """
     Remove the agent's occupancy from any content they are currently occupying.
 
     Parameters
-    ----------
     agent : Agent
         The agent whose occupancy is to be removed.
     current_time : int
         The current time in the simulation, used for logging purposes.
+    engine : SpatialEngineProtocol
+        The engine instance used to resolve geometry queries.
 
     """
-    room = get_room(agent.location, agent.rooms)
+    room = engine.get_room(agent)
     if room is None:
         return
     for content in room.contents:
@@ -54,24 +56,27 @@ def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
             return
 
 
-def add_agent_occupancy(agent: Agent, content: Content, current_time: int) -> None:
+def add_agent_occupancy(
+    agent: Agent, content: Content, current_time: int, engine: SpatialEngineProtocol
+) -> None:
     """
     Add the agent's occupancy to the specified content.
 
     Parameters
-    ----------
     agent : Agent
         The agent whose occupancy is to be added.
     content : Content
         The content to which the agent will occupy.
     current_time : int
         The current time in the simulation, used for logging purposes.
+    engine : SpatialEngineProtocol
+        The engine instance used to resolve geometry queries.
 
     """
     content.occupier_id = (agent.idx, agent.agent_type)
     agent.stationary = True
 
-    room = get_room(agent.location, agent.rooms)
+    room = engine.get_room(agent)
     room_name = "unknown" if room is None else room.name
 
     logger.info(
@@ -125,21 +130,7 @@ class TaskPriority(IntEnum):
 
 @dataclass
 class Task:
-    """
-    Representation of a task assigned to an agent.
-
-    Parameters
-    ----------
-    time_needed : int
-        The time required to complete the task.
-    time_due : int
-        The time by which the task should be completed.
-    progress : TaskProgress, optional
-        The current progress of the task. Defaults to TaskProgress.NOT_STARTED.
-    priority : TaskPriority, optional
-        The priority level of the task. Defaults to TaskPriority.MEDIUM.
-
-    """
+    """Representation of a task assigned to an agent."""
 
     task_type: ClassVar[TaskType] = TaskType.GENERIC
 
@@ -155,26 +146,7 @@ class Task:
     time_completed: int | None = field(init=False, default=None)
 
     def time_spent(self, current_time: int) -> int:
-        """
-        Calculate the time spent on the task so far.
-
-        Parameters
-        ----------
-        current_time : int
-            The current time in the simulation.
-
-        Returns
-        -------
-        int
-            The time spent on the task so far.
-
-        Raises
-        ------
-        TimeError
-            If the task is marked as completed but start time or completion time is
-            None, or if the task is marked as in progress but start time is None.
-
-        """
+        """Calculate the time spent on the task so far."""
         if self.progress == TaskProgress.COMPLETED:
             if self.time_started is None:
                 msg = "Task marked as completed but start time is None."
@@ -196,15 +168,7 @@ class Task:
         return 0
 
     def __post_init__(self) -> None:
-        """
-        Post-initialization to validate task attributes.
-
-        Raises
-        ------
-        TimeError
-            If time_needed or time_due is negative.
-
-        """
+        """Post-initialization to validate task attributes."""
         if self.time_needed < 0:
             msg = "Time needed for a task cannot be negative."
             raise TimeError(msg)
@@ -213,17 +177,19 @@ class Task:
             msg = "Time due for a task cannot be negative."
             raise TimeError(msg)
 
-    def update_progress(self, current_time: int, agent: Agent) -> None:
+    def update_progress(
+        self, current_time: int, agent: Agent, engine: SpatialEngineProtocol
+    ) -> None:
         """
         Update the progress of the task based on time spent.
 
         Parameters
-        ----------
         current_time : int
             The current time in the simulation.
         agent : Agent
             The agent performing the task.
-
+        engine : SpatialEngineProtocol
+            The spatial engine.
         """
         if self.progress == TaskProgress.COMPLETED:
             return
@@ -240,7 +206,9 @@ class Task:
             )
             self.time_completed = current_time
             if isinstance(self, TaskOccupyContent):
-                add_agent_occupancy(agent, self.content, current_time=current_time)
+                add_agent_occupancy(
+                    agent, self.content, current_time=current_time, engine=engine
+                )
             return
 
         if self.progress == TaskProgress.IN_PROGRESS:
@@ -252,26 +220,25 @@ class Task:
             )
             return
 
-        if not check_if_location_reached(
+        if not engine.is_target_reached(
             agent.location, self.location, agent.interaction_radius
         ):
             self.progress = TaskProgress.MOVING_TO_LOCATION
             if isinstance(self, TaskDoorAccess):
-                self.modify_location(agent)
-            remove_agent_occupancy(agent, current_time=current_time)
+                self.modify_location(agent, engine)
+
+            remove_agent_occupancy(agent, current_time=current_time, engine=engine)
             logger.info(
                 "Agent id %s moving to task location %s.", agent.idx, self.location
             )
 
-            # Feature Flag Logic
-            if getattr(agent, "use_gpu", False):
-                # GPU Engine: Just set the intent, do not move the agent
-                agent.target_x = self.location.x
-                agent.target_y = self.location.y
-            else:
-                # Current Engine: Calculate heading and step physically
-                agent.head_to_point((self.location.x, self.location.y))
-                agent.move_one_step()
+            # Unified movement intent setting
+            agent.target_x = self.location.x
+            agent.target_y = self.location.y
+
+            # For CPU engines, calculate heading automatically
+            if not agent.use_gpu and hasattr(engine, "head_to_point"):
+                engine.head_to_point(agent, (self.location.x, self.location.y))
 
             return
 
@@ -343,22 +310,9 @@ class TaskDoorAccess(Task):
             y=(self.door.start[1] + self.door.end[1]) / 2,
         )
 
-    def modify_location(self, agent: Agent) -> None:
-        """
-        Modify the location of the task to account for buffer.
-
-        Parameters
-        ----------
-        agent : Agent
-            The agent performing the task, used to determine which side of the door to
-            position on.
-
-        """
-        if self.door.start is None:
-            msg = "Door coords needed"
-            raise SimulationModeError(msg)
-
-        if self.door.end is None:
+    def modify_location(self, agent: Agent, engine: SpatialEngineProtocol) -> None:
+        """Modify the location of the task to account for buffer."""
+        if self.door.start is None or self.door.end is None:
             msg = "Door coords needed"
             raise SimulationModeError(msg)
 
@@ -376,7 +330,10 @@ class TaskDoorAccess(Task):
             y=(self.door.start[1] + self.door.end[1]) / 2 - self.buffer_distance,
         )
 
-        proposed_location1_room = get_room(proposed_location1, agent.rooms)
+        # FIX: query the engine instead of rooms lists
+        proposed_location1_room = engine.get_room(
+            agent, coords=(proposed_location1.x, proposed_location1.y), use_cache=False
+        )
 
         if proposed_location1_room is None:
             msg = "Proposed location 1 does not correspond to a valid room."
@@ -415,20 +372,7 @@ class TaskOccupyContent(Task):
         super().__post_init__()
 
     def assign_content(self) -> None:
-        """
-        Assign the content to be occupied based on the content type and room.
-
-        The method searches for content in the specified room that matches the required
-        content type. If found, it assigns the content to the task and sets the task
-        location to the content's location. If no matching content is found, it raises a
-        SimulationModeError.
-
-        Raises
-        ------
-        SimulationModeError
-            If no content of the specified type is found in the room.
-
-        """
+        """Assign the content to be occupied based on the content type and room."""
         content = next(
             (c for c in self.room.contents if c.content_type == self.content_type), None
         )

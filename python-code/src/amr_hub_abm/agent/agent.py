@@ -13,19 +13,13 @@ from __future__ import annotations
 
 import logging
 import math
-from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Protocol
 
 from amr_hub_abm.agent.enums import AgentType, InfectionStatus
 from amr_hub_abm.agent.output import Record, record_state
 from amr_hub_abm.exceptions import NonNegativeValueError, SimulationModeError
 from amr_hub_abm.space.content import ContentType
-from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.space import (
-    estimate_time_to_reach_location,
-    get_room,
-    propose_new_coordinates,
-)
 from amr_hub_abm.task.task import (
     Task,
     TaskOccupyContent,
@@ -42,13 +36,48 @@ from amr_hub_abm.task.tasklist import (
 if TYPE_CHECKING:
     from numpy.random import Generator
 
+    from amr_hub_abm.space.location import Location
     from amr_hub_abm.space.room import Room
 
 
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
 
-
 logger = logging.getLogger(__name__)
+
+
+# ------------------------------------------------------------------------------
+# NG: Moved this to sit inside the spatial class
+class SpatialEngineProtocol(Protocol):
+    """Interface defining the spatial resolution methods required by the Agent."""
+
+    def get_room(
+        self,
+        agent: Agent,
+        coords: tuple[float, float] | None = None,
+        *,
+        use_cache: bool = True,
+    ) -> Room | None:
+        """Find the room containing the agent or specific coords."""
+        ...
+
+    def estimate_time_to_reach_location(
+        self, agent: Agent, target_location: Location
+    ) -> float:
+        """Estimate the time required to reach a target location."""
+        ...
+
+    def is_target_reached(
+        self, location: Location, target: Location, radius: float
+    ) -> bool:
+        """Check if an agent has arrived at their target within a radius."""
+        ...
+
+    def head_to_point(self, agent: Agent, point: tuple[float, float]) -> None:
+        """Set the agent's heading to face a specific point."""
+        ...
+
+
+# ------------------------------------------------------------------------------
 
 
 # --8<--- [start:Agent]
@@ -56,10 +85,10 @@ logger = logging.getLogger(__name__)
 class Agent:
     """Representation of an agent in the AMR Hub ABM simulation."""
 
+    # ------------------------------------------------------------------------------
     idx: int
     location: Location
     heading_rad: float
-    rooms: list[Room]
     rng_generator: Generator
 
     interaction_radius: float = field(default=0.01)
@@ -76,12 +105,13 @@ class Agent:
 
     stationary: bool = field(default=False, init=False)
 
-    # NG Added for GPU
+    # NG Added for GPU compatibility placeholder
     use_gpu: bool = field(default=False)
     target_x: float = field(default=0.0)
     target_y: float = field(default=0.0)
 
     # --8<--- [end:Agent]
+    # ------------------------------------------------------------------------------
 
     @property
     def heading_degrees(self) -> float:
@@ -139,20 +169,6 @@ class Agent:
         if self.trajectory_length > 0:
             self.trajectory = Record(total_time=self.trajectory_length)
 
-    def move_to_location(self, new_location: Location) -> None:
-        """
-        Move the agent to a new location and log the movement.
-
-        Parameters
-        ----------
-        new_location : Location
-            The new location to which the agent will be moved.
-
-        """
-        msg = f"Moving Agent id {self.idx} from {self.location} to {new_location}"
-        logger.info(msg)
-        self.location = new_location
-
     def __repr__(self) -> str:
         """
         Return a string representation of the agent.
@@ -188,42 +204,14 @@ class Agent:
         location : Location
             The location associated with the task.
         event_type : str
-            The type of task to add. Must be one of the following:
-
-            - "attend_patient"
-
-            - "door_access"
-
-            - "workstation"
-
-            - "occupy_content"
-
+            The type of task to add.
         additional_info : dict | None, optional
             Additional information required for certain task types.
-
-            For "attend_patient" tasks, this should include:
-
-            - "patient": An instance of Agent representing the patient to attend.
-
-            For "door_access" tasks, this should include:
-
-            - "door": An instance of Door representing the door to access.
-
-            - "destination": The rooom number of the destination room to which
-            the agent will move after accessing the door.
-
-            For "occupy_content" tasks, this should include:
-
-            - "content_type": A ContentType representing the type of content to occupy.
-
-            - "room": An instance of Room representing the room in which to occupy the
-            content.
 
         Raises
         ------
             SimulationModeError
-                If the event_type is invalid or if required additional_info is missing
-                or of the wrong type for the specified event_type.
+                If the event_type is invalid.
 
         """
         if event_type not in TASK_TYPES:
@@ -243,118 +231,9 @@ class Agent:
         task = TASK_BUILDERS[task_type](context)
         self.tasks.append(task)
 
-    def head_to_point(self, point: tuple[float, float]) -> None:
-        """
-        Set the agent's heading to face a specific point.
-
-        Parameters
-        ----------
-        point : tuple[float, float]
-            The (x, y) coordinates of the point to face.
-
-        """
-        delta_x = point[0] - self.location.x
-        delta_y = point[1] - self.location.y
-
-        self.heading_rad = math.atan2(delta_y, delta_x) % (2 * math.pi)
-
-    def try_move_one_step(
-        self,
-        stochasticity: float,
-        max_attempts: int = 5,
-    ) -> tuple[float, float]:
-        """
-        Return valid coordinates for a single movement step.
-
-        Parameters
-        ----------
-        stochasticity : float
-            The level of randomness to apply to the movement.
-        max_attempts : int, optional
-            The maximum number of attempts to find valid coordinates without wall
-            intersection.
-
-        Returns
-        -------
-        tuple[float, float]
-            The proposed new (x, y) coordinates for the agent after moving one step.
-
-        Raises
-        ------
-        SimulationModeError
-            If the agent cannot find valid coordinates after the maximum number of
-            attempts, or if the room has no walls defined for intersection checking.
-
-        """
-        for attempt in range(1, max_attempts + 1):
-            new_x, new_y = propose_new_coordinates(
-                (self.location.x, self.location.y),
-                self.heading_rad,
-                self.movement_speed,
-                stochasticity,
-                self.rng_generator,
-            )
-
-            new_location = Location(
-                x=new_x,
-                y=new_y,
-                floor=self.location.floor,
-                building=self.location.building,
-            )
-            room = get_room(new_location, self.rooms)
-            if room is None:
-                logger.info(
-                    "Attempt %s: location (%s, %s) is not located in any room.",
-                    attempt,
-                    new_x,
-                    new_y,
-                )
-                continue
-
-            walls = room.walls
-            if not walls:
-                msg = (
-                    f"Room {room.name} has no walls defined, "
-                    "cannot check for wall intersections."
-                )
-                raise SimulationModeError(msg)
-
-            if Location.check_intersection_with_walls(
-                new_x,
-                new_y,
-                self.interaction_radius,
-                walls,
-            ):
-                logger.info(
-                    "Attempt %s: Agent id %s cannot move to (%s, %s): "
-                    "wall intersection.",
-                    attempt,
-                    self.idx,
-                    new_x,
-                    new_y,
-                )
-                continue
-
-            return new_x, new_y
-
-        logger.error(
-            "Maximum attempts %s exceeded for moving one step. "
-            "Agent id %s moving to proposed coordinates (%s, %s) despite "
-            "wall intersection.",
-            max_attempts,
-            self.idx,
-            self.location.x,
-            self.location.y,
-        )
-
-        return self.location.x, self.location.y
-
-    def move_one_step(self) -> None:
-        """Move the agent one step in the direction of its heading."""
-        new_x, new_y = self.try_move_one_step(self.stochasticity)
-        self.move_to_location(replace(self.location, x=new_x, y=new_y))
-
-    def perform_task(self, current_time: int, *, record: bool = False) -> None:
+    def perform_task(
+        self, current_time: int, engine: SpatialEngineProtocol, *, record: bool = False
+    ) -> None:
         """
         Perform the agent's current task if it's due.
 
@@ -362,6 +241,8 @@ class Agent:
         ----------
         current_time : int
             The current time step in the simulation.
+        engine : SpatialEngineProtocol
+            The engine instance used to resolve geometry queries and bounds.
         record : bool, optional
             Whether to record the agent's state at the current time step.
 
@@ -386,20 +267,19 @@ class Agent:
         )
 
         for handler in task_handlers:
-            if handler(self, current_time=current_time):
+            # We now pass the engine dynamically down into the task handlers!
+            if handler(self, current_time=current_time, engine=engine):
                 return
 
     def attempt_task_insertion(
-        self, next_task: Task, next_task_move_time: float, current_time: int
+        self,
+        next_task: Task,
+        next_task_move_time: float,
+        current_time: int,
+        engine: SpatialEngineProtocol,
     ) -> None:
         """
         Attempt to insert a task to occupy an empty chair.
-
-        This method checks if the next task is not already an occupy_content task and if
-        the agent is not stationary. If these conditions are met, it checks for empty
-        chairs in the current room and estimates the time to reach the chair. If the
-        agent can reach the chair before the next task move time, it inserts an
-        `occupy_content` task for the chair.
 
         Parameters
         ----------
@@ -409,6 +289,8 @@ class Agent:
             The time at which the next task is scheduled to move to the next stage.
         current_time : int
             The current time step in the simulation.
+        engine: SpatialEngineProtocol
+            The SpatialEngine computing spatial queries (CPU or GPU).
 
         """
         if isinstance(next_task, TaskOccupyContent):
@@ -416,7 +298,7 @@ class Agent:
         if self.stationary:
             return
 
-        room = get_room(self.location, self.rooms)
+        room = engine.get_room(self)
         if room is None:
             logger.info(
                 "Agent id %s is not located in any room. Cannot check for "
@@ -442,8 +324,8 @@ class Agent:
 
         if empty_chairs:
             chair = empty_chairs[0]
-            estimated_time_to_chair = estimate_time_to_reach_location(
-                self.location, chair.location, self.movement_speed
+            estimated_time_to_chair = engine.estimate_time_to_reach_location(
+                self, chair.location
             )
             if current_time + estimated_time_to_chair < next_task_move_time:
                 self.add_task(
