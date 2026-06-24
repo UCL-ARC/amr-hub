@@ -69,6 +69,7 @@ def simulate(  # noqa: PLR0912, PLR0913
         output_dir = Path("../simulation_outputs")
         output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Loop over each agent
     for agent in simulation.agents:
         msg = f"Agent {agent.agent_type, agent.idx} task list"
         logger.info(msg)
@@ -146,4 +147,4 @@ def run_steps(
 
 # Make True for GPU
 if __name__ == "__main__":
-    simulate(use_gpu=True, record=True)
+    simulate(use_gpu=False, record=True)

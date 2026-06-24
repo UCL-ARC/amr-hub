@@ -10,6 +10,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from amr_hub_abm.exceptions import TimeError
+from amr_hub_abm.gpu_physics import GPUPhysicsEngine
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -108,6 +109,7 @@ class Simulation:
         # randomize agent order each step to avoid bias
         self.rng_generator.shuffle(self.agents)
 
+        # CPU Updates all agents
         for agent in self.agents:
             agent.perform_task(current_time=self.time, record=record)
 
@@ -115,11 +117,6 @@ class Simulation:
         if self.use_gpu:
             # Take GPU Path
             if self.gpu_engine is None:
-                # ruff: noqa: PLC0415
-                from amr_hub_abm.gpu_physics import (
-                    GPUPhysicsEngine,
-                )
-
                 self.gpu_engine = GPUPhysicsEngine()  # Loads npz floor plan
 
             self.gpu_engine.step_physics(self.agents)  # Takes the step and query
