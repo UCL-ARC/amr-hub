@@ -15,6 +15,7 @@ from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
+from amr_hub_abm.task.task import Task, TaskWorkstation
 
 
 @pytest.fixture
@@ -477,3 +478,30 @@ def test_move_agent(sample_agent: Agent, large_room: Room) -> None:
     sample_agent.rooms = [large_room]
     sample_agent.move_one_step()
     assert sample_agent.location.x != 10.0 or sample_agent.location.y != 10.0
+
+
+@pytest.fixture
+def sample_task() -> Task:
+    """Create a sample Task for testing."""
+    return TaskWorkstation(
+        time_due=5,
+        time_needed=2,
+        workstation_location=Location(x=15.0, y=15.0, floor=1, building="TestBuilding"),
+    )
+
+
+def test_task_performance_with_record(
+    sample_agent: Agent,
+    large_room: Room,
+    sample_task: Task,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that perform_in_progress_task returns False when no task is in progress."""
+    sample_agent.location = sample_task.location
+    sample_agent.rooms = [large_room]
+    sample_agent.tasks = [sample_task]
+    mock_record_state = MagicMock()
+    monkeypatch.setattr("amr_hub_abm.agent.agent.record_state", mock_record_state)
+    for current_time in range(10):
+        sample_agent.perform_task(current_time=current_time, record=True)
+        mock_record_state.assert_called()
