@@ -12,10 +12,11 @@ from amr_hub_abm.agent.enums import ROLE_COLOUR_MAP, AgentType, InfectionStatus
 from amr_hub_abm.agent.plotter import plot_agent
 from amr_hub_abm.exceptions import NonNegativeValueError, SimulationModeError
 from amr_hub_abm.space.building import Building
+from amr_hub_abm.space.content import Content, ContentType
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
-from amr_hub_abm.task.task import Task, TaskWorkstation
+from amr_hub_abm.task.task import Task, TaskOccupyContent, TaskWorkstation
 
 
 @pytest.fixture
@@ -490,6 +491,17 @@ def sample_task() -> Task:
     )
 
 
+@pytest.fixture
+def sample_occupy_content_task(large_room: Room) -> TaskOccupyContent:
+    """Create a sample TaskOccupyContent for testing."""
+    return TaskOccupyContent(
+        time_due=5,
+        time_needed=2,
+        content_type=2,  # ContentType.CHAIR
+        room=large_room,
+    )
+
+
 def test_task_performance_with_record(
     sample_agent: Agent,
     large_room: Room,
@@ -505,3 +517,94 @@ def test_task_performance_with_record(
     for current_time in range(10):
         sample_agent.perform_task(current_time=current_time, record=True)
         mock_record_state.assert_called()
+
+
+def test_task_insertion_stationary_agent(
+    sample_agent: Agent,
+    large_room: Room,
+    sample_task: Task,
+) -> None:
+    """Test that perform_in_progress_task returns True when a task is in progress."""
+    sample_agent.location = sample_task.location
+    sample_agent.rooms = [large_room]
+    sample_agent.tasks = [sample_task]
+    sample_agent.stationary = True
+    sample_agent.attempt_task_insertion(
+        next_task=sample_task, next_task_move_time=5, current_time=5
+    )
+    assert len(sample_agent.tasks) == 1
+
+
+def test_task_insertion_existing_occupy_task(
+    sample_agent: Agent,
+    sample_occupy_content_task: TaskOccupyContent,
+) -> None:
+    """Test that perform_in_progress_task returns True when a task is in progress."""
+    sample_agent.tasks = [sample_occupy_content_task]
+    sample_agent.attempt_task_insertion(
+        next_task=sample_occupy_content_task, next_task_move_time=5, current_time=5
+    )
+    assert len(sample_agent.tasks) == 1
+
+
+def test_task_insertion_invalid_location(
+    sample_agent: Agent,
+    large_room: Room,
+    sample_task: Task,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that perform_in_progress_task returns True when a task is in progress."""
+    sample_agent.location = Location(x=0.0, y=0.0, floor=10, building="TestBuilding")
+    sample_agent.rooms = [large_room]
+    sample_agent.tasks = [sample_task]
+
+    with caplog.at_level("INFO"):
+        sample_agent.attempt_task_insertion(
+            next_task=sample_task, next_task_move_time=5, current_time=5
+        )
+        assert any("not located in any room." in message for message in caplog.messages)
+    assert len(sample_agent.tasks) == 1
+
+
+def test_task_insertion_successful(
+    sample_agent: Agent,
+    large_room: Room,
+    sample_task: Task,
+    sample_occupy_content_task: TaskOccupyContent,
+) -> None:
+    """Test that perform_in_progress_task returns True when a task is in progress."""
+    sample_occupy_content_task.room.contents.append(
+        Content(
+            content_type=ContentType.CHAIR,
+            location=Location(x=10.0, y=10.0, floor=1, building="TestBuilding"),
+        )
+    )
+    sample_agent.location = Location(x=10.0, y=10.0, floor=1, building="TestBuilding")
+    sample_agent.rooms = [large_room]
+    sample_agent.tasks = [sample_task]
+    sample_agent.attempt_task_insertion(
+        next_task=sample_task, next_task_move_time=1000, current_time=0
+    )
+    assert len(sample_agent.tasks) == 2
+
+
+def test_task_insertion_unsuccessful_due_to_lack_of_time(
+    sample_agent: Agent,
+    large_room: Room,
+    sample_task: Task,
+    sample_occupy_content_task: TaskOccupyContent,
+) -> None:
+    """Test that perform_in_progress_task returns True when a task is in progress."""
+    sample_occupy_content_task.room.contents.append(
+        Content(
+            content_type=ContentType.CHAIR,
+            location=Location(x=10.0, y=10.0, floor=1, building="TestBuilding"),
+        )
+    )
+    sample_agent.location = Location(x=10.0, y=10.0, floor=1, building="TestBuilding")
+    sample_agent.rooms = [large_room]
+    sample_agent.tasks = [sample_task]
+    sample_agent.attempt_task_insertion(
+        next_task=sample_task, next_task_move_time=1, current_time=10
+    )
+    assert len(sample_agent.tasks) == 1
