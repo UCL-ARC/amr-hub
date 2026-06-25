@@ -51,14 +51,9 @@ class SpatialEngineProtocol(Protocol):
     """Interface defining the spatial resolution methods required by the Agent."""
 
     def get_room(
-        self,
-        agent: Agent,
-        coords: tuple[float, float] | None = None,
-        *,
-        use_cache: bool = True,
+        self, agent: Agent, coords: tuple[float, float] | None = None
     ) -> Room | None:
         """Find the room containing the agent or specific coords."""
-        ...
 
     def estimate_time_to_reach_location(
         self, agent: Agent, target_location: Location

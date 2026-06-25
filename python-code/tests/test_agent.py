@@ -15,7 +15,6 @@ from amr_hub_abm.task.task import (
     TaskAttendPatient,
     TaskDoorAccess,
     TaskGotoLocation,
-    TaskProgress,
     TaskWorkstation,
 )
 
@@ -28,7 +27,7 @@ class MockEngine:
         """Init."""
         self.room = room
 
-    def get_room(self, agent: Agent, coords=None, use_cache=True) -> Room:
+    def get_room(self, agent: Agent, coords=None) -> Room:
         """Get Current Room."""
         return self.room
 
