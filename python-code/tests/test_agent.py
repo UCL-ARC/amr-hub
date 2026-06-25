@@ -412,7 +412,7 @@ def test_try_moving_one_step(
         return (50.5, 50.5)  # A location inside the large room
 
     monkeypatch.setattr(
-        "amr_hub_abm.space.space.propose_new_coordinates", fake_propose_new_location
+        "amr_hub_abm.agent.agent.propose_new_coordinates", fake_propose_new_location
     )
 
     with caplog.at_level("INFO"):
@@ -437,10 +437,43 @@ def test_try_moving_one_step_outside_room(
         return (10, 10)  # A location outside the small room
 
     monkeypatch.setattr(
-        "amr_hub_abm.space.space.propose_new_coordinates", fake_propose_new_location
+        "amr_hub_abm.agent.agent.propose_new_coordinates", fake_propose_new_location
     )
 
     with caplog.at_level("INFO"):
         sample_agent.try_move_one_step(0.1)
 
         assert any("not located in any room." in message for message in caplog.messages)
+
+
+def test_movement_trial_with_wall_intersection(
+    sample_agent: Agent,
+    large_room: Room,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that try_moving_one_step logs a warning when movement intersects walls."""
+    sample_agent.location = Location(x=25.0, y=25.0, floor=1, building="TestBuilding")
+    sample_agent.interaction_radius = 5.0
+
+    sample_agent.rooms = [large_room]
+
+    def fake_propose_new_location(*args, **kwargs) -> tuple[float, float]:  # noqa: ANN002, ANN003, ARG001
+        return (98, 98)  # A location that crosses the wall between the two rooms
+
+    monkeypatch.setattr(
+        "amr_hub_abm.agent.agent.propose_new_coordinates", fake_propose_new_location
+    )
+
+    with caplog.at_level("INFO"):
+        sample_agent.try_move_one_step(0.1)
+
+    assert any("wall intersection." in message for message in caplog.messages)
+
+
+def test_move_agent(sample_agent: Agent, large_room: Room) -> None:
+    """Test that move_agent updates the agent's location correctly."""
+    sample_agent.location = Location(x=10.0, y=10.0, floor=1, building="TestBuilding")
+    sample_agent.rooms = [large_room]
+    sample_agent.move_one_step()
+    assert sample_agent.location.x != 10.0 or sample_agent.location.y != 10.0
