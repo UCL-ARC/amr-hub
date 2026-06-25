@@ -9,12 +9,32 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 # Setup standard logger
 logger = logging.getLogger(__name__)
+
+# Try to use an interactive backend, fallback to Agg (PNG generation) if missing
+try:
+    # Attempt to load TkAgg first as it is usually built into Python
+    mpl.use("TkAgg")
+    INTERACTIVE_MODE = True
+except ImportError:
+    try:
+        # Fallback to QtAgg if Tk is missing
+        mpl.use("QtAgg")
+        INTERACTIVE_MODE = True
+    except ImportError:
+        # If no GUI backend exists, fallback to Agg for file generation
+        mpl.use("Agg")
+        INTERACTIVE_MODE = False
+        logger.warning(
+            "No interactive GUI backend found. Falling back to PNG generation."
+        )
+
 
 # Type Aliases for Strong Typing
 Point3D = tuple[float, float, float]
@@ -152,12 +172,21 @@ def visualize(
     by_label: dict[str, Any] = dict(zip(labels, handles, strict=False))
     ax.legend(by_label.values(), by_label.keys())
 
-    plt.show()
+    # Branch logic based on available backend
+    if INTERACTIVE_MODE:
+        logger.info("Opening interactive 3D viewer...")
+        plt.show()
+    else:
+        output_img = Path("simulation_outputs/cad_layout_check.png")
+        plt.savefig(output_img, dpi=300, bbox_inches="tight")
+        logger.info("Headless execution: 3D scene rendered to %s", output_img)
+
+    plt.close(fig)
 
 
 # =============================================================================
 if __name__ == "__main__":
-    # Configure logging context for standalone execution execution path
+    # Configure logging context for standalone execution path
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
