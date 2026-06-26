@@ -509,7 +509,8 @@ def test_task_performance_with_record(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test that perform_in_progress_task returns False when no task is in progress."""
-    sample_agent.location = sample_task.location  # type: ignore  # noqa: PGH003
+    assert isinstance(sample_task, TaskWorkstation)
+    sample_agent.location = sample_task.workstation_location  # type: ignore  # noqa: PGH003
     sample_agent.rooms = [large_room]
     sample_agent.tasks = [sample_task]
     mock_record_state = MagicMock()
