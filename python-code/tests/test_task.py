@@ -5,7 +5,7 @@ import pytest
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
-from amr_hub_abm.task import (
+from amr_hub_abm.task.task import (
     Task,
     TaskDoorAccess,
     TaskGotoLocation,

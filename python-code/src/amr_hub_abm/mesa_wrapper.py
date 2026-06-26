@@ -12,7 +12,7 @@ from pathlib import Path
 
 import mesa
 
-from amr_hub_abm.agent import InfectionStatus
+from amr_hub_abm.agent.agent import InfectionStatus
 from amr_hub_abm.simulation_factory import create_simulation
 
 logger = logging.getLogger(__name__)

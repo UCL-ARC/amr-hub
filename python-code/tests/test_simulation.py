@@ -1,11 +1,12 @@
 """Test for the Simulation class in amr_hub_abm.simulation module."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from amr_hub_abm.agent import Agent, AgentType, InfectionStatus
+from amr_hub_abm.agent.agent import Agent, AgentType, InfectionStatus
 from amr_hub_abm.exceptions import TimeError
 from amr_hub_abm.simulation import Simulation, SimulationMode
 from amr_hub_abm.space.building import Building
@@ -13,6 +14,7 @@ from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
+from amr_hub_abm.space.space import get_room
 from amr_hub_abm.space.wall import Wall
 
 
@@ -80,7 +82,7 @@ def sample_building(sample_floor: Floor) -> Building:
 
 
 @pytest.fixture
-def sample_agent(sample_building: Building) -> Agent:
+def sample_agent(sample_rooms: list[Room]) -> Agent:
     """Create a sample Agent for testing."""
     return Agent(
         idx=1,
@@ -90,10 +92,10 @@ def sample_agent(sample_building: Building) -> Agent:
             x=0.5,
             y=0.5,
             floor=0,
-            building=sample_building.name,
+            building="TestBuilding",
         ),
         heading_rad=0.0,
-        space=[sample_building],
+        rooms=sample_rooms,
         rng_generator=np.random.default_rng(),
     )
 
@@ -158,125 +160,12 @@ def test_agent_get_room(
 ) -> None:
     """Test that the agent can get its current room."""
     agent = sample_agent
+    agent.location = replace(agent.location, floor=1)
 
-    room = agent.get_room()
+    room = get_room(agent.location, agent.rooms)
 
     assert room is not None
     assert room.name == "Room1"
-
-
-def test_agent_get_room_in_multiple_buildings(
-    sample_agent: Agent,
-    sample_building: Building,
-) -> None:
-    """Test that the agent can get its current room in multiple buildings."""
-    building1 = Building(name="Building1", floors=[])
-
-    building2 = Building(name="Building2", floors=[Floor(floor_number=3, rooms=[])])
-    building3 = sample_building
-
-    simulation_space = [building1, building2, building3]
-
-    sample_agent.space = simulation_space
-
-    room = sample_agent.get_room()
-
-    assert room == simulation_space[2].floors[0].rooms[0]
-
-
-def test_agent_get_room_no_floors(
-    sample_agent: Agent,
-) -> None:
-    """Test that the agent returns None when building has no floors."""
-    simulation_space = [
-        Building(name="BuildingX", floors=[]),
-        Building(name="BuildingY", floors=[Floor(floor_number=0, rooms=[])]),
-        Building(
-            name="TestBuilding",
-            floors=[],
-        ),
-    ]
-
-    sample_agent.space = simulation_space
-    room = sample_agent.get_room()
-
-    assert room is None
-
-
-def test_agent_get_room_no_matching_floor(
-    sample_agent: Agent,
-) -> None:
-    """Test that the agent returns None when no matching floor is found."""
-    simulation_space = [
-        Building(
-            name="TestBuilding",
-            floors=[Floor(floor_number=2, rooms=[])],
-        ),
-    ]
-
-    sample_agent.space = simulation_space
-    room = sample_agent.get_room()
-
-    assert room is None
-
-
-def test_agent_get_room_no_matching_building(
-    sample_agent: Agent,
-) -> None:
-    """Test that the agent returns None when no matching building is found."""
-    simulation_space = [
-        Building(name="BuildingA", floors=[]),
-        Building(name="BuildingB", floors=[Floor(floor_number=0, rooms=[])]),
-    ]
-
-    sample_agent.space = simulation_space
-    room = sample_agent.get_room()
-
-    assert room is None
-
-
-def test_agent_get_room_no_buildings(
-    sample_agent: Agent,
-) -> None:
-    """Test that the agent returns None when there are no buildings."""
-    simulation_space: list[Building] = []
-
-    sample_agent.space = simulation_space
-    room = sample_agent.get_room()
-
-    assert room is None
-
-
-def test_agent_get_room_no_rooms(
-    sample_agent: Agent,
-) -> None:
-    """Test that the agent returns None when floor has no rooms."""
-    simulation_space = [
-        Building(
-            name="TestBuilding",
-            floors=[Floor(floor_number=0, rooms=[])],
-        ),
-    ]
-
-    sample_agent.space = simulation_space
-    room = sample_agent.get_room()
-
-    assert room is None
-
-
-def test_agent_get_room_not_found(
-    sample_agent: Agent,
-) -> None:
-    """Test that the agent returns None when not in any room."""
-    simulation_space = [
-        Building(name="BuildingX", floors=[]),
-        Building(name="BuildingY", floors=[Floor(floor_number=0, rooms=[])]),
-    ]
-
-    sample_agent.space = simulation_space
-    room = sample_agent.get_room()
-
-    assert room is None
 
 
 def test_simulation_repr(

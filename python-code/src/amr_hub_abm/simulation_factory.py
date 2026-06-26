@@ -8,41 +8,15 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from amr_hub_abm.agent import Agent, AgentType
+from amr_hub_abm.agent.agent import Agent, AgentType
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.read_space_input import SpaceInputReader
 from amr_hub_abm.simulation import Simulation, SimulationMode
-from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.content import ContentType
-from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
 
 logger = logging.getLogger(__name__)
-
-
-def create_space_from_rooms(rooms: list[Room]) -> list[Building]:
-    """Create a list of Building instances from a list of Room instances."""
-    building_dict: dict[str, Building] = {}
-
-    for room in rooms:
-        if room.building not in building_dict:
-            building_dict[room.building] = Building(name=room.building, floors=[])
-
-        if room.floor not in [
-            f.floor_number for f in building_dict[room.building].floors
-        ]:
-            building_dict[room.building].floors.append(
-                Floor(floor_number=room.floor, rooms=[room])
-            )
-        else:
-            for floor in building_dict[room.building].floors:
-                if floor.floor_number == room.floor:
-                    floor.rooms.append(room)
-                    break
-
-    raw_buildings = list(building_dict.values())
-    return Building.sort_and_number_buildings(raw_buildings)
 
 
 def create_simulation(
@@ -173,7 +147,7 @@ def update_patient(  # noqa: PLR0913
     space_tuple: tuple[str, int, Room],
     patient_dict: dict[int, Agent],
     total_time_steps: int,
-    space: list[Building],
+    rooms: list[Room],
     rng_generator: np.random.Generator,
     agent_speed: float = 0.001,
     agent_stochasticity: float = 5.0,
@@ -191,8 +165,6 @@ def update_patient(  # noqa: PLR0913
         A dictionary mapping patient IDs to Agent instances.
     total_time_steps : int
         The total number of time steps in the simulation.
-    space : list[Building]
-        The simulation space represented as a list of Building instances.
     rng_generator : np.random.Generator
         Random number generator for reproducibility.
     agent_speed : float, optional
@@ -227,7 +199,7 @@ def update_patient(  # noqa: PLR0913
             heading_rad=0.0,
             agent_type=AgentType.PATIENT,
             trajectory_length=total_time_steps,
-            space=space,
+            rooms=rooms,
             rng_generator=rng_generator,
             movement_speed=agent_speed,
             stochasticity=agent_stochasticity,
@@ -240,7 +212,7 @@ def update_hcw(  # noqa: PLR0913
     event_tuple: tuple[Location, int, str],
     hcw_dict: dict[int, Agent],
     total_time_steps: int,
-    space: list[Building],
+    rooms: list[Room],
     rng_generator: np.random.Generator,
     additional_info: dict | None = None,
     agent_speed: float = 0.001,
@@ -261,8 +233,8 @@ def update_hcw(  # noqa: PLR0913
         A dictionary mapping healthcare worker IDs to Agent instances.
     total_time_steps : int
         The total number of time steps in the simulation.
-    space : list[Building]
-        The simulation space represented as a list of Building instances.
+    rooms : list[Room]
+        The list of rooms in the simulation.
     rng_generator : np.random.Generator
         Random number generator for reproducibility.
     additional_info : dict | None, optional
@@ -299,7 +271,7 @@ def update_hcw(  # noqa: PLR0913
             heading_rad=0.0,
             agent_type=AgentType.HEALTHCARE_WORKER,
             trajectory_length=total_time_steps,
-            space=space,
+            rooms=rooms,
             rng_generator=rng_generator,
             movement_speed=agent_speed,
             stochasticity=agent_stochasticity,
@@ -412,7 +384,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
                 space_tuple=(building, floor, room),
                 patient_dict=patient_dict,
                 total_time_steps=total_time_steps,
-                space=create_space_from_rooms(rooms),
+                rooms=rooms,
                 rng_generator=rng_generator,
                 agent_speed=agent_speed,
                 agent_stochasticity=agent_stochasticity,
@@ -499,7 +471,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
             hcw_dict=hcw_dict,
             additional_info=additional_info or None,
             total_time_steps=total_time_steps,
-            space=create_space_from_rooms(rooms),
+            rooms=rooms,
             rng_generator=rng_generator,
             agent_speed=agent_speed,
             agent_stochasticity=agent_stochasticity,

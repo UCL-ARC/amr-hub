@@ -127,3 +127,18 @@ class InvalidDefinitionError(Exception):
     def __init__(self, message: str) -> None:
         """Initialize the InvalidDefinitionError."""
         super().__init__(f"Invalid definition: {message}.")
+
+
+class NonNegativeValueError(Exception):
+    """
+    Exception raised when a non-negative value is expected but not provided.
+
+    Attributes
+    ----------
+        message (str): A description of the error that occurred.
+
+    """
+
+    def __init__(self, message: str) -> None:
+        """Initialize the NonNegativeValueError."""
+        super().__init__(f"Non-negative value error: {message}.")
