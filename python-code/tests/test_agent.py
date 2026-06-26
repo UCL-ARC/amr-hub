@@ -509,7 +509,7 @@ def test_task_performance_with_record(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test that perform_in_progress_task returns False when no task is in progress."""
-    sample_agent.location = sample_task.location
+    sample_agent.location = sample_task.location  # type: ignore  # noqa: PGH003
     sample_agent.rooms = [large_room]
     sample_agent.tasks = [sample_task]
     mock_record_state = MagicMock()
@@ -525,7 +525,7 @@ def test_task_insertion_stationary_agent(
     sample_task: Task,
 ) -> None:
     """Test that perform_in_progress_task returns True when a task is in progress."""
-    sample_agent.location = sample_task.location
+    sample_agent.location = sample_task.location  # type: ignore  # noqa: PGH003
     sample_agent.rooms = [large_room]
     sample_agent.tasks = [sample_task]
     sample_agent.stationary = True
@@ -573,7 +573,7 @@ def test_task_insertion_successful(
     sample_occupy_content_task: TaskOccupyContent,
 ) -> None:
     """Test that perform_in_progress_task returns True when a task is in progress."""
-    sample_occupy_content_task.room.contents.append(
+    sample_occupy_content_task.room.contents.append(  # type: ignore  # noqa: PGH003
         Content(
             content_type=ContentType.CHAIR,
             location=Location(x=10.0, y=10.0, floor=1, building="TestBuilding"),
@@ -595,7 +595,7 @@ def test_task_insertion_unsuccessful_due_to_lack_of_time(
     sample_occupy_content_task: TaskOccupyContent,
 ) -> None:
     """Test that perform_in_progress_task returns True when a task is in progress."""
-    sample_occupy_content_task.room.contents.append(
+    sample_occupy_content_task.room.contents.append(  # type: ignore  # noqa: PGH003
         Content(
             content_type=ContentType.CHAIR,
             location=Location(x=10.0, y=10.0, floor=1, building="TestBuilding"),

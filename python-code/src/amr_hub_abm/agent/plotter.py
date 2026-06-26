@@ -80,6 +80,7 @@ def plot_agent(agent: Agent, ax: Axes, *, show_tags: bool = True) -> None:
     if display_task is not None:
         task_name = display_task.task_type.name.lower()
         if isinstance(display_task, TaskAttendPatient):
+            assert display_task.patient is not None  # noqa: S101
             task_name += f" → patient {display_task.patient.idx}"
 
         if display_task.progress == TaskProgress.IN_PROGRESS:
