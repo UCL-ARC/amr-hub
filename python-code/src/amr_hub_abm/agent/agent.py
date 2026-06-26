@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from amr_hub_abm.agent.enums import AgentType, InfectionStatus
 from amr_hub_abm.agent.output import Record, record_state
@@ -43,7 +43,6 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from amr_hub_abm.space.room import Room
-    from amr_hub_abm.space.wall import Wall
 
 
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
@@ -307,11 +306,8 @@ class Agent:
                 )
                 continue
 
-            walls = cast("list[Wall]", room.walls)
-            # Here cast is used because we are certain that room.walls is a list of Wall
-            # objects, but the type checker may not be able to infer this. The case
-            # where room.walls is None is handled by the get_room function, which
-            # ensures that if a room is returned, it must have walls defined.
+            walls = room.walls
+            assert walls is not None  # noqa: S101
 
             if Location.check_intersection_with_walls(
                 new_x,
