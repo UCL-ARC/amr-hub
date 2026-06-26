@@ -6,7 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from amr_hub_abm.space.space import estimate_time_to_reach_location
-from amr_hub_abm.task.task import TaskOccupyContent, TaskProgress
+from amr_hub_abm.task.task import TaskProgress
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent.agent import Agent
@@ -148,8 +148,8 @@ def perform_to_be_started_task(agent: Agent, current_time: int) -> bool:
     )
     if task is None:
         return False
-    if isinstance(task, TaskOccupyContent):
-        task.assign_content()
+    task.prepare(agent=agent)
+    assert task.location is not None  # noqa: S101
 
     task_move_time = (
         task.time_due
