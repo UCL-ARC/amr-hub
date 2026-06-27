@@ -41,6 +41,16 @@ def sample_agent() -> Agent:
     )
 
 
+def test_task_print_representation(sample_task: Task) -> None:
+    """Test the string representation of a task."""
+    task = sample_task
+    task_str = str(task)
+
+    assert "progress=NOT_STARTED" in task_str
+    assert "priority=MEDIUM" in task_str
+    assert "time_needed=30" in task_str
+
+
 def test_task_initialization(sample_task: Task) -> None:
     """Test the initialization of the Task class."""
     task = sample_task
@@ -239,3 +249,16 @@ def test_tick_moving(sample_task: Task, sample_agent: Agent) -> None:
     sample_agent.location = old_location
     task._tick_moving(0, sample_agent)  # noqa: SLF001
     assert sample_agent.location != old_location
+
+
+def test_tick_not_started(sample_task: Task, sample_agent: Agent) -> None:
+    """Test the tick method for a task that has not started."""
+    task = sample_task
+    task.location = None
+    with pytest.raises(SimulationModeError) as excinfo:
+        task._tick_not_started(0, sample_agent)  # noqa: SLF001
+
+    assert "no location set." in str(excinfo.value)
+
+    task.location = Location(building="A", floor=1, x=3.0, y=3.0)
+    task._tick_not_started(0, sample_agent)  # noqa: SLF001
