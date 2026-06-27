@@ -6,6 +6,7 @@ import pytest
 from amr_hub_abm.agent.agent import Agent
 from amr_hub_abm.agent.enums import AgentType
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
+from amr_hub_abm.space.content import Content, ContentType
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
@@ -14,6 +15,7 @@ from amr_hub_abm.task.task import (
     Task,
     TaskAttendPatient,
     TaskDoorAccess,
+    TaskOccupyContent,
     TaskPriority,
     TaskProgress,
     TaskType,
@@ -383,3 +385,98 @@ def test_door_access_on_start_moving(
         task.on_start_moving(sample_agent)
 
     assert "location does not correspond to a valid room." in str(excinfo.value)
+
+
+@pytest.fixture
+def sample_occupy_content_task() -> TaskOccupyContent:
+    """Create a sample TaskOccupyContent for testing."""
+    return TaskOccupyContent(
+        progress=TaskProgress.NOT_STARTED,
+        priority=TaskPriority.HIGH,
+        time_needed=15,
+        time_due=30,
+        content_type=ContentType.CHAIR,
+        room=Room(
+            room_id=1,
+            name="Equipment Room",
+            building="A",
+            floor=0,
+            walls=[
+                Wall(start=(0, 0), end=(0, 5)),
+                Wall(start=(0, 5), end=(5, 5)),
+                Wall(start=(5, 5), end=(5, 0)),
+                Wall(start=(5, 0), end=(0, 0)),
+            ],
+            doors=[],
+            contents=[
+                Content(
+                    content_type=ContentType.CHAIR,
+                    location=Location(building="A", floor=0, x=2.0, y=2.0),
+                )
+            ],
+            rng_generator=np.random.default_rng(42),
+        ),
+    )
+
+
+def test_occupy_content_task_no_room_raises() -> None:
+    """Test that a TaskOccupyContent without a room raises an error."""
+    with pytest.raises(SimulationModeError) as excinfo:
+        TaskOccupyContent(
+            progress=TaskProgress.NOT_STARTED,
+            priority=TaskPriority.HIGH,
+            time_needed=15,
+            time_due=30,
+            content_type=ContentType.CHAIR,
+            room=None,  # No room provided
+        )
+    assert "TaskOccupyContent requires a room." in str(excinfo.value)
+
+
+def test_occupy_content_task_prepare(
+    sample_occupy_content_task: TaskOccupyContent, sample_agent: Agent
+) -> None:
+    """Test the prepare method of TaskOccupyContent."""
+    task = sample_occupy_content_task
+    task.prepare(sample_agent)
+
+    assert task.location is not None
+    assert task.location.building == "A"
+    assert task.location.floor == 0
+
+
+def test_occupy_content_task_prepare_no_content_raises(
+    sample_occupy_content_task: TaskOccupyContent, sample_agent: Agent
+) -> None:
+    """Test that preparing a TaskOccupyContent with no content raises an error."""
+    task = sample_occupy_content_task
+    task.room.contents = []  # type: ignore # Remove all contents from the room  # noqa: PGH003
+
+    with pytest.raises(SimulationModeError) as excinfo:
+        task.prepare(sample_agent)
+
+    assert "No content of type" in str(excinfo.value)
+
+
+def test_occupy_content_task_complete(
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test the complete method of TaskOccupyContent."""
+    task = sample_occupy_content_task
+    task.prepare(sample_agent)
+
+    def mock_add_agent_occupancy(
+        agent: Agent, content: Content, current_time: float
+    ) -> None:
+        """Mock function to simulate adding agent occupancy."""
+        assert agent == sample_agent
+        assert content.content_type == ContentType.CHAIR
+        assert current_time == 0
+
+    monkeypatch.setattr(
+        "amr_hub_abm.task.task.add_agent_occupancy", mock_add_agent_occupancy
+    )
+
+    task.on_completed(sample_agent, current_time=0)
