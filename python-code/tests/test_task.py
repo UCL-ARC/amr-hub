@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from amr_hub_abm.agent.agent import Agent
+from amr_hub_abm.agent.enums import AgentType
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
@@ -11,6 +12,7 @@ from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
 from amr_hub_abm.task.task import (
     Task,
+    TaskAttendPatient,
     TaskDoorAccess,
     TaskPriority,
     TaskProgress,
@@ -32,11 +34,57 @@ def sample_task() -> Task:
 @pytest.fixture
 def sample_agent() -> Agent:
     """Create a sample agent for testing."""
+    door = Door(
+        name="Main Entrance",
+        start=(0, 0),
+        end=(0, 5),
+        is_open=True,
+        connecting_rooms=(1, 2),
+        access_control=(True, True),
+        door_id=12,
+    )
+
+    walls1 = [
+        Wall(start=(0, 5), end=(0, 10)),
+        Wall(start=(0, 10), end=(10, 10)),
+        Wall(start=(10, 10), end=(10, 0)),
+        Wall(start=(10, 0), end=(0, 0)),
+    ]
+
+    walls2 = [
+        Wall(start=(0, 0), end=(0, 10)),
+        Wall(start=(0, 10), end=(-10, 10)),
+        Wall(start=(-10, 10), end=(-10, 0)),
+        Wall(start=(-10, 0), end=(0, 0)),
+    ]
+
+    room1 = Room(
+        room_id=1,
+        name="Room 1",
+        building="A",
+        floor=0,
+        walls=walls1,
+        doors=[door],
+        contents=[],
+        rng_generator=np.random.default_rng(42),
+    )
+
+    room2 = Room(
+        room_id=2,
+        name="Room 2",
+        building="A",
+        floor=0,
+        walls=walls2,
+        doors=[door],
+        contents=[],
+        rng_generator=np.random.default_rng(42),
+    )
+
     return Agent(
         idx=1,
         location=Location(building="A", floor=1, x=1.0, y=1.0),
         heading_rad=0.0,
-        rooms=[],
+        rooms=[room1, room2],
         rng_generator=np.random.default_rng(42),
     )
 
@@ -262,3 +310,76 @@ def test_tick_not_started(sample_task: Task, sample_agent: Agent) -> None:
 
     task.location = Location(building="A", floor=1, x=3.0, y=3.0)
     task._tick_not_started(0, sample_agent)  # noqa: SLF001
+
+
+def test_attend_patient_with_non_patient_task_raises(sample_agent: Agent) -> None:
+    """Test that attending a patient with a non-patient task raises an error."""
+    sample_agent.agent_type = AgentType.HEALTHCARE_WORKER
+    with pytest.raises(SimulationModeError) as excinfo:
+        TaskAttendPatient(
+            time_needed=10,
+            time_due=20,
+        )
+    assert "TaskAttendPatient requires a patient." in str(excinfo.value)
+
+
+@pytest.fixture
+def sample_door_access_task() -> TaskDoorAccess:
+    """Create a sample TaskDoorAccess for testing."""
+    door = Door(
+        name="Main Entrance",
+        start=(0, 0),
+        end=(0, 5),
+        is_open=True,
+        connecting_rooms=(1, 2),
+        access_control=(True, True),
+        door_id=12,
+    )
+
+    return TaskDoorAccess(
+        progress=TaskProgress.NOT_STARTED,
+        priority=TaskPriority.MEDIUM,
+        time_needed=10,
+        time_due=20,
+        door=door,
+        building="A",
+        floor=0,
+        destination_room=1,
+    )
+
+
+def test_door_access_task_no_door_raises() -> None:
+    """Test that a TaskDoorAccess without a door raises an error."""
+    with pytest.raises(SimulationModeError) as excinfo:
+        TaskDoorAccess(
+            progress=TaskProgress.NOT_STARTED,
+            priority=TaskPriority.MEDIUM,
+            time_needed=10,
+            time_due=20,
+            door=None,  # No door provided
+            building="Building A",
+            floor=0,
+            destination_room=1,
+        )
+    assert "TaskDoorAccess requires a door." in str(excinfo.value)
+
+
+def test_door_access_on_start_moving(
+    sample_door_access_task: TaskDoorAccess, sample_agent: Agent
+) -> None:
+    """Test the _on_start_moving method of TaskDoorAccess."""
+    task = sample_door_access_task
+    task.on_start_moving(sample_agent)
+
+    task.destination_room = 2
+    task.on_start_moving(sample_agent)
+
+    assert task.location is not None
+    assert task.location.building == "A"
+    assert task.location.floor == 0
+
+    sample_agent.rooms = []
+    with pytest.raises(SimulationModeError) as excinfo:
+        task.on_start_moving(sample_agent)
+
+    assert "location does not correspond to a valid room." in str(excinfo.value)
