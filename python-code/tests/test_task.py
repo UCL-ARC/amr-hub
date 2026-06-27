@@ -1,10 +1,14 @@
 """Module defining tests for the AMR Hub ABM task functionalities."""
 
+import numpy as np
 import pytest
 
+from amr_hub_abm.agent.agent import Agent
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.door import Door
 from amr_hub_abm.space.location import Location
+from amr_hub_abm.space.room import Room
+from amr_hub_abm.space.wall import Wall
 from amr_hub_abm.task.task import (
     Task,
     TaskDoorAccess,
@@ -22,6 +26,18 @@ def sample_task() -> Task:
         priority=TaskPriority.MEDIUM,
         time_needed=30,
         time_due=60,
+    )
+
+
+@pytest.fixture
+def sample_agent() -> Agent:
+    """Create a sample agent for testing."""
+    return Agent(
+        idx=1,
+        location=Location(building="A", floor=1, x=1.0, y=1.0),
+        heading_rad=0.0,
+        rooms=[],
+        rng_generator=np.random.default_rng(42),
     )
 
 
@@ -143,3 +159,83 @@ def test_door_access_task_with_invalid_door_raises() -> None:
         )
 
     assert "Door must have defined start and end points." in str(excinfo.value)
+
+
+def test_time_spent(sample_task: Task) -> None:
+    """Test the time_spent property of a task."""
+    task = sample_task
+
+    # Initially, time spent should be 0
+    assert task.time_spent(0) == 0
+
+    task.progress = TaskProgress.IN_PROGRESS
+    with pytest.raises(TimeError) as excinfo:
+        task.time_spent(0)
+
+    task.time_started = 10
+    assert task.time_spent(20) == 10
+
+    assert "Task marked as in progress but start time is None." in str(excinfo.value)
+
+    task.time_started = None
+    task.progress = TaskProgress.COMPLETED
+    with pytest.raises(TimeError) as excinfo:
+        task.time_spent(0)
+
+    assert "Task marked as completed but start time is None." in str(excinfo.value)
+
+    task.time_started = 5
+    with pytest.raises(TimeError) as excinfo:
+        task.time_spent(10)
+
+    assert "Task marked as completed but completion time is None." in str(excinfo.value)
+
+    task.time_completed = 15
+    assert task.time_spent(20) == 10
+
+
+def test_update_progress_of_completed_task(
+    sample_task: Task, sample_agent: Agent
+) -> None:
+    """Test that updating the progress of a completed task raises an error."""
+    task = sample_task
+    task.progress = TaskProgress.COMPLETED
+    task.update_progress(0, sample_agent)
+    task.progress = TaskProgress.COMPLETED
+
+
+def test_tick_moving(sample_task: Task, sample_agent: Agent) -> None:
+    """Test the tick method for a task in progress."""
+    task = sample_task
+
+    with pytest.raises(SimulationModeError) as excinfo:
+        task._tick_moving(0, sample_agent)  # noqa: SLF001
+
+    assert "no location to move to." in str(excinfo.value)
+
+    task.location = sample_agent.location
+    task._tick_moving(0, sample_agent)  # noqa: SLF001
+    assert task.location == sample_agent.location
+
+    room = Room(
+        room_id=1,
+        name="Test Room",
+        building="A",
+        floor=1,
+        walls=[
+            Wall(start=(0, 0), end=(0, 5)),
+            Wall(start=(0, 5), end=(5, 5)),
+            Wall(start=(5, 5), end=(5, 0)),
+            Wall(start=(5, 0), end=(0, 0)),
+        ],
+        doors=[],
+        contents=[],
+        rng_generator=np.random.default_rng(42),
+    )
+
+    sample_agent.rooms.append(room)
+
+    old_location = Location(building="A", floor=1, x=2.0, y=2.0)
+    sample_agent.location = old_location
+    task._tick_moving(0, sample_agent)  # noqa: SLF001
+    assert sample_agent.location != old_location
