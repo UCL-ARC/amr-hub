@@ -322,15 +322,22 @@ class TaskDoorAccess(Task):
             (self.door.start[1] + self.door.end[1]) / 2,
         )
 
-    def _midpoint_location(self, y_offset: float = 0.0) -> Location:
+    def _midpoint_location(
+        self, x_offset: float = 0.0, y_offset: float = 0.0
+    ) -> Location:
         mid_x, mid_y = self._midpoint()
         return Location(
-            building=self.building, floor=self.floor, x=mid_x, y=mid_y + y_offset
+            building=self.building,
+            floor=self.floor,
+            x=mid_x + x_offset,
+            y=mid_y + y_offset,
         )
 
     def on_start_moving(self, agent: Agent) -> None:
         """Offset the target to the correct side of the door for the destination."""
-        candidate = self._midpoint_location(y_offset=self.buffer_distance)
+        candidate = self._midpoint_location(
+            x_offset=self.buffer_distance, y_offset=self.buffer_distance
+        )
         candidate_room = get_room(candidate, agent.rooms)
         if candidate_room is None:
             msg = "Proposed door-buffer location does not correspond to a valid room."
@@ -339,7 +346,9 @@ class TaskDoorAccess(Task):
         if candidate_room.room_id == self.destination_room:
             self.location = candidate
         else:
-            self.location = self._midpoint_location(y_offset=-self.buffer_distance)
+            self.location = self._midpoint_location(
+                x_offset=-self.buffer_distance, y_offset=-self.buffer_distance
+            )
 
 
 @dataclass
