@@ -45,36 +45,6 @@ TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
 logger = logging.getLogger(__name__)
 
 
-# ------------------------------------------------------------------------------
-# NG: Moved this to sit inside the spatial class
-# class SpatialEngineProtocol(Protocol):
-#     """Interface defining the spatial resolution methods required by the Agent."""
-
-#     def get_room(
-#         self, agent: Agent, coords: tuple[float, float] | None = None
-#     ) -> Room | None:
-#         """Find the room containing the agent or specific coords."""
-
-#     def estimate_time_to_reach_location(
-#         self, agent: Agent, target_location: Location
-#     ) -> float:
-#         """Estimate the time required to reach a target location."""
-#         ...
-
-#     def is_target_reached(
-#         self, location: Location, target: Location, radius: float
-#     ) -> bool:
-#         """Check if an agent has arrived at their target within a radius."""
-#         ...
-
-#     def head_to_point(self, agent: Agent, point: tuple[float, float]) -> None:
-#         """Set the agent's heading to face a specific point."""
-#         ...
-
-
-# ------------------------------------------------------------------------------
-
-
 # --8<--- [start:Agent]
 @dataclass
 class Agent:
