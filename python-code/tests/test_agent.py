@@ -1,50 +1,24 @@
 """Test suite for Agent class."""
 
-# ruff: noqa: PLR2004
-
 import numpy as np
 import pytest
 
 from amr_hub_abm.agent.agent import Agent, AgentType
 from amr_hub_abm.agent.enums import InfectionStatus
 from amr_hub_abm.exceptions import NonNegativeValueError, SimulationModeError
+from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.content import Content, ContentType
+from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
+from amr_hub_abm.space.space import SpatialQuery
+from amr_hub_abm.space.wall import Wall
 from amr_hub_abm.task.task import (
     TaskAttendPatient,
     TaskDoorAccess,
     TaskGotoLocation,
     TaskWorkstation,
 )
-
-
-# --- Mock Engine for Protocol ---
-class MockEngine:
-    """Mock spatial engine implementing SpatialEngineProtocol for testing."""
-
-    def __init__(self, room: Room) -> None:
-        """Init."""
-        self.room = room
-
-    def get_room(self, agent: Agent, coords=None) -> Room:
-        """Get Current Room."""
-        return self.room
-
-    def estimate_time_to_reach_location(
-        self, agent: Agent, target_location: Location
-    ) -> float:
-        """Get Time to Location."""
-        return agent.location.distance_to(target_location) / agent.movement_speed
-
-    def is_target_reached(
-        self, location: Location, target: Location, radius: float
-    ) -> bool:
-        """Did we reach target."""
-        return location.distance_to(target) <= radius
-
-    def head_to_point(self, agent: Agent, point: tuple[float, float]) -> None:
-        """Go to point."""
 
 
 @pytest.fixture
@@ -54,14 +28,19 @@ def rng_generator() -> np.random.Generator:
 
 
 @pytest.fixture
-def test_room(rng_generator: np.random.Generator) -> Room:
+def sample_room(rng_generator: np.random.Generator) -> Room:
     """Fixture to provide a test Room instance."""
     return Room(
         room_id=1,
         name="Room A",
         building="Test Building",
         floor=1,
-        area=100.0,
+        walls=[
+            Wall((0, 0), (100, 0)),
+            Wall((100, 0), (100, 100)),
+            Wall((100, 100), (0, 100)),
+            Wall((0, 100), (0, 0)),
+        ],
         contents=[],
         doors=[],
         rng_generator=rng_generator,
@@ -69,7 +48,7 @@ def test_room(rng_generator: np.random.Generator) -> Room:
 
 
 @pytest.fixture
-def setup_agent(test_room: Room, rng_generator: np.random.Generator) -> Agent:
+def setup_agent(sample_room: Room, rng_generator: np.random.Generator) -> Agent:  # noqa: ARG001
     """Fixture to set up a basic agent for testing."""
     location = Location(building="Test Building", floor=1, x=5.0, y=5.0)
     return Agent(
@@ -181,17 +160,21 @@ def test_add_invalid_task_type(setup_agent: Agent) -> None:
 
 
 def test_attempt_task_insertion(
-    setup_agent: Agent, test_room: Room, rng_generator: np.random.Generator
+    setup_agent: Agent,
+    sample_room: Room,
+    rng_generator: np.random.Generator,  # noqa: ARG001
 ) -> None:
     """Test attempting task insertion for empty chair."""
     agent = setup_agent
-    mock_engine = MockEngine(room=test_room)
+    floor = Floor(floor_number=sample_room.floor, rooms=[sample_room])
+    building = Building(name=sample_room.building, floors=[floor])
+    engine = SpatialQuery(space=[building])
 
     chair_location = Location(building="Test Building", floor=1, x=8.0, y=8.0)
     chair_content = Content(
         content_type=ContentType.CHAIR, location=chair_location, occupier_id=None
     )
-    test_room.contents.append(chair_content)
+    sample_room.contents.append(chair_content)
 
     next_task = TaskGotoLocation(
         time_needed=10,
@@ -202,7 +185,7 @@ def test_attempt_task_insertion(
     )
 
     agent.attempt_task_insertion(
-        next_task=next_task, next_task_move_time=15, current_time=0, engine=mock_engine
+        next_task=next_task, next_task_move_time=15, current_time=0, engine=engine
     )
 
     assert len(agent.tasks) == 1

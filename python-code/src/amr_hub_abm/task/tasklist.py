@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING
 from amr_hub_abm.task.task import TaskOccupyContent, TaskProgress
 
 if TYPE_CHECKING:
-    from amr_hub_abm.agent.agent import Agent, SpatialEngineProtocol
+    from amr_hub_abm.agent.agent import Agent
+    from amr_hub_abm.space.space import SpatialQuery
     from amr_hub_abm.task.task import Task
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ def select_task_based_on_progress(
 
 
 def perform_in_progress_task(
-    agent: Agent, current_time: int, engine: SpatialEngineProtocol
+    agent: Agent, current_time: int, engine: SpatialQuery
 ) -> bool:
     """Perform an in-progress task and return True if a task was performed."""
     task = select_task_based_on_progress(agent.tasks, TaskProgress.IN_PROGRESS)
@@ -59,7 +60,7 @@ def perform_in_progress_task(
 
 
 def perform_moving_to_task_location(
-    agent: Agent, current_time: int, engine: SpatialEngineProtocol
+    agent: Agent, current_time: int, engine: SpatialQuery
 ) -> bool:
     """Move the agent towards the location of its next task."""
     next_task = select_task_based_on_progress(
@@ -72,7 +73,7 @@ def perform_moving_to_task_location(
 
 
 def perform_suspended_task(
-    agent: Agent, current_time: int, engine: SpatialEngineProtocol
+    agent: Agent, current_time: int, engine: SpatialQuery
 ) -> bool:
     """Perform a suspended task and return True if a task was performed."""
     task = select_task_based_on_progress(
@@ -85,7 +86,7 @@ def perform_suspended_task(
 
 
 def perform_to_be_started_task(
-    agent: Agent, current_time: int, engine: SpatialEngineProtocol
+    agent: Agent, current_time: int, engine: SpatialQuery
 ) -> bool:
     """Perform a to-be-started task and return True if a task was performed."""
     task = select_task_based_on_progress(

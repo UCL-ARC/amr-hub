@@ -11,17 +11,18 @@ from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.location import Location
 
 if TYPE_CHECKING:
-    from amr_hub_abm.agent.agent import Agent, SpatialEngineProtocol
+    from amr_hub_abm.agent.agent import Agent
     from amr_hub_abm.space.content import Content
     from amr_hub_abm.space.door import Door
     from amr_hub_abm.space.room import Room
+    from amr_hub_abm.space.space import SpatialQuery
 
 
 logger = logging.getLogger(__name__)
 
 
 def remove_agent_occupancy(
-    agent: Agent, current_time: int, engine: SpatialEngineProtocol
+    agent: Agent, current_time: int, engine: SpatialQuery
 ) -> None:
     """
     Remove the agent's occupancy from any content they are currently occupying.
@@ -31,7 +32,7 @@ def remove_agent_occupancy(
         The agent whose occupancy is to be removed.
     current_time : int
         The current time in the simulation, used for logging purposes.
-    engine : SpatialEngineProtocol
+    engine : SpatialQuery
         The engine instance used to resolve geometry queries.
 
     """
@@ -57,7 +58,7 @@ def remove_agent_occupancy(
 
 
 def add_agent_occupancy(
-    agent: Agent, content: Content, current_time: int, engine: SpatialEngineProtocol
+    agent: Agent, content: Content, current_time: int, engine: SpatialQuery
 ) -> None:
     """
     Add the agent's occupancy to the specified content.
@@ -69,7 +70,7 @@ def add_agent_occupancy(
         The content to which the agent will occupy.
     current_time : int
         The current time in the simulation, used for logging purposes.
-    engine : SpatialEngineProtocol
+    engine : SpatialQuery
         The engine instance used to resolve geometry queries.
 
     """
@@ -178,7 +179,7 @@ class Task:
             raise TimeError(msg)
 
     def update_progress(
-        self, current_time: int, agent: Agent, engine: SpatialEngineProtocol
+        self, current_time: int, agent: Agent, engine: SpatialQuery
     ) -> None:
         """
         Update the progress of the task based on time spent.
@@ -189,8 +190,8 @@ class Task:
             The current time in the simulation.
         agent : Agent
             The agent performing the task.
-        engine : SpatialEngineProtocol
-            The spatial engine.
+        engine : SpatialQuery
+            The spatial query instance.
 
         """
         if self.progress == TaskProgress.COMPLETED:
@@ -312,7 +313,7 @@ class TaskDoorAccess(Task):
             y=(self.door.start[1] + self.door.end[1]) / 2,
         )
 
-    def modify_location(self, agent: Agent, engine: SpatialEngineProtocol) -> None:
+    def modify_location(self, agent: Agent, engine: SpatialQuery) -> None:
         """Modify the location of the task to account for buffer."""
         if self.door.start is None or self.door.end is None:
             msg = "Door coords needed"

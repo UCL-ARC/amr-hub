@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from amr_hub_abm.agent.enums import AgentType, InfectionStatus
 from amr_hub_abm.agent.output import Record, record_state
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from amr_hub_abm.space.location import Location
-    from amr_hub_abm.space.room import Room
+    from amr_hub_abm.space.space import SpatialQuery
 
 
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
@@ -47,29 +47,29 @@ logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------------------
 # NG: Moved this to sit inside the spatial class
-class SpatialEngineProtocol(Protocol):
-    """Interface defining the spatial resolution methods required by the Agent."""
+# class SpatialEngineProtocol(Protocol):
+#     """Interface defining the spatial resolution methods required by the Agent."""
 
-    def get_room(
-        self, agent: Agent, coords: tuple[float, float] | None = None
-    ) -> Room | None:
-        """Find the room containing the agent or specific coords."""
+#     def get_room(
+#         self, agent: Agent, coords: tuple[float, float] | None = None
+#     ) -> Room | None:
+#         """Find the room containing the agent or specific coords."""
 
-    def estimate_time_to_reach_location(
-        self, agent: Agent, target_location: Location
-    ) -> float:
-        """Estimate the time required to reach a target location."""
-        ...
+#     def estimate_time_to_reach_location(
+#         self, agent: Agent, target_location: Location
+#     ) -> float:
+#         """Estimate the time required to reach a target location."""
+#         ...
 
-    def is_target_reached(
-        self, location: Location, target: Location, radius: float
-    ) -> bool:
-        """Check if an agent has arrived at their target within a radius."""
-        ...
+#     def is_target_reached(
+#         self, location: Location, target: Location, radius: float
+#     ) -> bool:
+#         """Check if an agent has arrived at their target within a radius."""
+#         ...
 
-    def head_to_point(self, agent: Agent, point: tuple[float, float]) -> None:
-        """Set the agent's heading to face a specific point."""
-        ...
+#     def head_to_point(self, agent: Agent, point: tuple[float, float]) -> None:
+#         """Set the agent's heading to face a specific point."""
+#         ...
 
 
 # ------------------------------------------------------------------------------
@@ -227,7 +227,7 @@ class Agent:
         self.tasks.append(task)
 
     def perform_task(
-        self, current_time: int, engine: SpatialEngineProtocol, *, record: bool = False
+        self, current_time: int, engine: SpatialQuery, *, record: bool = False
     ) -> None:
         """
         Perform the agent's current task if it's due.
@@ -236,7 +236,7 @@ class Agent:
         ----------
         current_time : int
             The current time step in the simulation.
-        engine : SpatialEngineProtocol
+        engine : SpatialQuery
             The engine instance used to resolve geometry queries and bounds.
         record : bool, optional
             Whether to record the agent's state at the current time step.
@@ -271,7 +271,7 @@ class Agent:
         next_task: Task,
         next_task_move_time: float,
         current_time: int,
-        engine: SpatialEngineProtocol,
+        engine: SpatialQuery,
     ) -> None:
         """
         Attempt to insert a task to occupy an empty chair.
@@ -284,8 +284,8 @@ class Agent:
             The time at which the next task is scheduled to move to the next stage.
         current_time : int
             The current time step in the simulation.
-        engine: SpatialEngineProtocol
-            The SpatialEngine computing spatial queries (CPU or GPU).
+        engine: SpatialQuery
+            The SpatialQuery instance for resolving spatial queries.
 
         """
         if isinstance(next_task, TaskOccupyContent):

@@ -1,7 +1,5 @@
 """Test suite for space functions."""
 
-# ruff: noqa: PLR2004
-
 import numpy as np
 import pytest
 
