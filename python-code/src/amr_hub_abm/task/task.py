@@ -184,12 +184,14 @@ class Task:
         Update the progress of the task based on time spent.
 
         Parameters
+        ----------
         current_time : int
             The current time in the simulation.
         agent : Agent
             The agent performing the task.
         engine : SpatialEngineProtocol
             The spatial engine.
+
         """
         if self.progress == TaskProgress.COMPLETED:
             return
@@ -332,7 +334,7 @@ class TaskDoorAccess(Task):
 
         # FIX: query the engine instead of rooms lists
         proposed_location1_room = engine.get_room(
-            agent, coords=(proposed_location1.x, proposed_location1.y), use_cache=False
+            agent, coords=(proposed_location1.x, proposed_location1.y)
         )
 
         if proposed_location1_room is None:

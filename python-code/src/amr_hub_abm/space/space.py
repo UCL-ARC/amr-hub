@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class SpatialQuery:
     """CPU-based spatial resolver and movement engine."""
 
-    __slots__ = ("space",)  # noqa: RUF023
+    __slots__ = ("space",)
 
     def __init__(self, space: list[Building]) -> None:
         """Init."""
