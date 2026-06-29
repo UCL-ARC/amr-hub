@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from amr_hub_abm.space.space import estimate_time_to_reach_location
 from amr_hub_abm.task.task import TaskProgress
 
 if TYPE_CHECKING:
@@ -154,9 +153,7 @@ def perform_to_be_started_task(agent: Agent, current_time: int) -> bool:
     task_move_time = (
         task.time_due
         - task.time_needed
-        - estimate_time_to_reach_location(
-            agent.location, task.location, agent.movement_speed
-        )
+        - agent.spatial_query.estimate_time_to_reach_location(agent, task.location)
     )
     logger.info(
         "Agent id %s next task move time: %s, current time: %s",

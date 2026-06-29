@@ -29,7 +29,6 @@ from typing import TYPE_CHECKING
 from amr_hub_abm.agent.utils import add_agent_occupancy, remove_agent_occupancy
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.space import check_if_location_reached, get_room
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent.agent import Agent
@@ -231,21 +230,21 @@ class Task:
             msg = f"Task {self.task_type.name} has no location to move to."
             raise SimulationModeError(msg)
 
-        if check_if_location_reached(
+        if agent.spatial_query.is_target_reached(
             agent.location, self.location, agent.interaction_radius
         ):
             self._start(current_time, agent)
             return
 
-        agent.head_to_point((self.location.x, self.location.y))
-        agent.move_one_step()
+        agent.spatial_query.head_to_point(agent, self.location.x, self.location.y)
+        agent.spatial_query.move_one_step(agent)
 
     def _tick_not_started(self, current_time: int, agent: Agent) -> None:
         if self.location is None:
             msg = f"Task {self.task_type.name} has no location set."
             raise SimulationModeError(msg)
 
-        if check_if_location_reached(
+        if agent.spatial_query.is_target_reached(
             agent.location, self.location, agent.interaction_radius
         ):
             self._start(current_time, agent)
@@ -255,8 +254,8 @@ class Task:
         self.on_start_moving(agent)
         remove_agent_occupancy(agent, current_time=current_time)
         logger.info("Agent %s moving to task location %s.", agent.idx, self.location)
-        agent.head_to_point((self.location.x, self.location.y))
-        agent.move_one_step()
+        agent.spatial_query.head_to_point(agent, self.location.x, self.location.y)
+        agent.spatial_query.move_one_step(agent)
 
     def _start(self, current_time: int, agent: Agent) -> None:
         self.progress = TaskProgress.IN_PROGRESS
@@ -338,7 +337,9 @@ class TaskDoorAccess(Task):
         candidate = self._midpoint_location(
             x_offset=self.buffer_distance, y_offset=self.buffer_distance
         )
-        candidate_room = get_room(candidate, agent.rooms)
+        candidate_room = agent.spatial_query.get_room(
+            agent, coords=(candidate.x, candidate.y)
+        )
         if candidate_room is None:
             msg = "Proposed door-buffer location does not correspond to a valid room."
             raise SimulationModeError(msg)

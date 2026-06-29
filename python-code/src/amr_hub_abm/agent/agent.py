@@ -13,19 +13,13 @@ from __future__ import annotations
 
 import logging
 import math
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from amr_hub_abm.agent.enums import AgentType, InfectionStatus
 from amr_hub_abm.agent.output import Record, record_state
 from amr_hub_abm.exceptions import NonNegativeValueError, SimulationModeError
 from amr_hub_abm.space.content import ContentType
-from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.space import (
-    estimate_time_to_reach_location,
-    get_room,
-    propose_new_coordinates,
-)
 from amr_hub_abm.task.task import (
     Task,
     TaskOccupyContent,
@@ -42,7 +36,8 @@ from amr_hub_abm.task.tasklist import (
 if TYPE_CHECKING:
     from numpy.random import Generator
 
-    from amr_hub_abm.space.room import Room
+    from amr_hub_abm.space.location import Location
+    from amr_hub_abm.space.spatial_query import SpatialQuery
 
 
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
@@ -59,7 +54,6 @@ class Agent:
     idx: int
     location: Location
     heading_rad: float
-    rooms: list[Room]
     rng_generator: Generator
 
     interaction_radius: float = field(default=0.01)
@@ -75,6 +69,7 @@ class Agent:
     trajectory: Record = field(init=False)
 
     stationary: bool = field(default=False, init=False)
+    spatial_query: SpatialQuery = field(kw_only=True)
 
     # --8<--- [end:Agent]
 
@@ -238,112 +233,6 @@ class Agent:
         task = TASK_BUILDERS[task_type](context)
         self.tasks.append(task)
 
-    def head_to_point(self, point: tuple[float, float]) -> None:
-        """
-        Set the agent's heading to face a specific point.
-
-        Parameters
-        ----------
-        point : tuple[float, float]
-            The (x, y) coordinates of the point to face.
-
-        """
-        delta_x = point[0] - self.location.x
-        delta_y = point[1] - self.location.y
-
-        self.heading_rad = math.atan2(delta_y, delta_x) % (2 * math.pi)
-
-    def try_move_one_step(
-        self,
-        stochasticity: float,
-        max_attempts: int = 5,
-    ) -> tuple[float, float]:
-        """
-        Return valid coordinates for a single movement step.
-
-        Parameters
-        ----------
-        stochasticity : float
-            The level of randomness to apply to the movement.
-        max_attempts : int, optional
-            The maximum number of attempts to find valid coordinates without wall
-            intersection.
-
-        Returns
-        -------
-        tuple[float, float]
-            The proposed new (x, y) coordinates for the agent after moving one step.
-
-        Raises
-        ------
-        SimulationModeError
-            If the agent cannot find valid coordinates after the maximum number of
-            attempts, or if the room has no walls defined for intersection checking.
-
-        """
-        for attempt in range(1, max_attempts + 1):
-            new_x, new_y = propose_new_coordinates(
-                (self.location.x, self.location.y),
-                self.heading_rad,
-                self.movement_speed,
-                stochasticity,
-                self.rng_generator,
-            )
-
-            new_location = Location(
-                x=new_x,
-                y=new_y,
-                floor=self.location.floor,
-                building=self.location.building,
-            )
-            room = get_room(new_location, self.rooms)
-            if room is None:
-                logger.info(
-                    "Attempt %s: location (%s, %s) is not located in any room.",
-                    attempt,
-                    new_x,
-                    new_y,
-                )
-                continue
-
-            walls = room.walls
-            assert walls is not None  # noqa: S101
-
-            if Location.check_intersection_with_walls(
-                new_x,
-                new_y,
-                self.interaction_radius,
-                walls,
-            ):
-                logger.info(
-                    "Attempt %s: Agent id %s cannot move to (%s, %s): "
-                    "wall intersection.",
-                    attempt,
-                    self.idx,
-                    new_x,
-                    new_y,
-                )
-                continue
-
-            return new_x, new_y
-
-        logger.error(
-            "Maximum attempts %s exceeded for moving one step. "
-            "Agent id %s moving to proposed coordinates (%s, %s) despite "
-            "wall intersection.",
-            max_attempts,
-            self.idx,
-            self.location.x,
-            self.location.y,
-        )
-
-        return self.location.x, self.location.y
-
-    def move_one_step(self) -> None:
-        """Move the agent one step in the direction of its heading."""
-        new_x, new_y = self.try_move_one_step(self.stochasticity)
-        self.move_to_location(replace(self.location, x=new_x, y=new_y))
-
     def perform_task(self, current_time: int, *, record: bool = False) -> None:
         """
         Perform the agent's current task if it's due.
@@ -406,7 +295,7 @@ class Agent:
         if self.stationary:
             return
 
-        room = get_room(self.location, self.rooms)
+        room = self.spatial_query.get_room(self)
         if room is None:
             logger.info(
                 "Agent id %s is not located in any room. Cannot check for "
@@ -432,8 +321,8 @@ class Agent:
 
         if empty_chairs:
             chair = empty_chairs[0]
-            estimated_time_to_chair = estimate_time_to_reach_location(
-                self.location, chair.location, self.movement_speed
+            estimated_time_to_chair = (
+                self.spatial_query.estimate_time_to_reach_location(self, chair.location)
             )
             if current_time + estimated_time_to_chair < next_task_move_time:
                 self.add_task(

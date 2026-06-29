@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from amr_hub_abm.space.space import get_room
-
 if TYPE_CHECKING:
     from amr_hub_abm.agent.agent import Agent
     from amr_hub_abm.space.content import Content
@@ -26,7 +24,7 @@ def remove_agent_occupancy(agent: Agent, current_time: int) -> None:
         The current time in the simulation, used for logging purposes.
 
     """
-    room = get_room(agent.location, agent.rooms)
+    room = agent.spatial_query.get_room(agent)
     if room is None:
         return
     for content in room.contents:
@@ -49,7 +47,7 @@ def add_agent_occupancy(agent: Agent, content: Content, current_time: int) -> No
     content.occupier_id = (agent.idx, agent.agent_type)
     agent.stationary = True
 
-    room = get_room(agent.location, agent.rooms)
+    room = agent.spatial_query.get_room(agent)
 
     logger.info(
         "Agent %s occupied content %s (%s) in room %s at t=%d.",
