@@ -37,11 +37,10 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from amr_hub_abm.space.location import Location
-    from amr_hub_abm.space.spatial_query import SpatialQuery
+    from amr_hub_abm.space.space import SpatialQuery
 
 
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
-
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +50,7 @@ logger = logging.getLogger(__name__)
 class Agent:
     """Representation of an agent in the AMR Hub ABM simulation."""
 
+    # ------------------------------------------------------------------------------
     idx: int
     location: Location
     heading_rad: float
@@ -69,9 +69,14 @@ class Agent:
     trajectory: Record = field(init=False)
 
     stationary: bool = field(default=False, init=False)
-    spatial_query: SpatialQuery = field(kw_only=True)
+
+    # NG Added for GPU compatibility placeholder
+    use_gpu: bool = field(default=False)
+    target_x: float = field(default=0.0)
+    target_y: float = field(default=0.0)
 
     # --8<--- [end:Agent]
+    # ------------------------------------------------------------------------------
 
     @property
     def heading_degrees(self) -> float:
@@ -129,20 +134,6 @@ class Agent:
         if self.trajectory_length > 0:
             self.trajectory = Record(total_time=self.trajectory_length)
 
-    def move_to_location(self, new_location: Location) -> None:
-        """
-        Move the agent to a new location and log the movement.
-
-        Parameters
-        ----------
-        new_location : Location
-            The new location to which the agent will be moved.
-
-        """
-        msg = f"Moving Agent id {self.idx} from {self.location} to {new_location}"
-        logger.info(msg)
-        self.location = new_location
-
     def __repr__(self) -> str:
         """
         Return a string representation of the agent.
@@ -178,42 +169,14 @@ class Agent:
         location : Location
             The location associated with the task.
         event_type : str
-            The type of task to add. Must be one of the following:
-
-            - "attend_patient"
-
-            - "door_access"
-
-            - "workstation"
-
-            - "occupy_content"
-
+            The type of task to add.
         additional_info : dict | None, optional
             Additional information required for certain task types.
-
-            For "attend_patient" tasks, this should include:
-
-            - "patient": An instance of Agent representing the patient to attend.
-
-            For "door_access" tasks, this should include:
-
-            - "door": An instance of Door representing the door to access.
-
-            - "destination": The rooom number of the destination room to which
-            the agent will move after accessing the door.
-
-            For "occupy_content" tasks, this should include:
-
-            - "content_type": A ContentType representing the type of content to occupy.
-
-            - "room": An instance of Room representing the room in which to occupy the
-            content.
 
         Raises
         ------
             SimulationModeError
-                If the event_type is invalid or if required additional_info is missing
-                or of the wrong type for the specified event_type.
+                If the event_type is invalid.
 
         """
         if event_type not in TASK_TYPES:
@@ -233,7 +196,9 @@ class Agent:
         task = TASK_BUILDERS[task_type](context)
         self.tasks.append(task)
 
-    def perform_task(self, current_time: int, *, record: bool = False) -> None:
+    def perform_task(
+        self, current_time: int, engine: SpatialQuery, *, record: bool = False
+    ) -> None:
         """
         Perform the agent's current task if it's due.
 
@@ -241,6 +206,8 @@ class Agent:
         ----------
         current_time : int
             The current time step in the simulation.
+        engine : SpatialQuery
+            The engine instance used to resolve geometry queries and bounds.
         record : bool, optional
             Whether to record the agent's state at the current time step.
 
@@ -265,20 +232,19 @@ class Agent:
         )
 
         for handler in task_handlers:
-            if handler(self, current_time=current_time):
+            # We now pass the engine dynamically down into the task handlers!
+            if handler(self, current_time=current_time, engine=engine):
                 return
 
     def attempt_task_insertion(
-        self, next_task: Task, next_task_move_time: float, current_time: int
+        self,
+        next_task: Task,
+        next_task_move_time: float,
+        current_time: int,
+        engine: SpatialQuery,
     ) -> None:
         """
         Attempt to insert a task to occupy an empty chair.
-
-        This method checks if the next task is not already an occupy_content task and if
-        the agent is not stationary. If these conditions are met, it checks for empty
-        chairs in the current room and estimates the time to reach the chair. If the
-        agent can reach the chair before the next task move time, it inserts an
-        `occupy_content` task for the chair.
 
         Parameters
         ----------
@@ -288,6 +254,8 @@ class Agent:
             The time at which the next task is scheduled to move to the next stage.
         current_time : int
             The current time step in the simulation.
+        engine: SpatialQuery
+            The SpatialQuery instance for resolving spatial queries.
 
         """
         if isinstance(next_task, TaskOccupyContent):
@@ -295,7 +263,7 @@ class Agent:
         if self.stationary:
             return
 
-        room = self.spatial_query.get_room(self)
+        room = engine.get_room(self)
         if room is None:
             logger.info(
                 "Agent id %s is not located in any room. Cannot check for "
@@ -321,8 +289,8 @@ class Agent:
 
         if empty_chairs:
             chair = empty_chairs[0]
-            estimated_time_to_chair = (
-                self.spatial_query.estimate_time_to_reach_location(self, chair.location)
+            estimated_time_to_chair = engine.estimate_time_to_reach_location(
+                self, chair.location
             )
             if current_time + estimated_time_to_chair < next_task_move_time:
                 self.add_task(

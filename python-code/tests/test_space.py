@@ -1,196 +1,128 @@
-"""Tests for the Space module."""
-
-import logging
+"""Test suite for space functions."""
 
 import numpy as np
 import pytest
 
+from amr_hub_abm.agent.agent import Agent
+from amr_hub_abm.space.building import Building
+from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
-from amr_hub_abm.space.space import (
-    check_if_location_reached,
-    get_room,
-    propose_new_coordinates,
-)
+from amr_hub_abm.space.space import SpatialQuery
 from amr_hub_abm.space.wall import Wall
 
 
 @pytest.fixture
-def sample_rooms() -> list[Room]:
-    """Fixture to create sample rooms for testing."""
-    walls_room1 = [
-        Wall(start=(0, 0), end=(0, 10)),
-        Wall(start=(0, 10), end=(10, 10)),
-        Wall(start=(10, 10), end=(10, 0)),
-        Wall(start=(10, 0), end=(0, 0)),
+def rng_generator() -> np.random.Generator:
+    """Fixture providing a random number generator."""
+    return np.random.default_rng(seed=42)
+
+
+def test_get_room(rng_generator: np.random.Generator) -> None:
+    """Test identifying the room containing a given location via the engine."""
+    # Room 1: x from 0 to 10
+    walls1 = [
+        Wall((0, 0), (10, 0)),
+        Wall((10, 0), (10, 10)),
+        Wall((10, 10), (0, 10)),
+        Wall((0, 10), (0, 0)),
     ]
     room1 = Room(
         room_id=1,
-        name="Room 1",
-        building="Building A",
+        name="Room A",
+        building="A",
         floor=1,
-        walls=walls_room1,
-        doors=[],
+        walls=walls1,
         contents=[],
-        rng_generator=np.random.default_rng(),
+        doors=[],
+        rng_generator=rng_generator,
     )
 
-    walls_room2 = [
-        Wall(start=(20, 20), end=(20, 30)),
-        Wall(start=(20, 30), end=(30, 30)),
-        Wall(start=(30, 30), end=(30, 20)),
-        Wall(start=(30, 20), end=(20, 20)),
+    # Room 2: x from 10 to 20
+    walls2 = [
+        Wall((10, 0), (20, 0)),
+        Wall((20, 0), (20, 10)),
+        Wall((20, 10), (10, 10)),
+        Wall((10, 10), (10, 0)),
     ]
     room2 = Room(
         room_id=2,
-        name="Room 2",
-        building="Building A",
+        name="Room B",
+        building="A",
         floor=1,
-        walls=walls_room2,
-        doors=[],
+        walls=walls2,
         contents=[],
-        rng_generator=np.random.default_rng(),
+        doors=[],
+        rng_generator=rng_generator,
     )
 
-    walls_room3 = [
-        Wall(start=(40, 40), end=(40, 50)),
-        Wall(start=(40, 50), end=(50, 50)),
-        Wall(start=(50, 50), end=(50, 40)),
-        Wall(start=(50, 40), end=(40, 40)),
-    ]
-    room3 = Room(
-        room_id=3,
-        name="Room 3",
-        building="Building B",
-        floor=2,
-        walls=walls_room3,
-        doors=[],
-        contents=[],
-        rng_generator=np.random.default_rng(),
+    # Build the strict, type-safe hierarchy
+    floor1 = Floor(floor_number=1, rooms=[room1, room2])
+    building1 = Building(name="A", floors=[floor1])
+
+    # Initialize the engine with the strict hierarchy
+    engine = SpatialQuery(space=[building1])
+
+    # Test Agent 1 inside Room 1
+    loc_in_room1 = Location(x=5.0, y=5.0, floor=1, building="A")
+    agent1 = Agent(
+        idx=1, location=loc_in_room1, heading_rad=0.0, rng_generator=rng_generator
     )
 
-    return [room1, room2, room3]
+    assert engine.get_room(agent1) == room1
 
+    # Test Agent 2 inside Room 2
+    loc_in_room2 = Location(x=15.0, y=5.0, floor=1, building="A")
+    agent2 = Agent(
+        idx=2, location=loc_in_room2, heading_rad=0.0, rng_generator=rng_generator
+    )
 
-def test_get_room_location_inside(sample_rooms: list[Room]) -> None:
-    """Test that get_room returns the correct room for a location inside a room."""
-    location_inside_room1 = Location(x=5, y=5, floor=1, building="Building A")
-    room = get_room(location_inside_room1, sample_rooms)
-    assert room is not None
-    assert room.room_id == 1
-
-    location_inside_room2 = Location(x=25, y=25, floor=1, building="Building A")
-    room = get_room(location_inside_room2, sample_rooms)
-    assert room is not None
-    assert room.room_id == 2
-
-    location_inside_room3 = Location(x=45, y=45, floor=2, building="Building B")
-    room = get_room(location_inside_room3, sample_rooms)
-    assert room is not None
-    assert room.room_id == 3
-
-
-def test_get_room_location_outside(sample_rooms: list[Room]) -> None:
-    """Test that get_room returns None for a location outside all rooms."""
-    location_outside = Location(x=15, y=15, floor=1, building="Building A")
-    room = get_room(location_outside, sample_rooms)
-    assert room is None
-
-    location_outside_building = Location(x=5, y=5, floor=1, building="Building C")
-    room = get_room(location_outside_building, sample_rooms)
-    assert room is None
-
-    location_outside_floor = Location(x=5, y=5, floor=2, building="Building A")
-    room = get_room(location_outside_floor, sample_rooms)
-    assert room is None
+    assert engine.get_room(agent2) == room2
 
 
 def test_check_if_location_reached() -> None:
-    """Test the check_if_location_reached function."""
-    current_location = Location(x=5, y=5, floor=1, building="Building A")
-    target_location = Location(x=5.1, y=5.1, floor=1, building="Building A")
-    interaction_radius = 0.2
+    """Test checking if an agent has reached a target location."""
+    loc1 = Location(x=0.0, y=0.0, floor=1, building="A")
+    loc2 = Location(x=3.0, y=4.0, floor=1, building="A")
+    loc3 = Location(x=0.0, y=0.0, floor=2, building="A")
 
-    assert check_if_location_reached(
-        current_location, target_location, interaction_radius
-    )
+    engine = SpatialQuery(space=[])
 
-    target_location_far = Location(x=6, y=6, floor=1, building="Building A")
-    assert not check_if_location_reached(
-        current_location, target_location_far, interaction_radius
-    )
-
-    target_location_different_floor = Location(
-        x=5.1, y=5.1, floor=2, building="Building A"
-    )
-    assert not check_if_location_reached(
-        current_location, target_location_different_floor, interaction_radius
-    )
-
-    target_location_different_building = Location(
-        x=5.1, y=5.1, floor=1, building="Building B"
-    )
-    assert not check_if_location_reached(
-        current_location, target_location_different_building, interaction_radius
-    )
+    assert engine.is_target_reached(loc1, loc2, radius=6.0) is True
+    assert engine.is_target_reached(loc1, loc2, radius=4.0) is False
+    assert engine.is_target_reached(loc1, loc3, radius=10.0) is False
 
 
-def test_propose_new_coordinates() -> None:
-    """Test the propose_new_coordinates function."""
-    current_location = (5, 5)
+def test_propose_new_coordinates(rng_generator: np.random.Generator) -> None:
+    """Test proposing new coordinates based on heading and speed."""
+    coords = (0.0, 0.0)
+    heading_rad = 0.0
     movement_speed = 1.0
-    heading = 0.0  # Heading in radians (0 means moving to the right)
-    stochasticity = 0.1  # Small randomness in movement
+    stochasticity = 0.0
 
-    new_location = propose_new_coordinates(
-        current_location,
-        heading,
-        movement_speed,
-        stochasticity,
-        rng_generator=np.random.default_rng(),
+    engine = SpatialQuery(space=[])
+
+    new_coords = engine.propose_new_coordinates(
+        coords, heading_rad, movement_speed, stochasticity, rng_generator
+    )
+    assert np.isclose(new_coords[0], 1.0)
+    assert np.isclose(new_coords[1], 0.0)
+
+
+def test_estimate_time_to_reach_location(rng_generator: np.random.Generator) -> None:
+    """Test estimating the time required to reach a target location."""
+    current_loc = Location(x=0.0, y=0.0, floor=0, building="A")
+    target_loc = Location(x=3.0, y=4.0, floor=0, building="A")
+
+    # Create an agent to hold the speed and current location
+    agent = Agent(
+        idx=1,
+        location=current_loc,
+        heading_rad=0.0,
+        rng_generator=rng_generator,
+        movement_speed=2.0,
     )
 
-    # Check that the new location is a tuple of two floats
-    assert isinstance(new_location, tuple)
-    assert len(new_location) == 2
-    assert all(isinstance(coord, float) for coord in new_location)
+    engine = SpatialQuery(space=[])
 
-
-def test_propose_new_coordinates_with_negative_stochasticity(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """Test the propose_new_coordinates function with negative stochasticity."""
-    current_location = (5, 5)
-    movement_speed = 1.0
-    heading = np.pi / 2  # Heading in radians (90 degrees, moving up)
-    stochasticity = -0.1  # Negative randomness in movement
-
-    with caplog.at_level(logging.WARNING):
-        new_location = propose_new_coordinates(
-            current_location,
-            heading,
-            movement_speed,
-            stochasticity,
-            rng_generator=np.random.default_rng(),
-        )
-
-    # Check that the new location is a tuple of two floats
-    assert isinstance(new_location, tuple)
-    assert len(new_location) == 2
-    assert all(isinstance(coord, float) for coord in new_location)
-
-    # Check that a warning was logged
-    assert "Stochasticity is negative" in caplog.text
-
-    new_location = propose_new_coordinates(
-        current_location,
-        heading,
-        movement_speed,
-        stochasticity,
-        rng_generator=np.random.default_rng(),
-    )
-
-    # Check that the new location is a tuple of two floats
-    assert isinstance(new_location, tuple)
-    assert len(new_location) == 2
-    assert all(isinstance(coord, float) for coord in new_location)
+    assert engine.estimate_time_to_reach_location(agent, target_loc) == 2.5

@@ -13,10 +13,10 @@ Design notes
   ``TaskProgress`` state.
 - ``create_task`` is a factory that owns per-type defaults (durations etc.),
   so ``Agent.add_task`` no longer needs a long if/elif chain.
-- Nothing here assumes a scheduler: time is always passed in explicitly, so
-  the module is drop-in compatible with a future Mesa ``Model``/scheduler,
-  where ``agent.step()`` will call into tasks with ``model.steps`` as the
-  current time.
+- The spatial engine (``SpatialQuery``) is threaded through as an explicit
+  ``engine`` parameter rather than being accessed via the agent. This keeps
+  the task layer decoupled from the agent's attributes and allows swapping
+  CPU/GPU backends transparently.
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from amr_hub_abm.space.content import Content
     from amr_hub_abm.space.door import Door
     from amr_hub_abm.space.room import Room
+    from amr_hub_abm.space.spatial_query import SpatialQuery
 
 
 logger = logging.getLogger(__name__)
@@ -143,13 +144,15 @@ class Task:
         ``TaskOccupyContent`` resolves which content to occupy here).
         """
 
-    def on_start_moving(self, agent: Agent) -> None:
+    def on_start_moving(self, agent: Agent, engine: SpatialQuery) -> None:
         """Handle the transition to MOVING_TO_LOCATION."""
 
     def on_started(self, agent: Agent, current_time: int) -> None:
         """Handle the transition to IN_PROGRESS."""
 
-    def on_completed(self, agent: Agent, current_time: int) -> None:
+    def on_completed(
+        self, agent: Agent, current_time: int, engine: SpatialQuery
+    ) -> None:
         """Handle the transition to COMPLETED."""
 
     # -- timing --------------------------------------------------------------
@@ -184,7 +187,9 @@ class Task:
 
     # -- state machine ---------------------------------------------------------
 
-    def update_progress(self, current_time: int, agent: Agent) -> None:
+    def update_progress(
+        self, current_time: int, agent: Agent, engine: SpatialQuery
+    ) -> None:
         """
         Advance the task state machine by one tick.
 
@@ -195,7 +200,7 @@ class Task:
             return
 
         if self.time_spent(current_time) >= self.time_needed:
-            self._complete(current_time, agent)
+            self._complete(current_time, agent, engine)
             return
 
         handler = {
@@ -204,9 +209,9 @@ class Task:
             TaskProgress.NOT_STARTED: self._tick_not_started,
             TaskProgress.SUSPENDED: self._tick_not_started,
         }[self.progress]
-        handler(current_time, agent)
+        handler(current_time, agent, engine)
 
-    def _complete(self, current_time: int, agent: Agent) -> None:
+    def _complete(self, current_time: int, agent: Agent, engine: SpatialQuery) -> None:
         self.progress = TaskProgress.COMPLETED
         self.time_completed = current_time
         logger.info(
@@ -215,9 +220,14 @@ class Task:
             agent.idx,
             current_time,
         )
-        self.on_completed(agent, current_time)
+        self.on_completed(agent, current_time, engine)
 
-    def _tick_in_progress(self, current_time: int, agent: Agent) -> None:  # noqa: ARG002
+    def _tick_in_progress(
+        self,
+        current_time: int,  # noqa: ARG002
+        agent: Agent,
+        engine: SpatialQuery,  # noqa: ARG002
+    ) -> None:
         logger.info(
             "Agent %s performing task %s at location %s.",
             agent.idx,
@@ -225,37 +235,41 @@ class Task:
             self.location,
         )
 
-    def _tick_moving(self, current_time: int, agent: Agent) -> None:
+    def _tick_moving(
+        self, current_time: int, agent: Agent, engine: SpatialQuery
+    ) -> None:
         if self.location is None:
             msg = f"Task {self.task_type.name} has no location to move to."
             raise SimulationModeError(msg)
 
-        if agent.spatial_query.is_target_reached(
+        if engine.is_target_reached(
             agent.location, self.location, agent.interaction_radius
         ):
             self._start(current_time, agent)
             return
 
-        agent.spatial_query.head_to_point(agent, self.location.x, self.location.y)
-        agent.spatial_query.move_one_step(agent)
+        engine.head_to_point(agent, (self.location.x, self.location.y))
+        engine.move_one_step(agent)
 
-    def _tick_not_started(self, current_time: int, agent: Agent) -> None:
+    def _tick_not_started(
+        self, current_time: int, agent: Agent, engine: SpatialQuery
+    ) -> None:
         if self.location is None:
             msg = f"Task {self.task_type.name} has no location set."
             raise SimulationModeError(msg)
 
-        if agent.spatial_query.is_target_reached(
+        if engine.is_target_reached(
             agent.location, self.location, agent.interaction_radius
         ):
             self._start(current_time, agent)
             return
 
         self.progress = TaskProgress.MOVING_TO_LOCATION
-        self.on_start_moving(agent)
-        remove_agent_occupancy(agent, current_time=current_time)
+        self.on_start_moving(agent, engine)
+        remove_agent_occupancy(agent, current_time=current_time, engine=engine)
         logger.info("Agent %s moving to task location %s.", agent.idx, self.location)
-        agent.spatial_query.head_to_point(agent, self.location.x, self.location.y)
-        agent.spatial_query.move_one_step(agent)
+        engine.head_to_point(agent, (self.location.x, self.location.y))
+        engine.move_one_step(agent)
 
     def _start(self, current_time: int, agent: Agent) -> None:
         self.progress = TaskProgress.IN_PROGRESS
@@ -332,14 +346,12 @@ class TaskDoorAccess(Task):
             y=mid_y + y_offset,
         )
 
-    def on_start_moving(self, agent: Agent) -> None:
+    def on_start_moving(self, agent: Agent, engine: SpatialQuery) -> None:
         """Offset the target to the correct side of the door for the destination."""
         candidate = self._midpoint_location(
             x_offset=self.buffer_distance, y_offset=self.buffer_distance
         )
-        candidate_room = agent.spatial_query.get_room(
-            agent, coords=(candidate.x, candidate.y)
-        )
+        candidate_room = engine.get_room(agent, coords=(candidate.x, candidate.y))
         if candidate_room is None:
             msg = "Proposed door-buffer location does not correspond to a valid room."
             raise SimulationModeError(msg)
@@ -385,9 +397,13 @@ class TaskOccupyContent(Task):
         self.content = content
         self.location = content.location
 
-    def on_completed(self, agent: Agent, current_time: int) -> None:
+    def on_completed(
+        self, agent: Agent, current_time: int, engine: SpatialQuery
+    ) -> None:
         """Occupy the content once the task finishes."""
-        add_agent_occupancy(agent, self.content, current_time=current_time)
+        add_agent_occupancy(
+            agent, self.content, current_time=current_time, engine=engine
+        )
 
 
 @dataclass

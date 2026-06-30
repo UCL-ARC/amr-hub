@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from amr_hub_abm.agent.plotter import plot_agents_in_room
 from amr_hub_abm.exceptions import InvalidRoomError
-from amr_hub_abm.space.plotter import plot_agents_in_room
 from amr_hub_abm.space.room import Room
 from amr_hub_abm.space.wall import Wall
 
