@@ -28,7 +28,6 @@ def sample_agent() -> Agent:
         infection_status=InfectionStatus.SUSCEPTIBLE,
         location=Location(x=1.0, y=2.0, floor=1, building="Hospital"),
         heading_rad=0.0,
-        rooms=[],
         rng_generator=np.random.default_rng(42),
     )
 
@@ -42,7 +41,6 @@ def patient_agent() -> Agent:
         infection_status=InfectionStatus.EXPOSED,
         location=Location(x=2.0, y=3.0, floor=1, building="Hospital"),
         heading_rad=0.0,
-        rooms=[],
         rng_generator=np.random.default_rng(42),
     )
 
@@ -194,7 +192,6 @@ def test_plot_trajectory_returns_without_plotting_for_non_positive_end() -> None
         infection_status=InfectionStatus.SUSCEPTIBLE,
         location=Location(x=0.0, y=0.0, floor=1, building="Hospital"),
         heading_rad=0.0,
-        rooms=[],
         rng_generator=np.random.default_rng(42),
         trajectory_length=3,
     )
@@ -213,7 +210,6 @@ def test_plot_trajectory_plots_agent_positions() -> None:
         infection_status=InfectionStatus.RECOVERED,
         location=Location(x=0.0, y=0.0, floor=1, building="Hospital"),
         heading_rad=0.0,
-        rooms=[],
         rng_generator=np.random.default_rng(42),
         trajectory_length=3,
     )

@@ -11,7 +11,7 @@ from amr_hub_abm.space.content import Content, ContentType
 from amr_hub_abm.space.floor import Floor
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
-from amr_hub_abm.space.spatial_query import SpatialQuery
+from amr_hub_abm.space.space import SpatialQuery
 from amr_hub_abm.space.wall import Wall
 from amr_hub_abm.task.task import (
     Task,

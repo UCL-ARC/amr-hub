@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from amr_hub_abm.space.content import Content
     from amr_hub_abm.space.door import Door
     from amr_hub_abm.space.room import Room
-    from amr_hub_abm.space.spatial_query import SpatialQuery
+    from amr_hub_abm.space.space import SpatialQuery
 
 
 logger = logging.getLogger(__name__)
