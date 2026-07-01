@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from amr_hub_abm.agent.enums import (
     INFECTION_RING_COLOUR,
     ROLE_COLOUR_MAP,
+    AgentType,
     InfectionStatus,
 )
 from amr_hub_abm.exceptions import InvalidRoomError, SimulationModeError
@@ -151,5 +152,5 @@ def plot_agents_in_room(
         ):
             plot_agent(agent, ax)
 
-            if trajectory and agent.agent_type.value == 2:
+            if trajectory and agent.agent_type == AgentType.HEALTHCARE_WORKER:
                 plot_trajectory(agent, ax)

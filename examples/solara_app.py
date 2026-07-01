@@ -1,6 +1,7 @@
 """Solara app for browser-based AMR Hub ABM visualization."""
 # ruff: noqa: N802
 
+from amr_hub_abm.agent.enums import AgentType
 import solara
 from matplotlib.figure import Figure
 from mesa.visualization import SolaraViz
@@ -62,7 +63,11 @@ def AgentTaskTableComponent(model: HospitalABM) -> None:
     """Render a table of tasks for one agent."""
     update_counter.get()
 
-    agent = [agent for agent in model.simulation.agents if agent.agent_type == 2][0]
+    agent = [
+        agent
+        for agent in model.simulation.agents
+        if agent.agent_type == AgentType.HEALTHCARE_WORKER
+    ][0]
     tasks = agent.tasks
 
     rows: list[dict[str, str]] = [

@@ -97,10 +97,3 @@ the repo.
 | `play_interval` / `render_interval`                           | `100` / `100`                     | `examples/solara_app.py:146-147`                    |
 | SolaraViz `agent_speed` slider (default/min/max/step)         | `0.001 / 0.0001 / 0.002 / 0.0001` | `examples/solara_app.py:126-129`                    |
 | SolaraViz `agent_stochasticity` slider (default/min/max/step) | `5.0 / 0 / 10.0 / 0.5`            | `examples/solara_app.py:134-137`                    |
-
-## Related bugs (magic numbers standing in for enums, not config candidates)
-
-| Location                               | Issue                                                                  |
-| -------------------------------------- | ---------------------------------------------------------------------- |
-| `src/amr_hub_abm/agent/plotter.py:154` | `agent.agent_type.value == 2` instead of `AgentType.HEALTHCARE_WORKER` |
-| `examples/solara_app.py:65`            | `agent.agent_type == 2` instead of `AgentType.HEALTHCARE_WORKER`       |
