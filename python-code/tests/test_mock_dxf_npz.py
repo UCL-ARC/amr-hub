@@ -1,7 +1,7 @@
 """Unit tests for mock DXF generation and NPZ environment viewing."""
 
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 

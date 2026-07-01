@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import logging
 import math
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
+
+import mesa
 
 from amr_hub_abm.agent.enums import AgentType, InfectionStatus
 from amr_hub_abm.agent.output import Record, record_state
@@ -46,37 +47,117 @@ logger = logging.getLogger(__name__)
 
 
 # --8<--- [start:Agent]
-@dataclass
-class Agent:
-    """Representation of an agent in the AMR Hub ABM simulation."""
+class Agent(mesa.Agent):
+    """
+    Representation of an agent in the AMR Hub ABM simulation.
 
-    # ------------------------------------------------------------------------------
-    idx: int
-    location: Location
-    heading_rad: float
-    rng_generator: Generator
+    Subclasses ``mesa.Agent`` so the Mesa scheduler can call ``step()``.
+    The ``model`` reference is set when the agent is added to the
+    scheduler in ``Simulation.__init__``, so agents can be constructed
+    before the model exists.
 
-    interaction_radius: float = field(default=0.01)
-    tasks: list[Task] = field(default_factory=list)
-    agent_type: AgentType = field(default=AgentType.GENERIC)
-    infection_status: InfectionStatus = field(default=InfectionStatus.SUSCEPTIBLE)
-    infection_details: dict = field(default_factory=dict)
+    Parameters
+    ----------
+    idx : int
+        Unique identifier for the agent (also used as Mesa's unique_id).
+    location : Location
+        The initial location of the agent.
+    heading_rad : float
+        The initial heading of the agent in radians.
+    rng_generator : Generator
+        Random number generator for stochastic movement.
+    interaction_radius : float, optional
+        The radius within which the agent can interact, by default 0.01.
+    agent_type : AgentType, optional
+        The type of agent, by default GENERIC.
+    trajectory_length : int, optional
+        Number of time steps to record, by default 0 (no recording).
+    movement_speed : float, optional
+        Speed of the agent in units per time step, by default 0.001.
+    stochasticity : float, optional
+        Degrees of randomness in movement, by default 5.0.
 
-    movement_speed: float = field(default=0.001)  # units per time step
-    stochasticity: float = field(default=5.0)  # degrees of randomness in movement
+    """
 
-    trajectory_length: int = field(default=0)
-    trajectory: Record = field(init=False)
+    def __init__(  # noqa: PLR0913
+        self,
+        idx: int,
+        location: Location,
+        heading_rad: float,
+        rng_generator: Generator,
+        interaction_radius: float = 0.01,
+        tasks: list[Task] | None = None,
+        agent_type: AgentType = AgentType.GENERIC,
+        infection_status: InfectionStatus = InfectionStatus.SUSCEPTIBLE,
+        infection_details: dict | None = None,
+        movement_speed: float = 0.001,
+        stochasticity: float = 5.0,
+        trajectory_length: int = 0,
+        *,
+        use_gpu: bool = False,
+    ) -> None:
+        """Initialise an agent with its location, heading, and task list."""
+        # Mesa requires unique_id and model. We pass a dummy model=None
+        # here because agents are constructed in simulation_factory before
+        # the Model exists. Simulation.__init__ sets the real model
+        # reference when it calls self.schedule.add(agent).
+        super().__init__(unique_id=idx, model=None)  # type: ignore[arg-type]
 
-    stationary: bool = field(default=False, init=False)
+        self.idx = idx
+        self.location = location
+        self.heading_rad = heading_rad % (2 * math.pi)
+        self.rng_generator = rng_generator
 
-    # NG Added for GPU compatibility placeholder
-    use_gpu: bool = field(default=False)
-    target_x: float = field(default=0.0)
-    target_y: float = field(default=0.0)
+        self.interaction_radius = interaction_radius
+        self.tasks: list[Task] = tasks if tasks is not None else []
+        self.agent_type = agent_type
+        self.infection_status = infection_status
+        self.infection_details: dict = (
+            infection_details if infection_details is not None else {}
+        )
+
+        self.movement_speed = movement_speed
+        self.stochasticity = stochasticity
+        self.trajectory_length = trajectory_length
+
+        self.stationary: bool = False
+
+        # GPU compatibility placeholders
+        self.use_gpu = use_gpu
+        self.target_x: float = 0.0
+        self.target_y: float = 0.0
+
+        logger.debug(
+            "Created Agent id %s of type %s at location %s with heading %s",
+            self.idx,
+            self.agent_type,
+            self.location,
+            self.heading_rad,
+        )
+
+        if self.trajectory_length < 0:
+            msg = "trajectory_length must be non-negative."
+            raise NonNegativeValueError(msg)
+
+        if self.trajectory_length > 0:
+            self.trajectory = Record(total_time=self.trajectory_length)
 
     # --8<--- [end:Agent]
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # Mesa entry point
+    # --------------------------------------------------------------------------
+
+    def step(self) -> None:
+        """Advance the agent by one tick via the Mesa scheduler."""
+        self.perform_task(
+            current_time=self.model.schedule.steps,
+            engine=self.model.spatial_engine,
+            record=getattr(self.model, "_record_this_step", False),
+        )
+
+    # --------------------------------------------------------------------------
+    # Properties
+    # --------------------------------------------------------------------------
 
     @property
     def heading_degrees(self) -> float:
@@ -106,33 +187,9 @@ class Agent:
         """
         self.heading_rad = math.radians(value) % (2 * math.pi)
 
-    def __post_init__(self) -> None:
-        """
-        Post-initialization to setup the trajectory record and validate parameters.
-
-        Raises
-        ------
-        ValueError
-            If the trajectory length is negative.
-
-        """
-        # Ensure heading is between 0 and 360 degrees
-        self.heading_rad = self.heading_rad % (2 * math.pi)
-
-        logger.debug(
-            "Created Agent id %s of type %s at location %s with heading %s",
-            self.idx,
-            self.agent_type,
-            self.location,
-            self.heading_rad,
-        )
-
-        if self.trajectory_length < 0:
-            msg = "trajectory_length must be non-negative."
-            raise NonNegativeValueError(msg)
-
-        if self.trajectory_length > 0:
-            self.trajectory = Record(total_time=self.trajectory_length)
+    # --------------------------------------------------------------------------
+    # String representation
+    # --------------------------------------------------------------------------
 
     def __repr__(self) -> str:
         """
@@ -151,6 +208,10 @@ class Agent:
             f"{self.interaction_radius}, {self.agent_type.value}, "
             f"{self.infection_status.value})"
         )
+
+    # --------------------------------------------------------------------------
+    # Task management
+    # --------------------------------------------------------------------------
 
     def add_task(
         self,
@@ -232,7 +293,6 @@ class Agent:
         )
 
         for handler in task_handlers:
-            # We now pass the engine dynamically down into the task handlers!
             if handler(self, current_time=current_time, engine=engine):
                 return
 
@@ -249,9 +309,11 @@ class Agent:
         Parameters
         ----------
         next_task : Task
-            The next task for which to attempt insertion of an occupy_content task.
+            The next task for which to attempt insertion of an
+            occupy_content task.
         next_task_move_time : float
-            The time at which the next task is scheduled to move to the next stage.
+            The time at which the next task is scheduled to move to
+            the next stage.
         current_time : int
             The current time step in the simulation.
         engine: SpatialQuery
@@ -303,24 +365,12 @@ class Agent:
                     },
                 )
                 logger.info(
-                    """
-                    Current time: %s
-                    Estimated time to chair: %s
-                    Next task move time: %s.
-                    Agent id %s inserted occupy_content task for chair at location %s
-                    to be performed before next task move time %s.
-                    """,
+                    "Current time: %s, Estimated time to chair: %s, "
+                    "Next task move time: %s. Agent id %s inserted "
+                    "occupy_content task for chair at location %s.",
                     current_time,
                     estimated_time_to_chair,
                     next_task_move_time,
                     self.idx,
                     chair.location,
-                    next_task_move_time,
-                )
-                logger.warning(
-                    """
-                    Length of task list %s at time %s.
-                    """,
-                    len(self.tasks),
-                    current_time,
                 )

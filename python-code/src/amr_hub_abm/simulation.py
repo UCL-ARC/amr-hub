@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import logging
 from enum import IntEnum
 from typing import TYPE_CHECKING, Any
 
+import mesa
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -22,6 +23,8 @@ if TYPE_CHECKING:
     from amr_hub_abm.space.building import Building
     from amr_hub_abm.space.room import Room
 
+logger = logging.getLogger(__name__)
+
 
 class SimulationMode(IntEnum):
     """Enumeration of simulation modes."""
@@ -31,15 +34,13 @@ class SimulationMode(IntEnum):
 
 
 # --8<--- [start:Simulation]
-@dataclass
-class Simulation:
+class Simulation(mesa.Model):
     """
     Representation of the AMR Hub ABM simulation.
 
-    This class encapsulates the entire state and behavior of the simulation, including
-    the space (buildings, floors, rooms), the agents, and the logic for advancing
-    the simulation through time steps. It also includes methods for plotting the current
-    state of the simulation and recording agent states to files.
+    This class encapsulates the entire state and behavior of the simulation,
+    including the space (buildings, floors, rooms), the agents, and the logic
+    for advancing the simulation through time steps.
 
     Parameters
     ----------
@@ -57,109 +58,104 @@ class Simulation:
         The total number of time steps in the simulation.
     rng_generator : np.random.Generator
         Random number generator for reproducibility.
+    use_gpu : bool, optional
+        Whether to use GPU acceleration, by default False.
 
     """
 
-    # ------------------------------------------------------------------------------
-    name: str
-    description: str
-    mode: SimulationMode
+    def __init__(  # noqa: PLR0913
+        self,
+        name: str,
+        description: str,
+        mode: SimulationMode,
+        space: list[Building],
+        agents: list[Agent],
+        total_simulation_time: int,
+        rng_generator: np.random.Generator,
+        *,
+        use_gpu: bool = False,
+    ) -> None:
+        """Initialise the simulation model with space, agents, and engine."""
+        super().__init__()
 
-    space: list[Building]
-    agents: list[Agent]
+        self.name = name
+        self.description = description
+        self.mode = mode
+        self.space = space
+        self.total_simulation_time = total_simulation_time
+        self.rng_generator = rng_generator
+        self.use_gpu = use_gpu
 
-    total_simulation_time: int
-    rng_generator: np.random.Generator
-    time: int = field(default=0, init=False)
+        # Mesa scheduler — RandomActivation shuffles agent order each step,
+        # replacing the manual rng_generator.shuffle(self.agents) call.
+        self.schedule = mesa.time.RandomActivation(self)
 
-    # NG Added Flag for GPU Acceleration
-    use_gpu: bool = field(default=False)
-    gpu_engine: Any = field(default=None, init=False)
-    spatial_engine: Any = field(default=None, init=False)
-    # ------------------------------------------------------------------------------
+        # Spatial engine — one instance shared by all agents via the scheduler.
+        self.gpu_engine: Any = None
+        self.spatial_engine: SpatialQuery | None = None
 
-    def __post_init__(self) -> None:
-        """Init for GPU to load CAD once at the start."""
-        if self.use_gpu:
+        if use_gpu:
             self.gpu_engine = GPUPhysicsEngine()
-        # Initialize the CPU engine
         else:
             self.spatial_engine = SpatialQuery(space=self.space)
-            self._agent_store = None
 
-    # ------------------------------------------------------------------------------
-    def step(self, plot_path: Path | None = None, *, record: bool = False) -> None:
+        # Register agents with the Mesa scheduler.
+        # NOTE: Mesa agents need a unique_id and a model reference.
+        self._agents = agents
+        for agent in agents:
+            self.schedule.add(agent)
+
+    # --8<--- [end:Simulation]
+
+    @property
+    def time(self) -> int:
+        """Current simulation time, driven by the Mesa scheduler."""
+        return self.schedule.steps
+
+    @property
+    def agents_list(self) -> list[Agent]:
+        """Access the original agent list (for plotting, recording, etc.)."""
+        return self._agents
+
+    # --------------------------------------------------------------------------
+    def step(self, plot_path: Path | None = None) -> None:
         """
         Advance the simulation by one time step.
 
-        This method performs the following actions:
-
-        1. Checks if the simulation has already reached its total simulation time
-        and raises an error if so.
-
-        2. Randomizes the order of agents to avoid bias in action execution.
-
-        3. Iterates through each agent and calls their `perform_task` method to
-        execute their current task.
-
-        4. If a `plot_path` is provided, it calls the `plot_current_state` method to
-        save a plot of the current state of the simulation.
-
-        5. Increments the simulation time by one step.
+        Mesa's ``RandomActivation`` scheduler shuffles agents and calls
+        ``agent.step()`` on each one, which in turn calls
+        ``agent.perform_task(current_time, engine)``.
 
         Parameters
         ----------
         plot_path : Path | None
-            Directory to save the plot of the current state. If None, no plot is saved.
-        record : bool
-            Whether to record the state of agents during their task execution. Passed to
-            the `perform_task` method of agents.
+            Directory to save the plot of the current state. If None, no
+            plot is saved.
 
         """
         if self.time >= self.total_simulation_time:
             msg = "Simulation has already reached its total simulation time."
             raise TimeError(msg)
 
-        # randomize agent order each step to avoid bias
-        self.rng_generator.shuffle(self.agents)
-
-        # NG: GPU Updates Agents
         if self.use_gpu:
-            self.gpu_engine.step_physics(self.agents)  # Takes the step and query
+            self.gpu_engine.step_physics(self._agents)
 
-        # CPU Updates all agents
-        else:
-            for agent in self.agents:
-                agent.perform_task(
-                    current_time=self.time, engine=self.spatial_engine, record=record
-                )
+        if plot_path is not None and not self.use_gpu:
+            self.plot_current_state(directory_path=plot_path)
 
-            if plot_path is not None:
-                self.plot_current_state(directory_path=plot_path)
-
-        self.time += 1
-
-    # ------------------------------------------------------------------------------
-
+    # --------------------------------------------------------------------------
     def plot_current_state(
         self, directory_path: Path, *, trajectory: bool = False
     ) -> None:
         """
         Plot the current state of the simulation.
 
-        This method iterates through each building in the simulation space and creates
-        a plot of the building's layout along with the positions of agents. If the
-        `trajectory` flag is set to True, it also plots the trajectories of agents up to
-        the current time step. The plots are saved to the specified directory.
-
         Parameters
         ----------
         directory_path : Path
-            The directory where the plots will be saved. The method will create the
-            directory if it does not exist.
+            The directory where the plots will be saved.
         trajectory : bool, optional
-            Whether to plot agent trajectories up to the current time step,
-            by default False.
+            Whether to plot agent trajectories, by default False.
 
         """
         if directory_path.suffix != "":
@@ -169,7 +165,9 @@ class Simulation:
 
         for building in self.space:
             axes: list[Axes] = [plt.subplots(nrows=len(building.floors), ncols=1)[1]]
-            building.plot_building(axes=axes, agents=self.agents, trajectory=trajectory)
+            building.plot_building(
+                axes=axes, agents=self._agents, trajectory=trajectory
+            )
             simulation_name = f"Simulation: {self.name}"
             if trajectory:
                 simulation_name += " | Agent Trajectories"
@@ -191,24 +189,14 @@ class Simulation:
         """
         Update existing figures in place with current agent positions.
 
-        This method is designed for live plotting during the simulation run. It takes a
-        list of figures and updates them with the current agent positions.
-        If the `trajectory` flag is set to True, it also updates the plots with agent
-        trajectories up to the current time step. The method uses `plt.pause` to create
-        a brief pause after updating the plots to allow for visualization.
-
         Parameters
         ----------
         figures : list
-            A list of tuples containing (building, figure, axes) for each building in
-            the simulation.
-
+            A list of tuples containing (building, figure, axes).
         pause : float, optional
-            The amount of time to pause after updating the plots, by default 0.05
-            seconds.
-
+            Time to pause after updating plots, by default 0.05 seconds.
         trajectory : bool, optional
-            Whether to include agent trajectories in the live plot, by default False.
+            Whether to include agent trajectories, by default False.
 
         """
         for building, fig, axes in figures:
@@ -217,8 +205,8 @@ class Simulation:
 
             building.plot_building(
                 axes=axes,
-                agents=self.agents,
-                trajectory=trajectory,  # <- key change
+                agents=self._agents,
+                trajectory=trajectory,
             )
 
             title = (
@@ -236,18 +224,12 @@ class Simulation:
 
     def setup_live_plot(self) -> list:
         """
-        Create reusable figures for live plotting. Call once before the run loop.
-
-        This method initializes Matplotlib figures for each building in the simulation
-        space. It creates a subplot for each floor of the building and returns a list of
-        tuples containing the building, figure, and axes. These figures can then be
-        updated in place during the simulation run using the `plot_live` method.
+        Create reusable figures for live plotting.
 
         Returns
         -------
         list
-            A list of tuples, where each tuple contains (building, figure, axes) for
-            each building in the simulation.
+            A list of tuples (building, figure, axes) for each building.
 
         """
         plt.ion()
@@ -259,7 +241,6 @@ class Simulation:
                 figsize=(10, 6 * len(building.floors)),
             )
             axes = [axes] if len(building.floors) == 1 else list(axes)
-
             figures.append((building, fig, axes))
         plt.show(block=False)
         return figures
@@ -271,10 +252,10 @@ class Simulation:
         header += f"Total Simulation Time: {self.total_simulation_time}\n"
         header += f"Current Time: {self.time}\n"
         header += f"Number of Buildings: {len(self.space)}\n"
-        header += f"Number of Agents: {len(self.agents)}\n"
+        header += f"Number of Agents: {len(self._agents)}\n"
 
         buildings_repr = "\n".join([repr(building) for building in self.space])
-        agents_repr = "\n".join([repr(agent) for agent in self.agents])
+        agents_repr = "\n".join([repr(agent) for agent in self._agents])
 
         return f"{header}\nBuildings:\n{buildings_repr}\n\nAgents:\n{agents_repr}"
 
@@ -287,14 +268,14 @@ class Simulation:
                 all_rooms.extend(floor.rooms)
         return all_rooms
 
+    @property
+    def agents(self) -> list[Agent]:
+        """Agent list, preserving the existing API."""
+        return self._agents
+
     def record_agent_states(self, file_path: Path) -> None:
         """
-        Record the states of all agents at the current time step to a CSV file.
-
-        This method saves the current state of each agent, including their position,
-        heading, infection status, and other relevant attributes, to a CSV file at the
-        specified path. The CSV file will have a header row and will be overwritten if
-        it already exists.
+        Record the states of all agents to CSV files.
 
         Parameters
         ----------
@@ -302,7 +283,7 @@ class Simulation:
             The path to the CSV file where agent states will be recorded.
 
         """
-        for agent in self.agents:
+        for agent in self._agents:
             agent_filename = (
                 file_path.parent
                 / f"agent_{agent.agent_type.value}_{agent.idx}_trajectory.csv"
