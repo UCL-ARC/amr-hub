@@ -27,11 +27,12 @@ logger = logging.getLogger(__name__)
 class SpatialQuery:
     """CPU-based spatial resolver and movement engine."""
 
-    __slots__ = ("space",)
+    __slots__ = ("max_movement_attempts", "space")
 
-    def __init__(self, space: list[Building]) -> None:
+    def __init__(self, space: list[Building], max_movement_attempts: int = 5) -> None:
         """Init."""
         self.space = space
+        self.max_movement_attempts = max_movement_attempts
 
     # ------------------------------------------------------------------------------
     def get_room(
@@ -124,12 +125,15 @@ class SpatialQuery:
     def try_move_one_step(
         self,
         agent: Agent,
-        max_attempts: int = 5,
+        max_attempts: int | None = None,
     ) -> tuple[float, float]:
         """Return valid coordinates for a single movement step."""
+        attempts = (
+            max_attempts if max_attempts is not None else self.max_movement_attempts
+        )
         new_x = agent.location.x
         new_y = agent.location.y
-        for _attempt in range(1, max_attempts + 1):
+        for _attempt in range(1, attempts + 1):
             new_x, new_y = self.propose_new_coordinates(
                 (agent.location.x, agent.location.y),
                 agent.heading_rad,

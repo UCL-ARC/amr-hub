@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from amr_hub_abm.agent.kinematics import AgentKinematicsConfig
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.simulation_factory import create_simulation, parse_location_timeseries
 from amr_hub_abm.space.room import Room
@@ -95,8 +96,12 @@ def test_missing_patient_id_in_location_timeseries(
             total_time_steps=4,
             time_scaling_factor=60,
             rng_generator=np.random.default_rng(),
-            agent_speed=0.001,
-            agent_stochasticity=0.0,
+            agent_kinematics=AgentKinematicsConfig(
+                movement_speed=0.001,
+                stochasticity=0.0,
+                interaction_radius=0.01,
+                max_movement_attempts=5,
+            ),
         )
 
     assert "Patient ID must be provided" in str(exc_info.value)
@@ -117,8 +122,12 @@ def test_location_timeseries_invalid_event_type(
             total_time_steps=4,
             time_scaling_factor=60,
             rng_generator=np.random.default_rng(),
-            agent_speed=0.001,
-            agent_stochasticity=0.0,
+            agent_kinematics=AgentKinematicsConfig(
+                movement_speed=0.001,
+                stochasticity=0.0,
+                interaction_radius=0.01,
+                max_movement_attempts=5,
+            ),
         )
 
     assert "Unknown event type" in str(exc_info.value)

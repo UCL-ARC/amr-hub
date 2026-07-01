@@ -6,6 +6,11 @@ average_hcw_speed: 1.4 # Average speed of healthcare workers in m/s
 minimum_hcw_speed: 1.0 # Minimum speed of healthcare workers in m/s
 maximum_hcw_speed: 2.0 # Maximum speed of healthcare workers in m/s
 
+agent_movement_speed: 0.001 # Agent movement speed in units per time step
+agent_stochasticity: 5.0 # Degrees of randomness applied to agent heading each step
+agent_interaction_radius: 0.01 # Distance within which an agent is considered to have reached a target
+agent_max_movement_attempts: 5 # Max attempts to find a movement step that avoids wall intersections
+
 start_time: 2024-01-01 00:00:00
 end_time: 2024-01-02 00:00:00
 

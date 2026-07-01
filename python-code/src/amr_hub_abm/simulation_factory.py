@@ -9,6 +9,7 @@ import pandas as pd
 import yaml
 
 from amr_hub_abm.agent.agent import Agent, AgentType
+from amr_hub_abm.agent.kinematics import AgentKinematicsConfig
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.read_space_input import SpaceInputReader
 from amr_hub_abm.simulation import Simulation, SimulationMode
@@ -21,8 +22,6 @@ logger = logging.getLogger(__name__)
 
 def create_simulation(
     config_path: Path,
-    agent_speed: float = 0.001,
-    agent_stochasticity: float = 5.0,
     *,
     use_gpu: bool = False,
 ) -> Simulation:
@@ -34,10 +33,6 @@ def create_simulation(
     config_path : Path
         Path to the YAML configuration file containing simulation parameters and
         data paths.
-    agent_speed : float, optional
-        The speed at which agents move, by default 0.001
-    agent_stochasticity : float, optional
-        The degree of randomness in agent movement, by default 5.0
     use_gpu : bool, optional
         Flag to enable GPU acceleration, by default False
 
@@ -46,6 +41,12 @@ def create_simulation(
     Simulation
         An instance of the Simulation class.
 
+    Raises
+    ------
+    InvalidDefinitionError
+        If the config file is missing one or more required agent kinematics
+        keys (see ``AgentKinematicsConfig``).
+
     """
     if not config_path.exists():
         msg = f"Configuration file not found: {config_path}"
@@ -53,6 +54,8 @@ def create_simulation(
 
     with config_path.open(encoding="utf-8") as file:
         config_data = yaml.safe_load(file)
+
+    agent_kinematics = AgentKinematicsConfig.from_config(config_data)
 
     rng_generator = np.random.default_rng()
 
@@ -81,8 +84,7 @@ def create_simulation(
         total_time_steps=total_steps,
         time_scaling_factor=time_step_length_seconds,
         rng_generator=rng_generator,
-        agent_speed=agent_speed,
-        agent_stochasticity=agent_stochasticity,
+        agent_kinematics=agent_kinematics,
     )
 
     msg = f"Parsed {len(agents)} agents from location time series."
@@ -98,6 +100,7 @@ def create_simulation(
         total_simulation_time=total_steps,
         rng_generator=rng_generator,
         use_gpu=use_gpu,
+        agent_max_movement_attempts=agent_kinematics.max_movement_attempts,
     )
 
 
@@ -155,8 +158,7 @@ def update_patient(  # noqa: PLR0913
     patient_dict: dict[int, Agent],
     total_time_steps: int,
     rng_generator: np.random.Generator,
-    agent_speed: float = 0.001,
-    agent_stochasticity: float = 5.0,
+    agent_kinematics: AgentKinematicsConfig,
 ) -> None:
     """
     Update patient information from data.
@@ -173,10 +175,9 @@ def update_patient(  # noqa: PLR0913
         The total number of time steps in the simulation.
     rng_generator : np.random.Generator
         Random number generator for reproducibility.
-    agent_speed : float, optional
-        The speed at which agents move, by default 0.001
-    agent_stochasticity : float, optional
-        The degree of randomness in agent movement, by default 5.0
+    agent_kinematics : AgentKinematicsConfig
+        Agent kinematics parameters (speed, stochasticity, interaction radius)
+        read from the simulation config file.
 
     """
     building, floor, room = space_tuple
@@ -207,8 +208,9 @@ def update_patient(  # noqa: PLR0913
             agent_type=AgentType.PATIENT,
             trajectory_length=total_time_steps,
             rng_generator=rng_generator,
-            movement_speed=agent_speed,
-            stochasticity=agent_stochasticity,
+            movement_speed=agent_kinematics.movement_speed,
+            stochasticity=agent_kinematics.stochasticity,
+            interaction_radius=agent_kinematics.interaction_radius,
         )
 
 
@@ -219,9 +221,8 @@ def update_hcw(  # noqa: PLR0913
     hcw_dict: dict[int, Agent],
     total_time_steps: int,
     rng_generator: np.random.Generator,
+    agent_kinematics: AgentKinematicsConfig,
     additional_info: dict | None = None,
-    agent_speed: float = 0.001,
-    agent_stochasticity: float = 5.0,
 ) -> None:
     """
     Update healthcare worker information from data.
@@ -240,12 +241,11 @@ def update_hcw(  # noqa: PLR0913
         The total number of time steps in the simulation.
     rng_generator : np.random.Generator
         Random number generator for reproducibility.
+    agent_kinematics : AgentKinematicsConfig
+        Agent kinematics parameters (speed, stochasticity, interaction radius)
+        read from the simulation config file.
     additional_info : dict | None, optional
         Additional information related to the event, by default None.
-    agent_speed : float, optional
-        The speed at which agents move, by default 0.001
-    agent_stochasticity : float, optional
-        The degree of randomness in agent movement, by default 5.0
 
     """
     building, floor, room = space_tuple
@@ -276,8 +276,9 @@ def update_hcw(  # noqa: PLR0913
             agent_type=AgentType.HEALTHCARE_WORKER,
             trajectory_length=total_time_steps,
             rng_generator=rng_generator,
-            movement_speed=agent_speed,
-            stochasticity=agent_stochasticity,
+            movement_speed=agent_kinematics.movement_speed,
+            stochasticity=agent_kinematics.stochasticity,
+            interaction_radius=agent_kinematics.interaction_radius,
         )
 
     hcw_dict[hcw_id].add_task(timestep_index, location, event_type, additional_info)
@@ -314,8 +315,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
     total_time_steps: int,
     time_scaling_factor: int,
     rng_generator: np.random.Generator,
-    agent_speed: float,
-    agent_stochasticity: float,
+    agent_kinematics: AgentKinematicsConfig,
 ) -> list[Agent]:
     """
     Parse a CSV file containing location time series data for agents.
@@ -334,11 +334,9 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
         The duration of each time step in seconds.
     rng_generator : np.random.Generator
         Random number generator for reproducibility.
-    agent_speed : float | None
-        The speed at which agents move. If None, a default value will be used.
-    agent_stochasticity : float | None
-        The degree of randomness in agent movement. If None, a default value will
-        be used.
+    agent_kinematics : AgentKinematicsConfig
+        Agent kinematics parameters (speed, stochasticity, interaction radius)
+        read from the simulation config file.
 
     Returns
     -------
@@ -388,8 +386,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
                 patient_dict=patient_dict,
                 total_time_steps=total_time_steps,
                 rng_generator=rng_generator,
-                agent_speed=agent_speed,
-                agent_stochasticity=agent_stochasticity,
+                agent_kinematics=agent_kinematics,
             )
             patient = patient_dict[patient_id]
 
@@ -474,8 +471,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
             additional_info=additional_info or None,
             total_time_steps=total_time_steps,
             rng_generator=rng_generator,
-            agent_speed=agent_speed,
-            agent_stochasticity=agent_stochasticity,
+            agent_kinematics=agent_kinematics,
         )
 
     return list(hcw_dict.values()) + list(patient_dict.values())

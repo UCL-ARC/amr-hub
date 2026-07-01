@@ -6,20 +6,22 @@ support of the "Extracting hard coded parameters into the config" item in
 what to move into a config file. Paths are relative to `python-code/` inside
 the repo.
 
-## Agent kinematics
+## Agent kinematics — ✅ resolved
 
-| Variable                              | Current Value | File                                       |
-| ------------------------------------- | ------------- | ------------------------------------------ |
-| `movement_speed`                      | `0.001`       | `src/amr_hub_abm/agent/agent.py:65`        |
-| `stochasticity`                       | `5.0`         | `src/amr_hub_abm/agent/agent.py:66`        |
-| `interaction_radius`                  | `0.01`        | `src/amr_hub_abm/agent/agent.py:59`        |
-| `agent_speed` (param default)         | `0.001`       | `src/amr_hub_abm/simulation_factory.py:24` |
-| `agent_stochasticity` (param default) | `5.0`         | `src/amr_hub_abm/simulation_factory.py:25` |
-| `agent_speed` (param default)         | `0.001`       | `src/amr_hub_abm/mesa_wrapper.py:26`       |
-| `agent_stochasticity` (param default) | `5.0`         | `src/amr_hub_abm/mesa_wrapper.py:27`       |
-| `max_attempts` (movement retries)     | `5`           | `src/amr_hub_abm/space/space.py:127`       |
+Extracted into the simulation config (`agent_movement_speed`, `agent_stochasticity`,
+`agent_interaction_radius`, `agent_max_movement_attempts` in
+`tests/inputs/simulation_config.yml` / `simulation_config_gpu.yml`), loaded via the
+frozen `AgentKinematicsConfig` dataclass in `src/amr_hub_abm/agent/kinematics.py`.
+`AgentKinematicsConfig.from_config()` raises `InvalidDefinitionError` if any key is
+missing — no hardcoded fallback values remain in `simulation_factory.py`,
+`mesa_wrapper.py`, or `space/space.py`. The SolaraViz `agent_speed`/
+`agent_stochasticity` sliders in `examples/solara_app.py` were removed accordingly,
+since `HospitalABM` no longer accepts runtime overrides for these.
 
 ## Config keys defined but unused (⚠️ dead — not read anywhere in code)
+
+Distinct from `agent_movement_speed` above — these keys describe a min/average/max
+HCW speed range that has no corresponding logic anywhere in the codebase.
 
 | Variable            | Current Value | File                                                                           |
 | ------------------- | ------------- | ------------------------------------------------------------------------------ |
@@ -73,27 +75,25 @@ the repo.
 | --------------------------- | ------------------------------------------ | ------------------------------------ |
 | `config_path` default (CPU) | `"tests/inputs/simulation_config.yml"`     | `src/amr_hub_abm/run.py:41`          |
 | `config_path` default (GPU) | `"tests/inputs/simulation_config_gpu.yml"` | `src/amr_hub_abm/run.py:45`          |
-| `config_path` default       | `"tests/inputs/simulation_config.yml"`     | `src/amr_hub_abm/mesa_wrapper.py:28` |
+| `config_path` default       | `"tests/inputs/simulation_config.yml"`     | `src/amr_hub_abm/mesa_wrapper.py:26` |
 | live-plot refresh cadence   | `simulation.time % 100 == 0`               | `src/amr_hub_abm/run.py:144`         |
 
 ## Visualization / cosmetic (lower priority — style, not science)
 
-| Variable                                                      | Current Value                     | File                                                |
-| ------------------------------------------------------------- | --------------------------------- | --------------------------------------------------- |
-| infection ring `markersize`                                   | `12`                              | `src/amr_hub_abm/agent/plotter.py:40`               |
-| infection ring `markeredgewidth`                              | `2`                               | `src/amr_hub_abm/agent/plotter.py:43`               |
-| agent dot `markersize`                                        | `5`                               | `src/amr_hub_abm/agent/plotter.py:51`               |
-| label offset (x, y)                                           | `0.1, 0.05`                       | `src/amr_hub_abm/agent/plotter.py:97-98`            |
-| label `fontsize`                                              | `7`                               | `src/amr_hub_abm/agent/plotter.py:100`              |
-| trajectory `linewidth` / `alpha`                              | `1.5` / `0.7`                     | `src/amr_hub_abm/agent/plotter.py:128,130`          |
-| `ROLE_COLOUR_MAP`                                             | `blue/red/green`                  | `src/amr_hub_abm/agent/enums.py:23-27`              |
-| `INFECTION_RING_COLOUR`                                       | `gold/darkred/blue`               | `src/amr_hub_abm/agent/enums.py:29-34`              |
-| `CONTENT_COLORS`                                              | `lightblue/lightgreen/lightgray`  | `src/amr_hub_abm/space/content.py:38-42`            |
-| `marker_size` (content)                                       | `100`                             | `src/amr_hub_abm/space/content.py:70`               |
-| `marker_type` (content)                                       | `"s"`                             | `src/amr_hub_abm/space/content.py:69`               |
-| `hash(...) % 128` (int8 packing)                              | `128`                             | `src/amr_hub_abm/agent/output.py:122`               |
-| QR code `version`/`box_size`/`border`                         | `1` / `10` / `5`                  | `examples/solara_app.py:45` (repo root `examples/`) |
-| `figsize`                                                     | `(6, 6)`                          | `examples/solara_app.py:25`                         |
-| `play_interval` / `render_interval`                           | `100` / `100`                     | `examples/solara_app.py:146-147`                    |
-| SolaraViz `agent_speed` slider (default/min/max/step)         | `0.001 / 0.0001 / 0.002 / 0.0001` | `examples/solara_app.py:126-129`                    |
-| SolaraViz `agent_stochasticity` slider (default/min/max/step) | `5.0 / 0 / 10.0 / 0.5`            | `examples/solara_app.py:134-137`                    |
+| Variable                              | Current Value                    | File                                                |
+| ------------------------------------- | -------------------------------- | --------------------------------------------------- |
+| infection ring `markersize`           | `12`                             | `src/amr_hub_abm/agent/plotter.py:41`               |
+| infection ring `markeredgewidth`      | `2`                              | `src/amr_hub_abm/agent/plotter.py:44`               |
+| agent dot `markersize`                | `5`                              | `src/amr_hub_abm/agent/plotter.py:52`               |
+| label offset (x, y)                   | `0.1, 0.05`                      | `src/amr_hub_abm/agent/plotter.py:98-99`            |
+| label `fontsize`                      | `7`                              | `src/amr_hub_abm/agent/plotter.py:101`              |
+| trajectory `linewidth` / `alpha`      | `1.5` / `0.7`                    | `src/amr_hub_abm/agent/plotter.py:129,131`          |
+| `ROLE_COLOUR_MAP`                     | `blue/red/green`                 | `src/amr_hub_abm/agent/enums.py:23-27`              |
+| `INFECTION_RING_COLOUR`               | `gold/darkred/blue`              | `src/amr_hub_abm/agent/enums.py:29-34`              |
+| `CONTENT_COLORS`                      | `lightblue/lightgreen/lightgray` | `src/amr_hub_abm/space/content.py:38-42`            |
+| `marker_size` (content)               | `100`                            | `src/amr_hub_abm/space/content.py:70`               |
+| `marker_type` (content)               | `"s"`                            | `src/amr_hub_abm/space/content.py:69`               |
+| `hash(...) % 128` (int8 packing)      | `128`                            | `src/amr_hub_abm/agent/output.py:122`               |
+| QR code `version`/`box_size`/`border` | `1` / `10` / `5`                 | `examples/solara_app.py:46` (repo root `examples/`) |
+| `figsize`                             | `(6, 6)`                         | `examples/solara_app.py:26`                         |
+| `play_interval` / `render_interval`   | `100` / `100`                    | `examples/solara_app.py:133-134`                    |

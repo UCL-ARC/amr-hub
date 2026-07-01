@@ -23,22 +23,14 @@ class HospitalABM(mesa.Model):
 
     def __init__(
         self,
-        agent_speed: float = 0.001,
-        agent_stochasticity: float = 5.0,
         config_path: str = "tests/inputs/simulation_config.yml",
     ) -> None:
         """Initialize the model and seed infections for demo purposes."""
         super().__init__()
 
         self.config_path = config_path
-        self.agent_speed = agent_speed
-        self.agent_stochasticity = agent_stochasticity
 
-        self.simulation = create_simulation(
-            Path(config_path),
-            agent_speed=agent_speed,
-            agent_stochasticity=agent_stochasticity,
-        )
+        self.simulation = create_simulation(Path(config_path))
 
         # seed infections for visualization demo
         self.simulation.agents[0].infection_status = InfectionStatus.INFECTED
@@ -46,11 +38,7 @@ class HospitalABM(mesa.Model):
 
     def create_new_simulation(self) -> None:
         """Create a new simulation."""
-        self.simulation = create_simulation(
-            Path(self.config_path),
-            agent_speed=self.agent_speed,
-            agent_stochasticity=self.agent_stochasticity,
-        )
+        self.simulation = create_simulation(Path(self.config_path))
 
     def step(self) -> None:
         """Advance the wrapped simulation by one time step."""

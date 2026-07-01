@@ -125,24 +125,6 @@ def AgentTaskTableComponent(model: HospitalABM) -> None:
 
 page = SolaraViz(
     HospitalABM(),
-    model_params={
-        "agent_speed": {
-            "type": "SliderFloat",
-            "value": 0.001,
-            "min": 0.0001,
-            "max": 0.002,
-            "step": 0.0001,
-            "label": "Agent Speed",
-        },
-        "agent_stochasticity": {
-            "type": "SliderFloat",
-            "value": 5.0,
-            "min": 0,
-            "max": 10.0,
-            "step": 0.5,
-            "label": "Agent Stochasticity",
-        },
-    },
     components=[
         FloorplanComponent,
         AgentTaskTableComponent,
