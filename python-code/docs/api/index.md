@@ -17,3 +17,7 @@ This section provides a comprehensive reference for the AMR-Hub API, detailing t
 - [Simulation Factory](simulation_factory.md)
 - [Simulation Dataclass](simulation.md)
 - [Task Dataclass](task.md)
+- Floorplan extraction:
+  - [DXF extraction](floorplan_dxf_extraction.md)
+  - [Shared-wall normalisation](floorplan_shared_walls.md)
+  - [YAML construction](floorplan_yaml_construction.md)
