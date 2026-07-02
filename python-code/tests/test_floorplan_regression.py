@@ -24,9 +24,6 @@ from tests.floorplan_regression_fixtures import (
     regression_cases,
 )
 
-if TYPE_CHECKING:
-    from collections.abc import Hashable
-
 MIN_GAP = 50.0
 MAX_GAP = 130.0
 MIN_OVERLAP_LENGTH = 250.0
