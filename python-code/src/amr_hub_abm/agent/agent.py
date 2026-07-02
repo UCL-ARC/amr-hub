@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 from amr_hub_abm.agent.enums import AgentType, InfectionStatus
 from amr_hub_abm.agent.output import Record, record_state
 from amr_hub_abm.exceptions import NonNegativeValueError, SimulationModeError
-from amr_hub_abm.space.content import ContentType
+from amr_hub_abm.spatial.furniture import ContentType
 from amr_hub_abm.task.task import (
     Task,
     TaskOccupyContent,
@@ -36,8 +36,8 @@ from amr_hub_abm.task.tasklist import (
 if TYPE_CHECKING:
     from numpy.random import Generator
 
-    from amr_hub_abm.space.location import Location
-    from amr_hub_abm.space.space import SpatialQuery
+    from amr_hub_abm.spatial.engine import SpatialQuery
+    from amr_hub_abm.spatial.location import Location
 
 
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]

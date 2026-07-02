@@ -8,13 +8,13 @@ import pytest
 from amr_hub_abm.agent.agent import Agent
 from amr_hub_abm.agent.enums import AgentType
 from amr_hub_abm.agent.utils import add_agent_occupancy, remove_agent_occupancy
-from amr_hub_abm.space.building import Building
-from amr_hub_abm.space.content import Content, ContentType
-from amr_hub_abm.space.floor import Floor
-from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.room import Room
-from amr_hub_abm.space.space import SpatialQuery
-from amr_hub_abm.space.wall import Wall
+from amr_hub_abm.spatial.building import Building
+from amr_hub_abm.spatial.engine import SpatialQuery
+from amr_hub_abm.spatial.floor import Floor
+from amr_hub_abm.spatial.furniture import Content, ContentType
+from amr_hub_abm.spatial.location import Location
+from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.spatial.wall import Wall
 
 
 @pytest.fixture

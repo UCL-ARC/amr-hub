@@ -8,7 +8,7 @@ import pytest
 
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.simulation_factory import create_simulation, parse_location_timeseries
-from amr_hub_abm.space.room import Room
+from amr_hub_abm.spatial.room import Room
 
 
 def test_successful_simulation_creation() -> None:

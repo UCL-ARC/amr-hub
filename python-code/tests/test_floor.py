@@ -4,10 +4,10 @@ import numpy as np
 import pytest
 
 from amr_hub_abm.exceptions import InvalidRoomError
-from amr_hub_abm.space.door import Door
-from amr_hub_abm.space.floor import Floor
-from amr_hub_abm.space.room import Room
-from amr_hub_abm.space.wall import Wall
+from amr_hub_abm.spatial.door import Door
+from amr_hub_abm.spatial.floor import Floor
+from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.spatial.wall import Wall
 
 
 def _make_room(

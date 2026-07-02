@@ -9,7 +9,7 @@ from amr_hub_abm.agent.agent import Agent
 from amr_hub_abm.agent.enums import ROLE_COLOUR_MAP, AgentType, InfectionStatus
 from amr_hub_abm.agent.plotter import plot_agent, plot_trajectory
 from amr_hub_abm.exceptions import SimulationModeError
-from amr_hub_abm.space.location import Location
+from amr_hub_abm.spatial.location import Location
 from amr_hub_abm.task.task import (
     Task,
     TaskAttendPatient,

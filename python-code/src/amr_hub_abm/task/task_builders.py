@@ -18,10 +18,10 @@ from amr_hub_abm.task.task import (
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent.agent import Agent
-    from amr_hub_abm.space.content import ContentType
-    from amr_hub_abm.space.door import Door
-    from amr_hub_abm.space.location import Location
-    from amr_hub_abm.space.room import Room
+    from amr_hub_abm.spatial.door import Door
+    from amr_hub_abm.spatial.furniture import ContentType
+    from amr_hub_abm.spatial.location import Location
+    from amr_hub_abm.spatial.room import Room
 
 type TaskBuilder = Callable[[TaskBuilderContext], Task]
 

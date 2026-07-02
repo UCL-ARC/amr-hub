@@ -4,10 +4,10 @@ import numpy as np
 import pytest
 
 from amr_hub_abm.exceptions import InvalidDistanceError
-from amr_hub_abm.space.building import Building
-from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.room import Room
-from amr_hub_abm.space.wall import Wall
+from amr_hub_abm.spatial.building import Building
+from amr_hub_abm.spatial.location import Location
+from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.spatial.wall import Wall
 
 
 @pytest.fixture

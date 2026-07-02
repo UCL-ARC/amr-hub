@@ -7,7 +7,7 @@ import pytest
 
 from amr_hub_abm.exceptions import InvalidDoorError
 from amr_hub_abm.read_space_input import SpaceInputReader
-from amr_hub_abm.space.floor import Floor
+from amr_hub_abm.spatial.floor import Floor
 
 
 @pytest.fixture

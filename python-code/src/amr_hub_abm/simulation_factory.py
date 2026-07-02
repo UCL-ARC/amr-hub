@@ -12,9 +12,9 @@ from amr_hub_abm.agent.agent import Agent, AgentType
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.read_space_input import SpaceInputReader
 from amr_hub_abm.simulation import Simulation, SimulationMode
-from amr_hub_abm.space.content import ContentType
-from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.room import Room
+from amr_hub_abm.spatial.furniture import ContentType
+from amr_hub_abm.spatial.location import Location
+from amr_hub_abm.spatial.room import Room
 
 logger = logging.getLogger(__name__)
 

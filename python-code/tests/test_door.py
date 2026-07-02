@@ -3,7 +3,7 @@
 import pytest
 
 from amr_hub_abm.exceptions import InvalidDoorError
-from amr_hub_abm.space.door import Door
+from amr_hub_abm.spatial.door import Door
 
 
 def test_door_creation_with_valid_coordinates() -> None:

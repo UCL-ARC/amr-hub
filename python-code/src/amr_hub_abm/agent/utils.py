@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent.agent import Agent
-    from amr_hub_abm.space.content import Content
-    from amr_hub_abm.space.space import SpatialQuery
+    from amr_hub_abm.spatial.engine import SpatialQuery
+    from amr_hub_abm.spatial.furniture import Content
 
 logger = logging.getLogger(__name__)
 
