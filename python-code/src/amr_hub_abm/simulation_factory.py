@@ -110,8 +110,7 @@ def parse_location_string(location_str: str) -> tuple[str, int, str]:
     Returns
     -------
     tuple[str, int, str]
-        A tuple containing the building name, floor number,
-        and room name.
+        A tuple containing the building name, floor number, and room name.
 
     """
     building_part, floor, room = location_str.split(":")

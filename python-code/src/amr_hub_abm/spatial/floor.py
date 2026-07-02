@@ -147,14 +147,14 @@ class Floor:
         InvalidRoomError
             If the pseudo-room does not have a valid positive area.
 
-        Note
-        ----
-            This method generates a rectangular room layout based on the area of the
-            pseudo-room. The doors are positioned along one side of the rectangle. This
-            function is not complete. Currently it only creates single simple
-            rectangular rooms. Due to possibly complex topology, rectangular rooms may
-            not always be a valid representation. Currently, no topology connections
-            are considered. This function will be improved in future versions.
+        Notes
+        -----
+        This method generates a rectangular room layout based on the area of the
+        pseudo-room. The doors are positioned along one side of the rectangle. This
+        function is not complete. Currently it only creates single simple
+        rectangular rooms. Due to possibly complex topology, rectangular rooms may
+        not always be a valid representation. Currently, no topology connections
+        are considered. This function will be improved in future versions.
 
         """
         if not room.area or room.area <= 0:

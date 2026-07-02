@@ -20,7 +20,7 @@ class Record:
 
     Parameters
     ----------
-    total_time: int
+    total_time : int
         The total number of time steps for which to record the agent's state.
 
     """
@@ -106,8 +106,8 @@ def record_state(agent: Agent, current_time: int) -> None:
 
     Raises
     ------
-        ValueError
-            If the current_time exceeds the trajectory_length of the agent.
+    ValueError
+        If the current_time exceeds the trajectory_length of the agent.
 
     """
     if current_time >= agent.trajectory_length:

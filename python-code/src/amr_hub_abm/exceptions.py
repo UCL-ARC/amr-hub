@@ -21,7 +21,8 @@ class SimulationModeError(Exception):
 
     Attributes
     ----------
-        message (str): A description of the error that occurred.
+    message : str
+        A description of the error that occurred.
 
     """
 
@@ -40,10 +41,12 @@ class InvalidDistanceError(Exception):
 
     Attributes
     ----------
-        locations (tuple): A tuple containing the two locations involved in the distance
+    locations : tuple
+        A tuple containing the two locations involved in the distance
         calculation.
 
-        building (bool): A flag indicating whether the distance calculation is between
+    building : bool
+        A flag indicating whether the distance calculation is between
         buildings (True) or floors (False).
 
     """
@@ -71,7 +74,8 @@ class TimeError(Exception):
 
     Attributes
     ----------
-        message (str): A description of the error that occurred.
+    message : str
+        A description of the error that occurred.
 
     """
 
@@ -90,7 +94,8 @@ class InvalidRoomError(Exception):
 
     Attributes
     ----------
-        message (str): A description of the error that occurred.
+    message : str
+        A description of the error that occurred.
 
     """
 
@@ -105,7 +110,8 @@ class InvalidDoorError(Exception):
 
     Attributes
     ----------
-        message (str): A description of the error that occurred.
+    message : str
+        A description of the error that occurred.
 
     """
 
@@ -120,7 +126,8 @@ class InvalidDefinitionError(Exception):
 
     Attributes
     ----------
-        message (str): A description of the error that occurred.
+    message : str
+        A description of the error that occurred.
 
     """
 
@@ -135,7 +142,8 @@ class NonNegativeValueError(Exception):
 
     Attributes
     ----------
-        message (str): A description of the error that occurred.
+    message : str
+        A description of the error that occurred.
 
     """
 

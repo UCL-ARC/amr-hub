@@ -177,8 +177,8 @@ class Agent:
 
         Raises
         ------
-            SimulationModeError
-                If the event_type is invalid.
+        SimulationModeError
+            If the event_type is invalid.
 
         """
         if event_type not in TASK_TYPES:
@@ -258,7 +258,7 @@ class Agent:
             The time at which the next task is scheduled to move to the next stage.
         current_time : int
             The current time step in the simulation.
-        engine: SpatialQuery
+        engine : SpatialQuery
             The SpatialQuery instance for resolving spatial queries.
 
         """

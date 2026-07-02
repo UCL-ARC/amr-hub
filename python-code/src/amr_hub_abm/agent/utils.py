@@ -20,6 +20,7 @@ def remove_agent_occupancy(
     Remove the agent's occupancy from any content they are currently occupying.
 
     Parameters
+    ----------
     agent : Agent
         The agent whose occupancy is to be removed.
     current_time : int
@@ -56,6 +57,7 @@ def add_agent_occupancy(
     Add the agent's occupancy to the specified content.
 
     Parameters
+    ----------
     agent : Agent
         The agent whose occupancy is to be added.
     content : Content

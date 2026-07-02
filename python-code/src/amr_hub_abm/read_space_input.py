@@ -83,8 +83,8 @@ class SpaceInputReader:
         5. Organizes rooms into floors and buildings.
 
 
-        Note:
-        ----
+        Notes
+        -----
         The detached doors are intermediate representations of doors that are associated
         with rooms but do not yet have their connecting rooms defined. They are used to
         ensure that each door instance remains immutable and can be shared across
