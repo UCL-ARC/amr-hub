@@ -5,6 +5,7 @@ import pytest
 
 from amr_hub_abm.agent.agent import Agent, AgentType
 from amr_hub_abm.agent.enums import InfectionStatus
+from amr_hub_abm.config import sim_config
 from amr_hub_abm.exceptions import NonNegativeValueError, SimulationModeError
 from amr_hub_abm.space.building import Building
 from amr_hub_abm.space.content import Content, ContentType
@@ -118,7 +119,12 @@ def test_add_workstation_task(setup_agent: Agent) -> None:
     """Test adding a 'workstation' task to the agent."""
     agent = setup_agent
     location = Location(building="Test Building", floor=1, x=15.0, y=15.0)
-    agent.add_task(time=0, location=location, event_type="workstation")
+    agent.add_task(
+        time=0,
+        location=location,
+        event_type="workstation",
+        time_needed=sim_config.task_durations.time_needed_workstation,
+    )
 
     assert len(agent.tasks) == 1
     task = agent.tasks[0]
@@ -144,6 +150,7 @@ def test_add_attend_patient_task(
         time=0,
         location=patient_location,
         event_type="attend_patient",
+        time_needed=sim_config.task_durations.time_needed_attend_patient,
         additional_info={"patient": patient},
     )
 
@@ -163,6 +170,7 @@ def test_add_door_access_task(setup_agent: Agent) -> None:
         time=0,
         location=location,
         event_type="door_access",
+        time_needed=sim_config.task_durations.time_needed_door_access,
         additional_info={"door": door_mock, "destination": 2},
     )
 
@@ -179,7 +187,9 @@ def test_add_invalid_task_type(setup_agent: Agent) -> None:
     location = Location(building="Test Building", floor=1, x=15.0, y=15.0)
 
     with pytest.raises(SimulationModeError, match="Invalid task type"):
-        agent.add_task(time=0, location=location, event_type="invalid_task")
+        agent.add_task(
+            time=0, location=location, event_type="invalid_task", time_needed=5
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -202,14 +212,18 @@ def test_attempt_task_insertion(
     sample_room.contents.append(chair_content)
 
     next_task = Task(
-        time_needed=10,
+        time_needed=sim_config.task_durations.time_needed_occupy_content,
         time_due=20,
         location=Location(building="Test Building", floor=1, x=10.0, y=10.0),
         task_type=TaskType.GOTO_LOCATION,
     )
 
     agent.attempt_task_insertion(
-        next_task=next_task, next_task_move_time=15, current_time=0, engine=engine
+        next_task=next_task,
+        next_task_move_time=15,
+        current_time=0,
+        engine=engine,
+        task_durations=sim_config.task_durations,
     )
 
     assert len(agent.tasks) == 1
@@ -232,7 +246,11 @@ def test_task_insertion_stationary_agent(
     agent.tasks = [next_task]
     agent.stationary = True
     agent.attempt_task_insertion(
-        next_task=next_task, next_task_move_time=5, current_time=5, engine=engine
+        next_task=next_task,
+        next_task_move_time=5,
+        current_time=5,
+        engine=engine,
+        task_durations=sim_config.task_durations,
     )
     assert len(agent.tasks) == 1
 
@@ -246,13 +264,17 @@ def test_task_insertion_existing_occupy_task(
     agent = setup_agent
     occupy_task = TaskOccupyContent(
         time_due=5,
-        time_needed=2,
+        time_needed=sim_config.task_durations.time_needed_occupy_content,
         content_type=ContentType.CHAIR,
         room=sample_room,
     )
     agent.tasks = [occupy_task]
     agent.attempt_task_insertion(
-        next_task=occupy_task, next_task_move_time=5, current_time=5, engine=engine
+        next_task=occupy_task,
+        next_task_move_time=5,
+        current_time=5,
+        engine=engine,
+        task_durations=sim_config.task_durations,
     )
     assert len(agent.tasks) == 1
 
@@ -266,7 +288,7 @@ def test_task_insertion_invalid_location(
     agent = setup_agent
     agent.location = Location(x=0.0, y=0.0, floor=10, building="Test Building")
     next_task = Task(
-        time_needed=10,
+        time_needed=1,
         time_due=20,
         location=Location(building="Test Building", floor=1, x=10.0, y=10.0),
         task_type=TaskType.GOTO_LOCATION,
@@ -279,6 +301,7 @@ def test_task_insertion_invalid_location(
             next_task_move_time=5,
             current_time=5,
             engine=engine,
+            task_durations=sim_config.task_durations,
         )
         assert any("not located in any room" in message for message in caplog.messages)
     assert len(agent.tasks) == 1
