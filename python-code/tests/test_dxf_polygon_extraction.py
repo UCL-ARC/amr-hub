@@ -9,7 +9,6 @@ import pytest
 import yaml
 from shapely.geometry import LineString, Point, Polygon
 
-import floorplan_extractor.dxf_polygon_extraction as dxf_extraction
 from floorplan_extractor.dxf_polygon_extraction import (
     DoorAttachmentConfig,
     ExtractionConfig,
