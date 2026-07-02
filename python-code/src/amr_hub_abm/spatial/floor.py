@@ -9,6 +9,7 @@ import numpy as np
 
 from amr_hub_abm.agent.plotter import plot_agents_in_room
 from amr_hub_abm.exceptions import InvalidRoomError
+from amr_hub_abm.spatial.plotter import plot_room
 from amr_hub_abm.spatial.room import Room
 from amr_hub_abm.spatial.wall import Wall
 
@@ -90,7 +91,12 @@ class Floor:
         return adjacency_matrix
 
     def plot(
-        self, ax: Axes, agents: list[Agent] | None = None, *, trajectory: bool = False
+        self,
+        ax: Axes,
+        agents: list[Agent] | None = None,
+        *,
+        trajectory: bool = False,
+        **kwargs: dict,
     ) -> None:
         """
         Plot the floor layout including rooms and doors.
@@ -109,6 +115,7 @@ class Floor:
             agents = []
 
         for room in self.rooms:
+            plot_room(room, ax, **kwargs)
             plot_agents_in_room(room, ax, agents, trajectory=trajectory)
 
     def add_pseudo_rooms(self) -> None:

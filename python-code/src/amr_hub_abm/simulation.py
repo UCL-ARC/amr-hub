@@ -57,6 +57,9 @@ class Simulation:
         The total number of time steps in the simulation.
     rng_generator : np.random.Generator
         Random number generator for reproducibility.
+    agent_max_movement_attempts : int, optional
+        Maximum number of attempts an agent may make to find a movement step
+        that avoids wall intersections, by default 5.
 
     """
 
@@ -76,6 +79,7 @@ class Simulation:
     use_gpu: bool = field(default=False)
     gpu_engine: Any = field(default=None, init=False)
     spatial_engine: Any = field(default=None, init=False)
+    agent_max_movement_attempts: int = field(default=5)
     # ------------------------------------------------------------------------------
 
     def __post_init__(self) -> None:
@@ -84,7 +88,10 @@ class Simulation:
             self.gpu_engine = GPUPhysicsEngine()
         # Initialize the CPU engine
         else:
-            self.spatial_engine = SpatialQuery(space=self.space)
+            self.spatial_engine = SpatialQuery(
+                space=self.space,
+                max_movement_attempts=self.agent_max_movement_attempts,
+            )
             self._agent_store = None
 
     # ------------------------------------------------------------------------------

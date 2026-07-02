@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 
     from amr_hub_abm.spatial.engine import SpatialQuery
     from amr_hub_abm.spatial.location import Location
+    from amr_hub_abm.task.task_duration import TaskDurationConfig
 
 
 TASK_TYPES = [task_type.name.lower() for task_type in TaskType]
@@ -155,6 +156,7 @@ class Agent:
     def add_task(
         self,
         time: int,
+        time_needed: int,
         location: Location,
         event_type: str,
         additional_info: dict | None = None,
@@ -189,6 +191,7 @@ class Agent:
 
         context = build_task_context(
             time=time,
+            time_needed=time_needed,
             location=location,
             additional_info=additional_info,
         )
@@ -242,6 +245,7 @@ class Agent:
         next_task_move_time: float,
         current_time: int,
         engine: SpatialQuery,
+        task_durations: TaskDurationConfig,
     ) -> None:
         """
         Attempt to insert a task to occupy an empty chair.
@@ -295,6 +299,7 @@ class Agent:
             if current_time + estimated_time_to_chair < next_task_move_time:
                 self.add_task(
                     time=current_time,
+                    time_needed=task_durations.time_needed_occupy_content,
                     location=chair.location,
                     event_type="occupy_content",
                     additional_info={

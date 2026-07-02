@@ -6,6 +6,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 
 from amr_hub_abm.agent.agent import InfectionStatus
+from amr_hub_abm.config import sim_config
 from amr_hub_abm.simulation import Simulation
 from amr_hub_abm.simulation_factory import create_simulation
 
@@ -38,13 +39,8 @@ def simulate(  # noqa: PLR0912, PLR0913
         Whether to seed initial infections for demonstration purposes, by default False
 
     """
-    config_path = Path("tests/inputs/simulation_config.yml")
-
-    # 6/5/2026 NG Added to call the floor plan created by the new convertor
-    if use_gpu:
-        config_path = Path("tests/inputs/simulation_config_gpu.yml")
-
-    simulation = create_simulation(config_path)
+    config = sim_config
+    simulation = create_simulation(config)
     # --------------------------------------------------------------------------
     # 6/5/2026 NG Added
     simulation.use_gpu = use_gpu

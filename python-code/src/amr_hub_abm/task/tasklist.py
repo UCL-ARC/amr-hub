@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from amr_hub_abm.config import sim_config
 from amr_hub_abm.task.task import TaskProgress
 
 if TYPE_CHECKING:
@@ -111,11 +112,14 @@ def perform_to_be_started_task(
     )
 
     if current_time < task_move_time:
+        task_durations = sim_config.task_durations
+
         agent.attempt_task_insertion(
             next_task=task,
             next_task_move_time=task_move_time,
             current_time=current_time,
             engine=engine,
+            task_durations=task_durations,
         )
         return False
 
