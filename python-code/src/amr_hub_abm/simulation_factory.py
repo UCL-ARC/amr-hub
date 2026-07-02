@@ -6,10 +6,10 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import yaml
 
 from amr_hub_abm.agent.agent import Agent, AgentType
 from amr_hub_abm.agent.kinematics import AgentKinematicsConfig
+from amr_hub_abm.config import SimulationConfig
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.read_space_input import SpaceInputReader
 from amr_hub_abm.simulation import Simulation, SimulationMode
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_simulation(
-    config_path: Path,
+    config: SimulationConfig,
     *,
     use_gpu: bool = False,
 ) -> Simulation:
@@ -31,9 +31,8 @@ def create_simulation(
 
     Parameters
     ----------
-    config_path : Path
-        Path to the YAML configuration file containing simulation parameters and
-        data paths.
+    config : SimulationConfig
+        The simulation configuration object.
     use_gpu : bool, optional
         Flag to enable GPU acceleration, by default False
 
@@ -49,33 +48,26 @@ def create_simulation(
         keys (see ``AgentKinematicsConfig``).
 
     """
-    if not config_path.exists():
-        msg = f"Configuration file not found: {config_path}"
-        raise FileNotFoundError(msg)
-
-    with config_path.open(encoding="utf-8") as file:
-        config_data = yaml.safe_load(file)
-
-    agent_kinematics = AgentKinematicsConfig.from_config(config_data)
-    task_durations = TaskDurationConfig.from_config(config_data)
+    agent_kinematics = config.agent_kinematics
+    task_durations = config.task_durations
     rng_generator = np.random.default_rng()
 
-    buildings_path = Path(config_data["buildings_path"])
+    buildings_path = Path(config.config_data["buildings_path"])
     msg = f"Buildings path from config: {buildings_path}"
     logger.debug(msg)
     space_reader = SpaceInputReader(buildings_path, rng_generator)
     logger.debug("Buildings loaded successfully.")
     logger.debug(space_reader.buildings)
 
-    start_time = pd.to_datetime(config_data["start_time"])
-    end_time = pd.to_datetime(config_data["end_time"])
+    start_time = pd.to_datetime(config.config_data["start_time"])
+    end_time = pd.to_datetime(config.config_data["end_time"])
     total_seconds = (end_time - start_time).total_seconds()
-    time_step_length_seconds = config_data["length_of_timestep_in_seconds"]
+    time_step_length_seconds = config.config_data["length_of_timestep_in_seconds"]
     total_steps = int(total_seconds // time_step_length_seconds)
     logger.info("Total simulation time steps: %d", total_steps)
 
     timeseries_data = read_location_timeseries(
-        file_path=Path(config_data["location_timeseries_path"])
+        file_path=Path(config.config_data["location_timeseries_path"])
     )
 
     agents = parse_location_timeseries(

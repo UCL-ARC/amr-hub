@@ -8,11 +8,11 @@ adapted to fit the Mesa framework for easier visualization.
 """
 
 import logging
-from pathlib import Path
 
 import mesa
 
 from amr_hub_abm.agent.agent import InfectionStatus
+from amr_hub_abm.config import sim_config
 from amr_hub_abm.simulation_factory import create_simulation
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ class HospitalABM(mesa.Model):
 
         self.config_path = config_path
 
-        self.simulation = create_simulation(Path(config_path))
+        self.simulation = create_simulation(sim_config)
 
         # seed infections for visualization demo
         self.simulation.agents[0].infection_status = InfectionStatus.INFECTED
@@ -38,7 +38,7 @@ class HospitalABM(mesa.Model):
 
     def create_new_simulation(self) -> None:
         """Create a new simulation."""
-        self.simulation = create_simulation(Path(self.config_path))
+        self.simulation = create_simulation(sim_config)
 
     def step(self) -> None:
         """Advance the wrapped simulation by one time step."""
