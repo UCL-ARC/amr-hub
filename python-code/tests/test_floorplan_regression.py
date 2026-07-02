@@ -1,8 +1,11 @@
 """Regression baseline for floorplan geometry and diagnostics."""
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Hashable
 
 from floorplan_extractor.dxf_polygon_extraction import attach_room_doors
 from floorplan_extractor.shared_walls import (
