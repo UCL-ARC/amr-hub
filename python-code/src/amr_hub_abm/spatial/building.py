@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
-    from amr_hub_abm.agent import Agent
-    from amr_hub_abm.space.floor import Floor
+    from amr_hub_abm.agent.agent import Agent
+    from amr_hub_abm.spatial.floor import Floor
 
 
 @dataclass

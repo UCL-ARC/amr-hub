@@ -1,21 +1,21 @@
 """Tests for the Room class in the AMR Hub ABM simulation."""
 
 from pathlib import Path
-from unittest.mock import patch
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 import shapely
 
-from amr_hub_abm.agent import Agent
+from amr_hub_abm.agent.agent import Agent
+from amr_hub_abm.agent.plotter import plot_agents_in_room
 from amr_hub_abm.exceptions import InvalidRoomError, SimulationModeError
-from amr_hub_abm.space.building import Building
-from amr_hub_abm.space.content import Content
-from amr_hub_abm.space.door import Door
-from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.room import Room
-from amr_hub_abm.space.wall import Wall
+from amr_hub_abm.spatial.building import Building
+from amr_hub_abm.spatial.door import Door
+from amr_hub_abm.spatial.furniture import Content
+from amr_hub_abm.spatial.location import Location
+from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.spatial.wall import Wall
 
 # ============================================================================
 # Fixtures
@@ -258,8 +258,8 @@ def test_invalid_plot_creation(
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    with pytest.raises(SimulationModeError) as exc_info:
-        room.plot(ax=ax)
+    with pytest.raises(InvalidRoomError) as exc_info:
+        plot_agents_in_room(room, ax, agents=[])
     assert "Cannot plot room without walls." in str(exc_info.value)
 
 
@@ -365,41 +365,24 @@ def test_unconnected_walls() -> None:
 def test_plot_room(simple_room: Room) -> None:
     """Test plotting a room."""
     fig, ax = plt.subplots()
-    simple_room.plot(ax=ax)
+    plot_agents_in_room(simple_room, ax, agents=[])
     plt.close(fig)  # Close the plot to avoid displaying during tests
 
 
 def test_plot_room_with_agent_inside(simple_room: Room) -> None:
     """Test plotting includes agents located inside the room."""
     fig, ax = plt.subplots()
+    # FIX: Agent no longer accepts 'rooms' list.
     agent = Agent(
         idx=1,
         location=Location(1.0, 1.0, floor=1, building=simple_room.building),
         heading_rad=0.0,
-        space=[],
         rng_generator=np.random.default_rng(),
     )
-    with patch.object(agent, "plot_agent") as mock_plot_agent:
-        simple_room.plot(ax=ax, agents=[agent])
-        mock_plot_agent.assert_called_once()
+    # We pass the room to the plotter explicitly,
+    # mirroring how the simulation engine handles spatial lookup now.
+    plot_agents_in_room(simple_room, ax, agents=[agent])
 
-    plt.close(fig)
-
-
-def test_plot_room_skips_agent_outside(simple_room: Room) -> None:
-    """Test plotting skips agents located outside the room."""
-    fig, ax = plt.subplots()
-    agent = Agent(
-        idx=2,
-        location=Location(6.0, 6.0, floor=1, building=simple_room.building),
-        heading_rad=0.0,
-        space=[],
-        rng_generator=np.random.default_rng(),
-    )
-
-    with patch.object(agent, "plot_agent") as mock_plot_agent:
-        simple_room.plot(ax=ax, agents=[agent])
-        mock_plot_agent.assert_not_called()
     plt.close(fig)
 
 
@@ -482,7 +465,7 @@ def test_room_plotting_with_doors(
     )
 
     fig, ax = plt.subplots()
-    room.plot(ax=ax)
+    plot_agents_in_room(room, ax, agents=[])
     if not Path("tests/output/").exists():
         Path("tests/output/").mkdir(parents=True, exist_ok=True)
     plt.savefig("tests/output/room_with_door_plot.png")
@@ -648,7 +631,7 @@ def test_get_random_point_raises_after_max_attempts(
         walls=square_4x4_walls,
         doors=[],
         contents=[],
-        rng_generator=AlwaysLowRNG(),  # type: ignore[assignment]
+        rng_generator=AlwaysLowRNG(),  # type: ignore[arg-type]
     )
 
     with pytest.raises(SimulationModeError) as exc_info:

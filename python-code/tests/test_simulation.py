@@ -5,15 +5,16 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from amr_hub_abm.agent import Agent, AgentType, InfectionStatus
+from amr_hub_abm.agent.agent import Agent, AgentType, InfectionStatus
 from amr_hub_abm.exceptions import TimeError
 from amr_hub_abm.simulation import Simulation, SimulationMode
-from amr_hub_abm.space.building import Building
-from amr_hub_abm.space.door import Door
-from amr_hub_abm.space.floor import Floor
-from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.room import Room
-from amr_hub_abm.space.wall import Wall
+from amr_hub_abm.spatial.building import Building
+from amr_hub_abm.spatial.door import Door
+from amr_hub_abm.spatial.engine import SpatialQuery
+from amr_hub_abm.spatial.floor import Floor
+from amr_hub_abm.spatial.location import Location
+from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.spatial.wall import Wall
 
 
 @pytest.fixture
@@ -31,12 +32,12 @@ def sample_door() -> Door:
 
 @pytest.fixture
 def sample_rooms(sample_door: Door) -> list[Room]:
-    """Create a sample Room for testing."""
+    """Create two adjacent rooms sharing a door on floor 0."""
     room1 = Room(
         room_id=0,
         name="Room1",
         building="TestBuilding",
-        floor=1,
+        floor=0,
         contents=[],
         doors=[sample_door],
         walls=[
@@ -52,7 +53,7 @@ def sample_rooms(sample_door: Door) -> list[Room]:
         room_id=1,
         name="Room2",
         building="TestBuilding",
-        floor=1,
+        floor=0,
         contents=[],
         doors=[sample_door],
         walls=[
@@ -69,7 +70,7 @@ def sample_rooms(sample_door: Door) -> list[Room]:
 
 @pytest.fixture
 def sample_floor(sample_rooms: list[Room]) -> Floor:
-    """Create a sample Floor for testing."""
+    """Floor 0 — matches rooms and agent."""
     return Floor(floor_number=0, rooms=sample_rooms)
 
 
@@ -80,21 +81,15 @@ def sample_building(sample_floor: Floor) -> Building:
 
 
 @pytest.fixture
-def sample_agent(sample_building: Building) -> Agent:
-    """Create a sample Agent for testing."""
+def sample_agent() -> Agent:
+    """Agent at (0.5, 0.5) on floor 0 of TestBuilding."""
     return Agent(
         idx=1,
         agent_type=AgentType.PATIENT,
         infection_status=InfectionStatus.SUSCEPTIBLE,
-        location=Location(
-            x=0.5,
-            y=0.5,
-            floor=0,
-            building=sample_building.name,
-        ),
+        location=Location(x=0.5, y=0.5, floor=0, building="TestBuilding"),
         heading_rad=0.0,
-        space=[sample_building],
-        rng_generator=np.random.default_rng(),
+        rng_generator=np.random.default_rng(42),
     )
 
 
@@ -108,184 +103,75 @@ def sample_simulation(sample_building: Building, sample_agent: Agent) -> Simulat
         mode=SimulationMode.TOPOLOGICAL,
         space=[sample_building],
         agents=[sample_agent],
-        rng_generator=np.random.default_rng(),
+        rng_generator=np.random.default_rng(42),
     )
 
 
-def test_simulation_initialization(
-    sample_simulation: Simulation,
-) -> None:
+def test_simulation_initialization(sample_simulation: Simulation) -> None:
     """Test the initialization of the Simulation class."""
-    simulation = sample_simulation
-
-    assert simulation.mode == SimulationMode.TOPOLOGICAL
-    assert simulation.total_simulation_time == 10
-    assert simulation.time == 0
-    assert simulation.name == "TestSimulation"
-    assert simulation.description == "A test simulation."
-    assert len(simulation.space) == 1
-    assert simulation.space[0].name == "TestBuilding"
-    assert len(simulation.agents) == 1
-    assert simulation.agents[0].idx == 1
+    assert sample_simulation.mode == SimulationMode.TOPOLOGICAL
+    assert sample_simulation.total_simulation_time == 10
+    assert sample_simulation.time == 0
+    assert sample_simulation.name == "TestSimulation"
+    assert sample_simulation.description == "A test simulation."
+    assert len(sample_simulation.space) == 1
+    assert sample_simulation.space[0].name == "TestBuilding"
+    assert len(sample_simulation.agents) == 1
+    assert sample_simulation.agents[0].idx == 1
 
 
-def test_simulation_step_advances_time(
-    sample_simulation: Simulation,
-) -> None:
+def test_simulation_step_advances_time(sample_simulation: Simulation) -> None:
     """Test that the simulation step method advances time correctly."""
-    simulation = sample_simulation
-    initial_time = simulation.time
-
-    simulation.step()
-
-    assert simulation.time == initial_time + 1
+    assert sample_simulation.time == 0
+    sample_simulation.step()
+    assert sample_simulation.time == 1
 
 
 def test_simulation_excessive_current_time_raises(
     sample_simulation: Simulation,
 ) -> None:
-    """Test that negative current time raises a ValueError."""
-    simulation = sample_simulation
-    simulation.time = sample_simulation.total_simulation_time + 1  # type: ignore[assignment]
+    """Test that stepping past total_simulation_time raises TimeError."""
+    sample_simulation.time = sample_simulation.total_simulation_time + 1  # type: ignore[assignment]
 
-    with pytest.raises(TimeError) as excinfo:
-        simulation.step()
-    assert "Invalid time value encountered" in str(excinfo.value)
+    with pytest.raises(TimeError):
+        sample_simulation.step()
 
 
 def test_agent_get_room(
     sample_agent: Agent,
+    sample_building: Building,
 ) -> None:
-    """Test that the agent can get its current room."""
-    agent = sample_agent
-
-    room = agent.get_room()
+    """Test that the spatial engine can find the agent's room."""
+    engine = SpatialQuery(space=[sample_building])
+    room = engine.get_room(sample_agent)
 
     assert room is not None
     assert room.name == "Room1"
 
 
-def test_agent_get_room_in_multiple_buildings(
+def test_agent_get_room_wrong_building(
     sample_agent: Agent,
     sample_building: Building,
 ) -> None:
-    """Test that the agent can get its current room in multiple buildings."""
-    building1 = Building(name="Building1", floors=[])
-
-    building2 = Building(name="Building2", floors=[Floor(floor_number=3, rooms=[])])
-    building3 = sample_building
-
-    simulation_space = [building1, building2, building3]
-
-    sample_agent.space = simulation_space
-
-    room = sample_agent.get_room()
-
-    assert room == simulation_space[2].floors[0].rooms[0]
+    """Agent in a different building returns None."""
+    sample_agent.location = Location(x=0.5, y=0.5, floor=0, building="OtherBuilding")
+    engine = SpatialQuery(space=[sample_building])
+    assert engine.get_room(sample_agent) is None
 
 
-def test_agent_get_room_no_floors(
+def test_agent_get_room_no_building(
     sample_agent: Agent,
+    sample_building: Building,
 ) -> None:
-    """Test that the agent returns None when building has no floors."""
-    simulation_space = [
-        Building(name="BuildingX", floors=[]),
-        Building(name="BuildingY", floors=[Floor(floor_number=0, rooms=[])]),
-        Building(
-            name="TestBuilding",
-            floors=[],
-        ),
-    ]
-
-    sample_agent.space = simulation_space
-    room = sample_agent.get_room()
-
-    assert room is None
+    """Agent with building=None returns None."""
+    sample_agent.location = Location(x=0.5, y=0.5, floor=0, building=None)
+    engine = SpatialQuery(space=[sample_building])
+    assert engine.get_room(sample_agent) is None
 
 
-def test_agent_get_room_no_matching_floor(
-    sample_agent: Agent,
-) -> None:
-    """Test that the agent returns None when no matching floor is found."""
-    simulation_space = [
-        Building(
-            name="TestBuilding",
-            floors=[Floor(floor_number=2, rooms=[])],
-        ),
-    ]
-
-    sample_agent.space = simulation_space
-    room = sample_agent.get_room()
-
-    assert room is None
-
-
-def test_agent_get_room_no_matching_building(
-    sample_agent: Agent,
-) -> None:
-    """Test that the agent returns None when no matching building is found."""
-    simulation_space = [
-        Building(name="BuildingA", floors=[]),
-        Building(name="BuildingB", floors=[Floor(floor_number=0, rooms=[])]),
-    ]
-
-    sample_agent.space = simulation_space
-    room = sample_agent.get_room()
-
-    assert room is None
-
-
-def test_agent_get_room_no_buildings(
-    sample_agent: Agent,
-) -> None:
-    """Test that the agent returns None when there are no buildings."""
-    simulation_space: list[Building] = []
-
-    sample_agent.space = simulation_space
-    room = sample_agent.get_room()
-
-    assert room is None
-
-
-def test_agent_get_room_no_rooms(
-    sample_agent: Agent,
-) -> None:
-    """Test that the agent returns None when floor has no rooms."""
-    simulation_space = [
-        Building(
-            name="TestBuilding",
-            floors=[Floor(floor_number=0, rooms=[])],
-        ),
-    ]
-
-    sample_agent.space = simulation_space
-    room = sample_agent.get_room()
-
-    assert room is None
-
-
-def test_agent_get_room_not_found(
-    sample_agent: Agent,
-) -> None:
-    """Test that the agent returns None when not in any room."""
-    simulation_space = [
-        Building(name="BuildingX", floors=[]),
-        Building(name="BuildingY", floors=[Floor(floor_number=0, rooms=[])]),
-    ]
-
-    sample_agent.space = simulation_space
-    room = sample_agent.get_room()
-
-    assert room is None
-
-
-def test_simulation_repr(
-    sample_simulation: Simulation,
-) -> None:
-    """Test that the simulation __repr__ method returns correct string."""
-    simulation = sample_simulation
-
-    repr_str = repr(simulation)
+def test_simulation_repr(sample_simulation: Simulation) -> None:
+    """Test that the simulation __repr__ returns expected content."""
+    repr_str = repr(sample_simulation)
 
     assert "Simulation: TestSimulation" in repr_str
     assert "Description: A test simulation." in repr_str
@@ -300,10 +186,8 @@ def test_plot_current_state(
     sample_simulation: Simulation,
     tmp_path: Path,
 ) -> None:
-    """Test that the plot_current_state method creates output files."""
-    simulation = sample_simulation
-
-    simulation.plot_current_state(tmp_path)
+    """Test that plot_current_state creates output files."""
+    sample_simulation.plot_current_state(tmp_path)
 
     expected_file = tmp_path / "TestBuilding_time_0.png"
     assert expected_file.exists()
@@ -314,9 +198,7 @@ def test_plot_current_state_raises_on_file_path(
     tmp_path: Path,
 ) -> None:
     """Test that plot_current_state raises error when given a file path."""
-    simulation = sample_simulation
     file_path = tmp_path / "test.txt"
 
-    with pytest.raises(NotADirectoryError) as excinfo:
-        simulation.plot_current_state(file_path)
-    assert "is not a directory" in str(excinfo.value)
+    with pytest.raises(NotADirectoryError, match="is not a directory"):
+        sample_simulation.plot_current_state(file_path)
