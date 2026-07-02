@@ -1,6 +1,6 @@
 """Regression baseline for floorplan geometry and diagnostics."""
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -23,6 +23,9 @@ from tests.floorplan_regression_fixtures import (
     RejectionRecord,
     regression_cases,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Hashable
 
 MIN_GAP = 50.0
 MAX_GAP = 130.0

@@ -367,7 +367,7 @@ def test_extract_polygons_applies_enabled_shared_wall_normalisation(
 ) -> None:
     """Enabled shared-wall normalisation runs before door attachment."""
     monkeypatch.setattr(
-        dxf_extraction.gpd,
+        gpd,
         "read_file",
         lambda _: _shared_wall_extraction_gdf(),
     )
@@ -400,7 +400,7 @@ def test_extract_polygons_preserves_shape_when_shared_walls_disabled(
 ) -> None:
     """Disabled shared-wall configuration leaves extraction output current-style."""
     monkeypatch.setattr(
-        dxf_extraction.gpd,
+        gpd,
         "read_file",
         lambda _: _shared_wall_extraction_gdf(),
     )
@@ -654,7 +654,7 @@ def test_extract_polygons_applies_merges_before_shared_walls(
 ) -> None:
     """Shared-wall normalisation receives the final merged room geometry."""
     monkeypatch.setattr(
-        dxf_extraction.gpd,
+        gpd,
         "read_file",
         lambda _: _shared_wall_extraction_gdf(),
     )
@@ -668,8 +668,7 @@ def test_extract_polygons_applies_merges_before_shared_walls(
         return rooms
 
     monkeypatch.setattr(
-        dxf_extraction,
-        "normalise_shared_walls",
+        "floorplan_extractor.dxf_polygon_extraction.normalise_shared_walls",
         record_shared_wall_input,
     )
     config = ExtractionConfig(
