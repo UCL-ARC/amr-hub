@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 
 from amr_hub_abm.exceptions import TimeError
 from amr_hub_abm.gpu_physics import GPUPhysicsEngine
-from amr_hub_abm.space.space import SpatialQuery
+from amr_hub_abm.spatial.engine import SpatialQuery
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
     from amr_hub_abm.agent.agent import Agent
-    from amr_hub_abm.space.building import Building
-    from amr_hub_abm.space.room import Room
+    from amr_hub_abm.spatial.building import Building
+    from amr_hub_abm.spatial.room import Room
 
 
 class SimulationMode(IntEnum):

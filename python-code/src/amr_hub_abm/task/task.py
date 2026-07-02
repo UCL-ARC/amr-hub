@@ -28,14 +28,14 @@ from typing import TYPE_CHECKING
 
 from amr_hub_abm.agent.utils import add_agent_occupancy, remove_agent_occupancy
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
-from amr_hub_abm.space.location import Location
+from amr_hub_abm.spatial.location import Location
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent.agent import Agent
-    from amr_hub_abm.space.content import Content
-    from amr_hub_abm.space.door import Door
-    from amr_hub_abm.space.room import Room
-    from amr_hub_abm.space.space import SpatialQuery
+    from amr_hub_abm.spatial.door import Door
+    from amr_hub_abm.spatial.engine import SpatialQuery
+    from amr_hub_abm.spatial.furniture import Content
+    from amr_hub_abm.spatial.room import Room
 
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,6 @@
 """Unit tests for mock DXF generation and NPZ environment viewing."""
 
 from pathlib import Path
-from typing import cast
 
 import numpy as np
 
@@ -46,7 +45,7 @@ def test_query_environment_bvh_logic() -> None:
     agent_pos: tuple[float, float, float] = (2.0, 13.0, 1.0)
 
     # 3. Execute query function under test
-    current_room, closest_bed = query_environment(agent_pos, cast("Any", mock_npz_data))
+    current_room, closest_bed = query_environment(agent_pos, mock_npz_data)  # type: ignore[arg-type]
 
     # 4. Spatial Assertions
     assert current_room == "ICU_WARD", "Agent should be closest to ICU_WARD!"

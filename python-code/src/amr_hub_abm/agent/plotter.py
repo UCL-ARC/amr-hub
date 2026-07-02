@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
     from amr_hub_abm.agent.agent import Agent
-    from amr_hub_abm.space.room import Room
+    from amr_hub_abm.spatial.room import Room
 
 
 def plot_agent(agent: Agent, ax: Axes, *, show_tags: bool = True) -> None:

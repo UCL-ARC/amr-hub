@@ -11,14 +11,14 @@ import shapely.geometry
 import shapely.ops
 
 from amr_hub_abm.exceptions import InvalidRoomError, SimulationModeError
-from amr_hub_abm.space.location import Location
+from amr_hub_abm.spatial.location import Location
 
 if TYPE_CHECKING:
     from numpy.random import Generator
 
-    from amr_hub_abm.space.content import Content
-    from amr_hub_abm.space.door import Door
-    from amr_hub_abm.space.wall import Wall
+    from amr_hub_abm.spatial.door import Door
+    from amr_hub_abm.spatial.furniture import Content
+    from amr_hub_abm.spatial.wall import Wall
 
 logger = logging.getLogger(__name__)
 

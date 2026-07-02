@@ -11,7 +11,7 @@ import shapely
 from amr_hub_abm.exceptions import InvalidDistanceError
 
 if TYPE_CHECKING:
-    from amr_hub_abm.space.wall import Wall
+    from amr_hub_abm.spatial.wall import Wall
 
 
 @dataclass(frozen=True)
