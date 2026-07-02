@@ -25,14 +25,6 @@ if TYPE_CHECKING:
 
 type TaskBuilder = Callable[[TaskBuilderContext], Task]
 
-DEFAULT_TIME_NEEDED: dict[TaskType, int] = {
-    TaskType.ATTEND_PATIENT: 15,
-    TaskType.DOOR_ACCESS: 1,
-    TaskType.WORKSTATION: 30,
-    TaskType.OCCUPY_CONTENT: 10,
-    TaskType.GOTO_LOCATION: 0,
-}
-
 
 @dataclass(slots=True, frozen=True)
 class TaskBuilderContext:
