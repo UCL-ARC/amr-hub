@@ -1,6 +1,6 @@
 """Regression baseline for floorplan geometry and diagnostics."""
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 import pytest
 
