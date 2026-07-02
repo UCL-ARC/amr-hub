@@ -2,10 +2,6 @@ mode: data driven # Simulation mode: "data driven" or "rule based"
 location_timeseries_path: tests/inputs/location_timeseries.csv # Path to location timeseries data
 buildings_path: tests/inputs/buildings.yml # Path to buildings geojson file
 
-average_hcw_speed: 1.4 # Average speed of healthcare workers in m/s
-minimum_hcw_speed: 1.0 # Minimum speed of healthcare workers in m/s
-maximum_hcw_speed: 2.0 # Maximum speed of healthcare workers in m/s
-
 agent_movement_speed: 0.001 # Agent movement speed in units per time step
 agent_stochasticity: 5.0 # Degrees of randomness applied to agent heading each step
 agent_interaction_radius: 0.01 # Distance within which an agent is considered to have reached a target
