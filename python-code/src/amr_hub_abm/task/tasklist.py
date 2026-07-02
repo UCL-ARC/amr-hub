@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+import yaml
+
 from amr_hub_abm.task.task import TaskProgress
+from amr_hub_abm.task.task_duration import TaskDurationConfig
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent.agent import Agent
@@ -111,11 +115,17 @@ def perform_to_be_started_task(
     )
 
     if current_time < task_move_time:
+        config_path = Path("tests/inputs/simulation_config.yml")
+        with config_path.open(encoding="utf-8") as file:
+            config_data = yaml.safe_load(file)
+        task_durations = TaskDurationConfig.from_config(config_data)
+
         agent.attempt_task_insertion(
             next_task=task,
             next_task_move_time=task_move_time,
             current_time=current_time,
             engine=engine,
+            task_durations=task_durations,
         )
         return False
 

@@ -420,17 +420,3 @@ class TaskWorkstation(Task):
     def prepare(self, agent: Agent) -> None:  # noqa: ARG002
         """Set the task location to the workstation location."""
         self.location = self.workstation_location
-
-
-# ---------------------------------------------------------------------------
-# Factory
-# ---------------------------------------------------------------------------
-
-#: Default durations per task type, formerly hard-coded in Agent.add_task.
-DEFAULT_TIME_NEEDED: dict[TaskType, int] = {
-    TaskType.ATTEND_PATIENT: 15,
-    TaskType.DOOR_ACCESS: 1,
-    TaskType.WORKSTATION: 30,
-    TaskType.OCCUPY_CONTENT: 10,
-    TaskType.GOTO_LOCATION: 0,
-}

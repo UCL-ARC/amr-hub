@@ -25,12 +25,21 @@ if TYPE_CHECKING:
 
 type TaskBuilder = Callable[[TaskBuilderContext], Task]
 
+DEFAULT_TIME_NEEDED: dict[TaskType, int] = {
+    TaskType.ATTEND_PATIENT: 15,
+    TaskType.DOOR_ACCESS: 1,
+    TaskType.WORKSTATION: 30,
+    TaskType.OCCUPY_CONTENT: 10,
+    TaskType.GOTO_LOCATION: 0,
+}
+
 
 @dataclass(slots=True, frozen=True)
 class TaskBuilderContext:
     """Context for building tasks."""
 
     time: int
+    time_needed: int
     location: Location | None
     patient: Agent | None
     door: Door | None
@@ -41,6 +50,7 @@ class TaskBuilderContext:
 
 def build_task_context(
     time: int,
+    time_needed: int,
     location: Location | None,
     additional_info: dict[str, object] | None = None,
 ) -> TaskBuilderContext:
@@ -53,6 +63,7 @@ def build_task_context(
 
     return TaskBuilderContext(
         time=time,
+        time_needed=time_needed,
         location=location,
         patient=cast("Agent | None", additional_info.get("patient")),
         door=cast("Door | None", additional_info.get("door")),
@@ -69,7 +80,7 @@ def build_attend_patient_task(context: TaskBuilderContext) -> Task:
         raise SimulationModeError(msg)
 
     return TaskAttendPatient(
-        time_needed=15,
+        time_needed=context.time_needed,
         time_due=context.time,
         patient=context.patient,
     )
@@ -96,7 +107,7 @@ def build_door_access_task(context: TaskBuilderContext) -> Task:
     return TaskDoorAccess(
         door=context.door,
         destination_room=context.destination_room_idx,
-        time_needed=1,
+        time_needed=context.time_needed,
         time_due=context.time,
         building=context.location.building,
         floor=context.location.floor,
@@ -111,7 +122,7 @@ def build_workstation_task(context: TaskBuilderContext) -> Task:
 
     return TaskWorkstation(
         workstation_location=context.location,
-        time_needed=30,
+        time_needed=context.time_needed,
         time_due=context.time,
     )
 
@@ -129,7 +140,7 @@ def build_occupy_content_task(context: TaskBuilderContext) -> Task:
     return TaskOccupyContent(
         content_type=context.content_type,
         room=context.content_room,
-        time_needed=10,
+        time_needed=context.time_needed,
         time_due=context.time,
     )
 

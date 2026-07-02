@@ -16,6 +16,7 @@ from amr_hub_abm.simulation import Simulation, SimulationMode
 from amr_hub_abm.space.content import ContentType
 from amr_hub_abm.space.location import Location
 from amr_hub_abm.space.room import Room
+from amr_hub_abm.task.task_duration import TaskDurationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ def create_simulation(
         config_data = yaml.safe_load(file)
 
     agent_kinematics = AgentKinematicsConfig.from_config(config_data)
-
+    task_durations = TaskDurationConfig.from_config(config_data)
     rng_generator = np.random.default_rng()
 
     buildings_path = Path(config_data["buildings_path"])
@@ -85,6 +86,7 @@ def create_simulation(
         time_scaling_factor=time_step_length_seconds,
         rng_generator=rng_generator,
         agent_kinematics=agent_kinematics,
+        task_durations=task_durations,
     )
 
     msg = f"Parsed {len(agents)} agents from location time series."
@@ -222,6 +224,7 @@ def update_hcw(  # noqa: PLR0913
     total_time_steps: int,
     rng_generator: np.random.Generator,
     agent_kinematics: AgentKinematicsConfig,
+    task_durations: TaskDurationConfig,
     additional_info: dict | None = None,
 ) -> None:
     """
@@ -250,6 +253,11 @@ def update_hcw(  # noqa: PLR0913
     """
     building, floor, room = space_tuple
     location, timestep_index, event_type = event_tuple
+    time_needed = task_durations.task_duration_mapping.get(event_type)
+    if time_needed is None:
+        msg = f"Unknown event type: {event_type}. Allowed types: "
+        msg += f"{task_durations.task_duration_mapping.keys()}"
+        raise SimulationModeError(msg)
 
     if hcw_id not in hcw_dict:
         available_chairs = [
@@ -281,7 +289,13 @@ def update_hcw(  # noqa: PLR0913
             interaction_radius=agent_kinematics.interaction_radius,
         )
 
-    hcw_dict[hcw_id].add_task(timestep_index, location, event_type, additional_info)
+    hcw_dict[hcw_id].add_task(
+        time=timestep_index,
+        time_needed=time_needed,
+        location=location,
+        event_type=event_type,
+        additional_info=additional_info,
+    )
 
 
 def read_location_timeseries(
@@ -316,6 +330,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
     time_scaling_factor: int,
     rng_generator: np.random.Generator,
     agent_kinematics: AgentKinematicsConfig,
+    task_durations: TaskDurationConfig,
 ) -> list[Agent]:
     """
     Parse a CSV file containing location time series data for agents.
@@ -472,6 +487,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
             total_time_steps=total_time_steps,
             rng_generator=rng_generator,
             agent_kinematics=agent_kinematics,
+            task_durations=task_durations,
         )
 
     return list(hcw_dict.values()) + list(patient_dict.values())
