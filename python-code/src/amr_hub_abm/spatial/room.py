@@ -85,7 +85,7 @@ class Room:
         else:
             self.region = shapely.geometry.Polygon()
             logger.warning(
-                "Room %s has no walls; region is set to an empty polygon.", self.name
+                "Room %s has no walls: region is set to an empty polygon.", self.name
             )
 
         self.room_hash = (
