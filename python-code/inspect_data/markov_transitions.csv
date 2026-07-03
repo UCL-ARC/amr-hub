@@ -1,0 +1,37 @@
+time_bucket,curr_zone,next_zone,probability
+0_night,Corridor,Corridor,0.3333
+0_night,Corridor,Staff Room,0.3333
+0_night,Corridor,Ward,0.3333
+0_night,Staff Room,Corridor,0.0698
+0_night,Staff Room,Staff Room,0.9070
+0_night,Staff Room,Ward,0.0233
+0_night,Ward,Corridor,0.3333
+0_night,Ward,Staff Room,0.3333
+0_night,Ward,Ward,0.3333
+1_morning,Corridor,Corridor,0.5789
+1_morning,Corridor,Staff Room,0.1579
+1_morning,Corridor,Ward,0.2632
+1_morning,Staff Room,Corridor,0.2000
+1_morning,Staff Room,Staff Room,0.7333
+1_morning,Staff Room,Ward,0.0667
+1_morning,Ward,Corridor,0.1304
+1_morning,Ward,Staff Room,0.0435
+1_morning,Ward,Ward,0.8261
+2_afternoon,Corridor,Corridor,0.4286
+2_afternoon,Corridor,Staff Room,0.4286
+2_afternoon,Corridor,Ward,0.1429
+2_afternoon,Staff Room,Corridor,0.1111
+2_afternoon,Staff Room,Staff Room,0.7778
+2_afternoon,Staff Room,Ward,0.1111
+2_afternoon,Ward,Corridor,0.0968
+2_afternoon,Ward,Staff Room,0.0323
+2_afternoon,Ward,Ward,0.8710
+3_evening,Corridor,Corridor,0.3333
+3_evening,Corridor,Staff Room,0.3333
+3_evening,Corridor,Ward,0.3333
+3_evening,Staff Room,Corridor,0.3333
+3_evening,Staff Room,Staff Room,0.3333
+3_evening,Staff Room,Ward,0.3333
+3_evening,Ward,Corridor,0.3333
+3_evening,Ward,Staff Room,0.3333
+3_evening,Ward,Ward,0.3333

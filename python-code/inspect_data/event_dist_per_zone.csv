@@ -1,0 +1,13 @@
+zone,event_type,probability
+Corridor,attend_patient,0.0417
+Corridor,door_access,0.3750
+Corridor,none,0.5417
+Corridor,workstation,0.0417
+Staff Room,attend_patient,0.0156
+Staff Room,door_access,0.1094
+Staff Room,none,0.2969
+Staff Room,workstation,0.5781
+Ward,attend_patient,0.6346
+Ward,door_access,0.0962
+Ward,none,0.2500
+Ward,workstation,0.0192
