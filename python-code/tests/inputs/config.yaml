@@ -1,0 +1,26 @@
+polygons:
+  polygon_layer_name: "ROOM_BOUNDARIES"
+  label_layer_name: "ROOM_LABELS"
+  polygon_label_column: "label"
+  polygon_label_target: "room_number"
+  floor_filter: "TEST"
+  excluded_room_numbers:
+    - "TEST-001"
+    - "TEST-002"
+
+doors:
+  layer_name: "DOORS"
+  entity_col: "entity_id"
+  x_col: "x"
+  y_col: "y"
+  out_col: "doors"
+  predicate: "intersects"
+
+shared_walls:
+  enabled: true
+  min_gap: 50.0
+  max_gap: 130.0
+  angle_tolerance_degrees: 2.0
+  min_overlap_ratio: 0.75
+  min_overlap_length: 250.0
+  canonical_line: "midline"

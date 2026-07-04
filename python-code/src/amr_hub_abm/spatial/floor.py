@@ -7,14 +7,16 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from amr_hub_abm.agent.plotter import plot_agents_in_room
 from amr_hub_abm.exceptions import InvalidRoomError
-from amr_hub_abm.space.room import Room
-from amr_hub_abm.space.wall import Wall
+from amr_hub_abm.spatial.plotter import plot_room
+from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.spatial.wall import Wall
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
-    from amr_hub_abm.agent import Agent
+    from amr_hub_abm.agent.agent import Agent
 
 
 @dataclass
@@ -89,7 +91,12 @@ class Floor:
         return adjacency_matrix
 
     def plot(
-        self, ax: Axes, agents: list[Agent] | None = None, *, trajectory: bool = False
+        self,
+        ax: Axes,
+        agents: list[Agent] | None = None,
+        *,
+        trajectory: bool = False,
+        **kwargs: dict,
     ) -> None:
         """
         Plot the floor layout including rooms and doors.
@@ -104,8 +111,12 @@ class Floor:
             Whether to plot the trajectories of the agents. Defaults to False.
 
         """
+        if agents is None:
+            agents = []
+
         for room in self.rooms:
-            room.plot(ax=ax, agents=agents, trajectory=trajectory)
+            plot_room(room, ax, **kwargs)
+            plot_agents_in_room(room, ax, agents, trajectory=trajectory)
 
     def add_pseudo_rooms(self) -> None:
         """Add pseudo-rooms to the floor."""
@@ -136,14 +147,14 @@ class Floor:
         InvalidRoomError
             If the pseudo-room does not have a valid positive area.
 
-        Note
-        ----
-            This method generates a rectangular room layout based on the area of the
-            pseudo-room. The doors are positioned along one side of the rectangle. This
-            function is not complete. Currently it only creates single simple
-            rectangular rooms. Due to possibly complex topology, rectangular rooms may
-            not always be a valid representation. Currently, no topology connections
-            are considered. This function will be improved in future versions.
+        Notes
+        -----
+        This method generates a rectangular room layout based on the area of the
+        pseudo-room. The doors are positioned along one side of the rectangle. This
+        function is not complete. Currently it only creates single simple
+        rectangular rooms. Due to possibly complex topology, rectangular rooms may
+        not always be a valid representation. Currently, no topology connections
+        are considered. This function will be improved in future versions.
 
         """
         if not room.area or room.area <= 0:

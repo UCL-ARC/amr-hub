@@ -17,8 +17,8 @@ from typing import TYPE_CHECKING
 import shapely
 
 if TYPE_CHECKING:
-    from amr_hub_abm.agent import AgentType
-    from amr_hub_abm.space.location import Location
+    from amr_hub_abm.agent.agent import AgentType
+    from amr_hub_abm.spatial.location import Location
 
 
 class ContentType(IntEnum):

@@ -13,13 +13,13 @@ from amr_hub_abm.exceptions import (
     InvalidDoorError,
     InvalidRoomError,
 )
-from amr_hub_abm.space.building import Building
-from amr_hub_abm.space.content import Content, ContentType
-from amr_hub_abm.space.door import DetachedDoor, Door
-from amr_hub_abm.space.floor import Floor
-from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.room import Room
-from amr_hub_abm.space.wall import Wall
+from amr_hub_abm.spatial.building import Building
+from amr_hub_abm.spatial.door import DetachedDoor, Door
+from amr_hub_abm.spatial.floor import Floor
+from amr_hub_abm.spatial.furniture import Content, ContentType
+from amr_hub_abm.spatial.location import Location
+from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.spatial.wall import Wall
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -83,8 +83,8 @@ class SpaceInputReader:
         5. Organizes rooms into floors and buildings.
 
 
-        Note:
-        ----
+        Notes
+        -----
         The detached doors are intermediate representations of doors that are associated
         with rooms but do not yet have their connecting rooms defined. They are used to
         ensure that each door instance remains immutable and can be shared across

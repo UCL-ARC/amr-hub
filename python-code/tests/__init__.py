@@ -1,0 +1,1 @@
+"""AMR Hub test suite."""

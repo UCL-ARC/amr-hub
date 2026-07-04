@@ -3,10 +3,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from amr_hub_abm.space.building import Building
-from amr_hub_abm.space.floor import Floor
-from amr_hub_abm.space.room import Room
-from amr_hub_abm.space.wall import Wall
+from amr_hub_abm.spatial.building import Building
+from amr_hub_abm.spatial.floor import Floor
+from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.spatial.wall import Wall
 
 
 def test_building_plotting() -> None:

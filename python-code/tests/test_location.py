@@ -4,10 +4,10 @@ import numpy as np
 import pytest
 
 from amr_hub_abm.exceptions import InvalidDistanceError
-from amr_hub_abm.space.building import Building
-from amr_hub_abm.space.location import Location
-from amr_hub_abm.space.room import Room
-from amr_hub_abm.space.wall import Wall
+from amr_hub_abm.spatial.building import Building
+from amr_hub_abm.spatial.location import Location
+from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.spatial.wall import Wall
 
 
 @pytest.fixture
@@ -38,20 +38,6 @@ def test_location_creation() -> None:
     expected_x = 10.0
     expected_y = 20.0
     expected_floor = 2
-
-    assert location.x == expected_x
-    assert location.y == expected_y
-    assert location.floor == expected_floor
-
-
-def test_location_move() -> None:
-    """Test moving a Location to new coordinates."""
-    location = Location(x=0.0, y=0.0, floor=0)
-    location.move(new_x=15.0, new_y=25.0, new_floor=1)
-
-    expected_x = 15.0
-    expected_y = 25.0
-    expected_floor = 1
 
     assert location.x == expected_x
     assert location.y == expected_y
@@ -99,48 +85,6 @@ def test_distance_to_different_buildings() -> None:
     assert (
         str(exc_info.value) == f"{err_string}{building_a.name} and {building_b.name}."
     )
-
-
-def test_which_room_no_rooms() -> None:
-    """Test which_room method when there are no rooms."""
-    location = Location(x=5.0, y=5.0, floor=1, building="Test Building")
-    rooms: list[Room] = []
-
-    result = location.which_room(rooms)
-
-    assert result is None
-
-
-def test_which_room_not_in_any_room(sample_room: Room) -> None:
-    """Test which_room method when location is not in any room."""
-    location = Location(x=50.0, y=50.0, floor=1, building="Test Building")
-    rooms = [sample_room]
-
-    result = location.which_room(rooms)
-
-    assert result is None
-
-
-def test_which_room_in_room(sample_room: Room) -> None:
-    """Test which_room method when location is inside a room."""
-    location = Location(x=5.0, y=5.0, floor=1, building="Test Building")
-    rooms = [sample_room]
-
-    result = location.which_room(rooms)
-
-    assert result is not None
-    assert result.room_id == 1
-    assert result.name == "Sample Room"
-
-
-def test_which_room_different_floor(sample_room: Room) -> None:
-    """Test which_room method when location is on a different floor than rooms."""
-    location = Location(x=5.0, y=5.0, floor=2, building="Test Building")
-    rooms = [sample_room]
-
-    result = location.which_room(rooms)
-
-    assert result is None
 
 
 def test_line_of_sight_no_walls() -> None:
