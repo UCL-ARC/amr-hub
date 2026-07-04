@@ -1,3 +1,3 @@
 # Room Dataclass
 
-::: amr_hub_abm.space.room
+::: amr_hub_abm.spatial.room

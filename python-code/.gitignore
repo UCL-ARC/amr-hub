@@ -170,4 +170,9 @@ _version.py
 
 simulation_outputs/
 ../simulation_outputs/
+
+# Benchmark and profiling artefacts
+benchmarks/results/
 *.prof
+*.pstats
+*.lprof

@@ -36,6 +36,7 @@ theme:
 nav:
   - Overview: index.md
   - The Toy Problem: toy_problem.md
+  - Floorplan extraction: floorplan_extraction.md
   - API reference:
       - Overview: api/index.md
       - Agent: api/agent.md
@@ -53,6 +54,10 @@ nav:
       - Simulation: api/simulation.md
       - Simulation Factory: api/simulation_factory.md
       - Task: api/task.md
+      - Floorplan extraction:
+          - DXF extraction: api/floorplan_dxf_extraction.md
+          - Shared walls: api/floorplan_shared_walls.md
+          - YAML construction: api/floorplan_yaml_construction.md
 
 plugins:
   - search

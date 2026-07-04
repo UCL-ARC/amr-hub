@@ -11,11 +11,10 @@ import shapely
 from amr_hub_abm.exceptions import InvalidDistanceError
 
 if TYPE_CHECKING:
-    from amr_hub_abm.space.room import Room
-    from amr_hub_abm.space.wall import Wall
+    from amr_hub_abm.spatial.wall import Wall
 
 
-@dataclass
+@dataclass(frozen=True)
 class Location:
     """
     Representation of a location in the AMR Hub ABM simulation.
@@ -38,24 +37,6 @@ class Location:
     y: float
     floor: int
     building: str | None = None
-
-    def move(self, new_x: float, new_y: float, new_floor: int) -> None:
-        """
-        Move the location to new coordinates.
-
-        Parameters
-        ----------
-        new_x : float
-            The new x-coordinate of the location.
-        new_y : float
-            The new y-coordinate of the location.
-        new_floor : int
-            The new floor number of the location.
-
-        """
-        self.x = new_x
-        self.y = new_y
-        self.floor = new_floor
 
     def distance_to(self, other: Location) -> float:
         """
@@ -89,28 +70,6 @@ class Location:
         return (
             f"Location(x={self.x:.2f}, y={self.y:.2f}, {self.floor}, {self.building})"
         )
-
-    def which_room(self, rooms: list[Room]) -> Room | None:
-        """
-        Determine which room the location is in, if any.
-
-        Parameters
-        ----------
-        rooms : list[Room]
-            The list of rooms to check.
-
-        Returns
-        -------
-        Room | None
-            The room the location is in, or None if it is not in any room.
-
-        """
-        for room in rooms:
-            if room.building != self.building or room.floor != self.floor:
-                continue
-            if room.region.contains(shapely.geometry.Point(self.x, self.y)):
-                return room
-        return None
 
     def check_line_of_sight(self, other: Location, walls: list[Wall]) -> bool:
         """

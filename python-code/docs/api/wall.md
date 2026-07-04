@@ -1,3 +1,3 @@
 # Wall Dataclass
 
-::: amr_hub_abm.space.wall
+::: amr_hub_abm.spatial.wall
