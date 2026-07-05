@@ -35,5 +35,7 @@ RUN mkdir -p /app/simulation_outputs
 # Add the virtual environment to the PATH
 ENV PATH="/app/python-code/.venv/bin:${PATH}"
 
+COPY docker/tre/tre-welcome.sh ./tre-welcome.sh
+
 # Default action
-CMD ["/app/python-code/.venv/bin/python3", "--version"]
+CMD ["bash", "tre-welcome.sh"]
