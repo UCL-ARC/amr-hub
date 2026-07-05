@@ -1,13 +1,37 @@
-.PHONY: help install install-dev install-docs install-all test test-cov lint format type-check docs docs-serve clean pre-commit pre-commit-install simple-example dashboard
+.PHONY: help install-uv install install-dev install-docs install-all test test-cov lint format type-check docs docs-serve clean pre-commit pre-commit-install simple-example dashboard
 
-# Determine if we're in the repo root or python-code directory
 PYTHON_CODE_DIR := $(shell if [ -d "python-code" ]; then echo "python-code"; else echo "."; fi)
 
-# Change to the python-code directory if needed
 ifeq ($(PYTHON_CODE_DIR), python-code)
 	CD := cd python-code &&
+	PYTHON_CODE_PREFIX := python-code/
+	EXAMPLES_PREFIX := ../examples
 else
 	CD :=
+	PYTHON_CODE_PREFIX :=
+	EXAMPLES_PREFIX := ../examples
+endif
+
+TRE ?= 0
+
+ifeq ($(TRE),1)
+	UV := uv run --offline
+	PYTHON := .venv/bin/python
+	PYTEST := .venv/bin/pytest
+	RUFF := .venv/bin/ruff
+	MYPY := .venv/bin/mypy
+	PRECOMMIT := .venv/bin/pre-commit
+	TOX := .venv/bin/tox
+	SOLARA := .venv/bin/solara
+else
+	UV := uv run
+	PYTHON := uv run python
+	PYTEST := uv run pytest
+	RUFF := uv run ruff
+	MYPY := uv run mypy
+	PRECOMMIT := uv run pre-commit
+	TOX := uv run tox
+	SOLARA := uv run solara
 endif
 
 help:
@@ -18,6 +42,11 @@ help:
 	@echo "  make install          Install the package in editable mode"
 	@echo "  make install-dev      Install with development dependencies"
 	@echo "  make install-docs     Install with documentation dependencies"
+	@echo "  make install-all      Install all dependency groups"
+	@echo ""
+	@echo "TRE usage:"
+	@echo "  make TRE=1 test"
+	@echo "  make TRE=1 simple-example"
 	@echo ""
 	@echo "Example Usage:"
 	@echo "  make simple-example   Run the simple example script"
@@ -26,69 +55,79 @@ help:
 	@echo "Development:"
 	@echo "  make test             Run tests with pytest"
 	@echo "  make test-cov         Run tests with coverage report"
-	@echo "  make lint             Run all linting checks (ruff, mypy)"
+	@echo "  make lint             Run all linting checks"
 	@echo "  make format           Format code with ruff"
 	@echo "  make type-check       Run type checking with mypy"
-	@echo "  make pre-commit       Run all pre-commit hooks"
-	@echo ""
-	@echo "Documentation:"
-	@echo "  make docs             Build documentation with MkDocs"
-	@echo "  make docs-serve       Serve documentation locally"
-	@echo ""
-	@echo "Maintenance:"
-	@echo "  make clean            Remove build artifacts and cache files"
-
 
 install-uv:
+ifeq ($(TRE),1)
+	@echo "Skipping uv installation in TRE"
+else
 	curl -LsSf https://astral.sh/uv/install.sh | sh
+endif
 
 install: install-uv
+ifeq ($(TRE),1)
+	@echo "Skipping install in TRE; dependencies should already be baked into the image"
+else
 	$(CD) uv sync --no-dev
+endif
 
 install-dev: install-uv
+ifeq ($(TRE),1)
+	@echo "Skipping install-dev in TRE; dependencies should already be baked into the image"
+else
 	$(CD) uv sync --group dev
+endif
 
 install-docs: install-uv
+ifeq ($(TRE),1)
+	@echo "Skipping install-docs in TRE; dependencies should already be baked into the image"
+else
 	$(CD) uv sync --group docs
+endif
 
 install-all: install-uv
+ifeq ($(TRE),1)
+	@echo "Skipping install-all in TRE; dependencies should already be baked into the image"
+else
 	$(CD) uv sync --group dev --group docs --group test
+endif
 
 test:
+ifeq ($(TRE),1)
+	$(CD) $(PYTEST) tests --cov=src --cov-report=term-missing
+else
 	$(CD) uv sync --group test
-	$(CD) uv run pytest tests --cov=src --cov-report=term-missing
+	$(CD) $(PYTEST) tests --cov=src --cov-report=term-missing
+endif
 
 test-cov:
-	$(CD) uv run pytest tests --cov=src --cov-report=xml --cov-report=html
+	$(CD) $(PYTEST) tests --cov=src --cov-report=xml --cov-report=html
 
 lint: format type-check
 
 format:
-	$(CD) uv run ruff format .
-	$(CD) uv run ruff check --fix .
+	$(CD) $(RUFF) format .
+	$(CD) $(RUFF) check --fix .
 
 type-check:
-	$(CD) uv run mypy src/
+	$(CD) $(MYPY) src/
 
 pre-commit:
-	$(CD) uv run pre-commit run --all-files
+	$(CD) $(PRECOMMIT) run --all-files
 
-pre-commit-install: ## Install pre-commit hooks
+pre-commit-install:
 	@echo "🔧 Installing pre-commit hooks..."
-	@$(CD) uv run pre-commit install
-	@$(CD) uv run pre-commit install --hook-type pre-push
+	@$(CD) $(PRECOMMIT) install
+	@$(CD) $(PRECOMMIT) install --hook-type pre-push
 	@echo "✅ Pre-commit hooks installed!"
 
-# Documentation commands
-# For documentation, we use MkDocs, but using the tox environment to ensure all dependencies are correctly handled
-
 docs:
-	$(CD) uv run tox -e docs
+	$(CD) $(TOX) -e docs
 
 docs-serve:
-	$(CD) uv run tox -e docs-serve
-
-# Clean command to remove build artifacts and cache files
+	$(CD) $(TOX) -e docs-serve
 
 clean:
 	$(CD) find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
@@ -102,7 +141,7 @@ clean:
 	$(CD) find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
 
 simple-example:
-	$(CD) uv run python ../examples/simple.py
+	$(CD) $(PYTHON) $(EXAMPLES_PREFIX)/simple.py
 
 dashboard:
-	$(CD) uv run solara run ../examples/solara_app.py
+	$(CD) $(SOLARA) run $(EXAMPLES_PREFIX)/solara_app.py

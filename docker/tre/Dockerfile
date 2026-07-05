@@ -1,32 +1,39 @@
 FROM python:3.13-slim
 
+RUN apt-get update && apt-get install -y --no-install-recommends make \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-WORKDIR /app/python-code
+# Work from the repository root
+WORKDIR /app
 
-# Make source importable when running external scripts/examples
+# Make source importable
 ENV PYTHONPATH=/app/python-code/src
 
 # Copy dependency files first for better Docker caching
-COPY python-code/pyproject.toml python-code/uv.lock ./
+COPY python-code/pyproject.toml python-code/uv.lock ./python-code/
 
 # Install dependencies into a project-local virtual environment
-RUN uv sync --frozen
+RUN cd python-code && uv sync --frozen --all-groups
 
-# Copy the actual source code
-COPY python-code/src ./src
-COPY python-code/tests ./tests
-COPY python-code/README.md ./README.md
+# Copy project files
+COPY python-code/src ./python-code/src
+COPY python-code/tests ./python-code/tests
+COPY python-code/README.md ./python-code/README.md
 
-# Copy examples (if needed for testing or demonstration purposes)
-COPY examples /app/examples
+# Copy examples
+COPY examples ./examples
 
-# Create a directory for simulation outputs
+# Copy Makefile (and any other top-level files you need)
+COPY Makefile ./
+
+# Create output directory
 RUN mkdir -p /app/simulation_outputs
 
-# In TRE, run scripts directly with the prebuilt venv Python
-ENTRYPOINT ["/app/python-code/.venv/bin/python3"]
+# Add the virtual environment to the PATH
+ENV PATH="/app/python-code/.venv/bin:${PATH}"
 
-# Default action if no script is provided
-CMD ["--version"]
+# Default action
+CMD ["/app/python-code/.venv/bin/python3", "--version"]
