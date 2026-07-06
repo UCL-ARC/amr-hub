@@ -15,11 +15,17 @@ building:
             - [3, 3, 4, 3]
           contents:
             - type: "workstation"
-              position: [1, 1]
+              position: [0.5, 0.5]
+            - type: "workstation"
+              position: [0.5, 1.5]
+            - type: "workstation"
+              position: [0.5, 2.5]
             - type: "chair"
-              position: [2, 1]
+              position: [4.5, 0.5]
             - type: "chair"
-              position: [1, 2]
+              position: [4.5, 1.5]
+            - type: "chair"
+              position: [4.5, 2.5]
 
         - name: Ward
           walls:
