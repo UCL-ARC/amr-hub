@@ -1,996 +1,1200 @@
 """
-AMR-HUB: Behavioural Cloning prototype with (state, action) sweep.
+AMR-HUB: Behavioural-cloning prototype, rebuilt against the real DuckDB schema.
 
-Pipeline:
-    1. Load real RTLS-style CSV (one HCW for now).
-    2. Resample event log to a fixed 15-minute grid (Option A):
-         - Forward-fill zone (HCW stays where they were).
-         - Sparse event marker: forward-fill ONLY sustained events
-           (workstation, attend_patient, occupy_content);
-           door_access fires for one grid point then decays to "none".
-    3. Split into shifts on long gaps.
-    4. Markov bootstrap on zone sequences to generate synthetic training data
-       (Laplace-smoothed P(next_zone | curr_zone, time_bucket)).
-    5. Train one BC model per (state_variant, action_variant) combination.
-    6. Evaluate every model on held-out REAL data:
-         - top-1 / top-k accuracy
-         - TV distance on zone-frequency and event-frequency distributions
-           between policy rollouts and held-out real.
-    7. Produce a comparison table and an Occam recommendation:
-         smallest state where rollouts pass the distributional threshold
-         AND where the next bigger state gives < ELBOW_THRESHOLD top-1 gain.
+WHAT CHANGED FROM THE CSV PROTOTYPE
+-----------------------------------
+The original prototype assumed a flat CSV with a single `zone` column and four
+event types (workstation, attend_patient, door_access, occupy_content). The
+actual data is relational and different in four load-bearing ways:
 
-Run:
-    python bc_prototype.py --csv path/to/your.csv
-    python bc_prototype.py --csv path/to/your.csv --mode single
-    python bc_prototype.py --csv path/to/your.csv --out-csv results.csv
+1. No `zone`. Location = SourceKey, and SourceKey lives in a DIFFERENT key space
+   per InteractionTypeClass:
+       Door Message -> Ref.Door        (13 keys)
+       Roster       -> Ref.Roster      (2 keys)
+       Workstation  -> Ref.Workstation (36 keys)
+       Flowsheet    -> 168 keys (likely a location/department; NOT the 119
+                       FlowsheetTemplates, which are keyed by InteractionTypeKey)
+   Keys from different classes must never collide, but doors, workstations,
+   and flowsheets DO share a physical frame -- see note 5.
+
+2. Shifts are explicit. Roster Start / Roster End paired by LinkKey define the
+   shift window. LinkKey is populated ONLY for roster events. So we window
+   activity by rostered intervals instead of the old occupy_content / 8h-gap
+   heuristic. TERMINAL_EVENTS and split_into_shifts are gone.
+
+3. No scarcity. ~2.8M events across ~3,609 staff. The Markov *bootstrap* is
+   retired as a data generator; Markov survives as a first-class BASELINE model.
+
+4. New features: Role/StaffGroup (Ref.Staff), fine activity (32 InteractionType
+   values), and the patient-infection link (PatientDurableKey -> PatientInfection).
+
+5. SHARED SPATIAL FRAME (this revision). Doors, workstations, and flowsheet
+   entries live in the same physical space, so a door badge, a workstation
+   login, and a flowsheet entry in the same room should collapse to ONE
+   location symbol ("room:<name>") rather than three namespaced ones. Class
+   keys are resolved to a canonical room in priority order:
+       (a) CROSSWALK_CSV   -- a hand-built (iclass, source_key, room) mapping
+       (b) ROOM_RESOLUTION -- a room column joined from a spatial ref table
+       (c) fallback        -- the old per-class namespaced symbol
+                              ("door:...", "ws:...", "fs:...")
+   What the data audit shows about (b): Ref.Door (13 rows) and
+   Ref.Workstation (36 rows) carry key + name ONLY -- no spatial columns --
+   so doors and workstations reach the shared frame exclusively via the
+   crosswalk (49 rows to hand-map). Ref.Department (221 bed-level rows with
+   Bed/Room/Location names) is the sole spatial table; the working
+   hypothesis is that the 168 Flowsheet SourceKeys join to DepartmentKey,
+   with RoomName as the shared symbol (confirmed by the team: the DB's
+   reference table links flowsheet SourceKeys to bed location names).
+   Door endpoints and RoomNames pass through one std_code(), and the
+   coverage report checks their vocabularies actually overlap.
+   The fallback means a partial crosswalk degrades gracefully: unmapped keys
+   stay distinct instead of silently colliding or being dropped. A coverage
+   report after load shows how much of each class landed in the shared frame
+   and whether any room actually contains >=2 classes (the collapse check).
+
+WHAT THIS SCRIPT DOES
+---------------------
+    load  -> build one shared-frame touchpoint sequence per (staff, shift)
+    battery -> quantify learnability WITHOUT committing to IRL:
+                 - sequence entropy + conditional entropy H(next | state)
+                 - process-style variant statistics (how many distinct paths)
+                 - Markov baseline: held-out top-1 / top-k / perplexity
+                 - optional BC: held-out top-1 / top-k
+    sweep -> the Occam state-variant comparison, now over real features.
+
+The battery is the part that answers "is this learnable / too noisy". It runs
+with numpy + duckdb alone. BC (Flax/optax) is optional and guarded.
+
+Run (everything below needs ONLY the DuckDB file):
+    python bc_prototype.py --db <your.duckdb> infer-ws          # place WOWs
+    # review/edit ws_crosswalk.csv (blank rooms are skipped)
+    python bc_prototype.py --db <your.duckdb> battery --crosswalk ws_crosswalk.csv
+    python bc_prototype.py --db <your.duckdb> ruleout --crosswalk ws_crosswalk.csv --bc
+    python bc_prototype.py --db <your.duckdb> sweep   --crosswalk ws_crosswalk.csv
+Optional, when Keiran's nursing-staff sheet arrives (adds floorplan room
+codes; results should barely move -- it mostly re-labels):
+    ... any command ... --nursing nursing.csv
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
-import dataclasses
+import math
+import re
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from dataclasses import dataclass, field
 
-import jax
-import jax.numpy as jnp
+import duckdb
 import numpy as np
-import optax
-from flax import linen as nn
-from flax.training import train_state
+
+# ------------------------------------------------------------------
+# Config
+# ------------------------------------------------------------------
+
+N_TIME_BUCKETS = 4  # 0-6, 6-12, 12-18, 18-24
+KEEP_UNROSTERED = False  # events outside any rostered interval
+MIN_SHIFT_EVENTS = 3  # shifts shorter than this are dropped
+TOPK = 3
+
+# Class prefixes used ONLY for the fallback path, when a key cannot be
+# resolved into the shared room frame. They keep unmapped keys from
+# colliding across key spaces.
+CLASS_PREFIX = {
+    "Door Message": "door",
+    "Workstation": "ws",
+    "Flowsheet": "fs",
+    "Roster": "roster",
+}
+
+# Which ref table each class's SourceKey resolves against for a human-readable
+# FALLBACK name. Flowsheet is left unresolved by default and falls back to the
+# raw key; set FLOWSHEET_SOURCE_TABLE once a join test confirms where the 168
+# keys point.
+SOURCE_REF = {
+    "Door Message": ("Ref.Door", "DoorKey", "DoorName"),
+    "Workstation": ("Ref.Workstation", "WorkstationKey", "WorkstationName"),
+    "Roster": ("Ref.Roster", "RosterKey", "RosterName"),
+}
+FLOWSHEET_SOURCE_TABLE = None  # e.g. ("Ref.Department", "DepartmentKey", "RoomName")
+
+# --- shared spatial frame -----------------------------------------
+# Canonical namespace = the ROOM CODES used by on-ward nursing staff and the
+# floorplans (per Keiran). Each class reaches it by a different route:
+#
+#   Flowsheet    NURSING_CSV: the nursing-staff table linking bed location
+#                names ("cot X - nursery Y", held in Ref.Department against
+#                DepartmentKey = SourceKey) to room codes. Authoritative.
+#                The Ref.Department RoomName join below stays only as a
+#                fallback tier beneath it.
+#   Door Message DoorName encodes the TWO locations the door connects
+#                ("A - B"). A door is an edge, not a point -- we cannot know
+#                which side the staff member was on -- so doors resolve to a
+#                standardised edge symbol "door:A|B" whose endpoints live in
+#                the room-code vocabulary. Regex in DOOR_NAME_SEPARATORS /
+#                std_code(); tune once real strings are inspected.
+#   Workstation  no direct location. `infer-ws` implements Keiran's plan:
+#                infer each workstation's room from co-occurring flowsheet
+#                rooms (same staff, +/- a few minutes), emitting crosswalk
+#                rows with support/share stats for review.
+#   Roster       unit-level only (2 keys) -- far too coarse to be a location,
+#                but attached to each Shift as a `unit` feature and exposed
+#                to the state-variant sweep (S6).
+#
+# Priority per key: crosswalk CSV > nursing CSV > join below > edge parse
+# (doors) > namespaced fallback. Partial coverage degrades gracefully.
+ROOM_RESOLUTION: dict[str, tuple[str, str, str] | None] = {
+    "Door Message": None,  # edge-parsed from DoorName instead
+    "Workstation": None,  # inferred via `infer-ws` instead
+    "Flowsheet": ("Ref.Department", "DepartmentKey", "RoomName"),  # fallback tier
+}
+
+# Optional pretty-name lookup for room keys: (table, key_col, name_col).
+# There is no Ref.Room table in this DB; rooms arrive directly as code
+# strings from the nursing table / crosswalk, so this stays None.
+ROOM_NAME_TABLE: tuple[str, str, str] | None = None
+
+# Optional hand-built crosswalk CSV with header: iclass,source_key,room
+# Rows override / extend every other source. Rows with an empty room are
+# skipped (lets `infer-ws` review output double as an editable template).
+CROSSWALK_CSV: str | None = None
+
+# Nursing-staff table CSV linking flowsheet locations to room codes.
+# Accepted layouts (header names are matched case-insensitively):
+#   source_key,room            direct: DepartmentKey -> room code
+#   bed,room  (or bed_name)    bed location name -> room code; joined through
+#                              Ref.Department (BedName, then RoomName) on a
+#                              normalised string match to recover SourceKeys.
+NURSING_CSV: str | None = None
+
+# Door-name edge parsing: DoorName = "<loc A> <sep> <loc B>".
+DOOR_EDGES = True
+DOOR_NAME_SEPARATORS = r"\s+(?:-|\u2013|\u2014|<->|/|to)\s+"
 
 
-# ============================================================
-# Constants
-# ============================================================
-
-N_TIME_BUCKETS = 4
-STEP_MINUTES = 15
-SHIFT_GAP_HOURS = 8
-
-SUSTAINED_EVENTS = {"workstation", "attend_patient"}
-TRANSIENT_EVENTS = {"door_access"}
-TERMINAL_EVENTS = {"occupy_content"}
-EVENT_NONE = "none"
-
-# Occam thresholds — tune as needed.
-ELBOW_THRESHOLD = 0.02  # < 2% top-1 gain → not worth the extra feature
-TV_THRESHOLD_ZONES = 0.20
-TV_THRESHOLD_EVENTS = 0.20
-
-DWELL_BINS = [1, 2, 4, 8, 16]
+def std_code(s: str) -> str:
+    """Standardise a location/room code string. Extend with the regex clean-up
+    Keiran anticipates once real DoorName strings have been inspected."""
+    return re.sub(r"\s+", " ", s.strip()).upper()
 
 
-# ============================================================
-# 1. CSV loader + resampling
-# ============================================================
+# infer-ws parameters: a workstation is assigned the modal flowsheet room
+# charted by the same staff member within +/- WS_WINDOW_MIN minutes, if that
+# room wins >= WS_MIN_SHARE of votes over >= WS_MIN_SUPPORT co-occurrences.
+WS_WINDOW_MIN = 10
+WS_MIN_SUPPORT = 20
+WS_MIN_SHARE = 0.6
 
 
-def parse_csv(path: str) -> list[dict]:
-    rows = []
-    with open(path, newline="") as f:
+# ------------------------------------------------------------------
+# 1. Load: relational -> shared-frame touchpoint sequences
+# ------------------------------------------------------------------
+
+
+@dataclass
+class Step:
+    ts: float  # epoch seconds
+    location: str  # canonical "room:<code>" / "door:A|B" (or fallback "ws:...")
+    iclass: str  # InteractionTypeClass
+    itype: str  # InteractionType (fine)
+    role: str
+    patient: str | None
+    time_bucket: int
+    unit: str = "unknown"  # rostered unit (Ref.Roster), shift-level
+
+
+@dataclass
+class Shift:
+    staff: str
+    link_key: int
+    unit: str = "unknown"
+    steps: list[Step] = field(default_factory=list)
+
+
+def _load_ref_map(con, table, key_col, name_col) -> dict[int, str]:
+    rows = con.execute(f"select {key_col}, {name_col} from {table}").fetchall()
+    return {int(k): str(v) for k, v in rows if k is not None}
+
+
+def _norm_name(s: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(s).lower())
+
+
+def _load_nursing_map(con, nursing_csv: str) -> dict[int, str]:
+    """Nursing-staff table -> {Flowsheet SourceKey: 'room:<code>'}.
+
+    Direct layout (source_key column) is used as-is. Bed-name layout is
+    joined through Ref.Department on a normalised match against BedName,
+    then RoomName, to recover DepartmentKey (= SourceKey)."""
+    with open(nursing_csv, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
-        for r in reader:
-            r["timestamp"] = datetime.fromisoformat(r["timestamp"])
-            r["hcw_id"] = int(r["hcw_id"])
-            r["zone"] = r["location"].split(":")[-1].strip()
-            rows.append(r)
-    rows.sort(key=lambda r: (r["hcw_id"], r["timestamp"]))
-    return rows
+        cols = {c.lower().strip(): c for c in (reader.fieldnames or [])}
+        rows = list(reader)
 
+    def col(*names):
+        for n in names:
+            if n in cols:
+                return cols[n]
+        return None
 
-def split_into_shifts(
-    events: list[dict], gap_hours: int = SHIFT_GAP_HOURS
-) -> list[list[dict]]:
-    """
-    Split a single HCW's events into shifts. A shift boundary occurs when:
-      - the gap to the next event exceeds `gap_hours`, OR
-      - the current event is a TERMINAL event (occupy_content).
-    Terminal events are kept as the FINAL row of their shift.
-    """
-    if not events:
-        return []
-    shifts = [[events[0]]]
-    for prev, curr in zip(events, events[1:]):
-        gap_too_long = (curr["timestamp"] - prev["timestamp"]) > timedelta(
-            hours=gap_hours
-        )
-        prev_was_terminal = prev["event_type"] in TERMINAL_EVENTS
-        if gap_too_long or prev_was_terminal:
-            shifts.append([curr])
-        else:
-            shifts[-1].append(curr)
-    return shifts
-
-
-def time_bucket_of(hr: int) -> int:
-    if hr < 6:
-        return 0
-    if hr < 12:
-        return 1
-    if hr < 18:
-        return 2
-    return 3
-
-
-def resample_shift(shift: list[dict], step_minutes: int = STEP_MINUTES) -> list[dict]:
-    """
-    Resample one shift to a fixed time grid.
-    Returns list of {time, zone, event_type, time_bucket}.
-    """
-    if not shift:
-        return []
-    start = shift[0]["timestamp"]
-    end = shift[-1]["timestamp"]
-    step = timedelta(minutes=step_minutes)
-
-    out = []
-    t = start
-    event_idx = 0
-    curr_zone = shift[0]["zone"]
-    e0 = shift[0]["event_type"]
-    curr_event = e0 if e0 in SUSTAINED_EVENTS else EVENT_NONE
-
-    while t <= end:
-        # Apply all events that have occurred up to t.
-        while event_idx + 1 < len(shift) and shift[event_idx + 1]["timestamp"] <= t:
-            event_idx += 1
-            e = shift[event_idx]
-            curr_zone = e["zone"]
-            if e["event_type"] in SUSTAINED_EVENTS:
-                curr_event = e["event_type"]
-            elif e["event_type"] in TRANSIENT_EVENTS:
-                curr_event = e["event_type"]  # one-step marker
-
-        out.append(
-            {
-                "time": t,
-                "zone": curr_zone,
-                "event_type": curr_event,
-                "time_bucket": time_bucket_of(t.hour),
-            }
+    key_c = col("source_key", "sourcekey", "key", "departmentkey")
+    bed_c = col("bed", "bed_name", "bedname", "bed_location", "location")
+    room_c = col("room", "room_code", "roomcode")
+    if room_c is None or (key_c is None and bed_c is None):
+        raise SystemExit(
+            f"[nursing] {nursing_csv}: need a room column plus either a "
+            f"source_key or bed-name column; found {list(cols)}"
         )
 
-        if curr_event in TRANSIENT_EVENTS:
-            curr_event = EVENT_NONE
-        t += step
+    out: dict[int, str] = {}
+    if key_c is not None:
+        for r in rows:
+            if r[key_c] and r[room_c] and r[room_c].strip():
+                out[int(r[key_c])] = f"room:{std_code(r[room_c])}"
+        print(f"[nursing] {len(out)} flowsheet keys mapped directly.")
+        return out
 
-    return out
+    dep = con.execute(
+        "select DepartmentKey, BedName, RoomName from Ref.Department"
+    ).fetchall()
+    by_bed: dict[str, list[int]] = defaultdict(list)
+    by_room: dict[str, list[int]] = defaultdict(list)
+    for k, b, rn in dep:
+        if k is None:
+            continue
+        if b:
+            by_bed[_norm_name(b)].append(int(k))
+        if rn:
+            by_room[_norm_name(rn)].append(int(k))
 
-
-def load_real_data(csv_path: str, hcw_id: int | None = None) -> list[list[dict]]:
-    rows = parse_csv(csv_path)
-    if hcw_id is not None:
-        rows = [r for r in rows if r["hcw_id"] == hcw_id]
-    if not rows:
-        raise ValueError(f"No rows for hcw_id={hcw_id}")
-
-    by_hcw: dict[int, list[dict]] = defaultdict(list)
+    unmatched = []
     for r in rows:
-        by_hcw[r["hcw_id"]].append(r)
-
-    shifts = []
-    for events in by_hcw.values():
-        for s in split_into_shifts(events):
-            resampled = resample_shift(s)
-            if len(resampled) >= 4:
-                shifts.append(resampled)
-    return shifts
-
-
-# ============================================================
-# 2. Vocab
-# ============================================================
-
-
-@dataclasses.dataclass
-class Vocab:
-    zones: list[str]
-    events: list[str]
-    zone_to_idx: dict[str, int]
-    event_to_idx: dict[str, int]
-
-    @property
-    def n_zones(self) -> int:
-        return len(self.zones)
-
-    @property
-    def n_events(self) -> int:
-        return len(self.events)
-
-
-def build_vocab(shifts: list[list[dict]]) -> Vocab:
-    zs, es = set(), set()
-    for s in shifts:
-        for gp in s:
-            zs.add(gp["zone"])
-            es.add(gp["event_type"])
-    zones = sorted(zs)
-    events = sorted(es)
-    return Vocab(
-        zones,
-        events,
-        {z: i for i, z in enumerate(zones)},
-        {e: i for i, e in enumerate(events)},
-    )
-
-
-# ============================================================
-# 3. Markov bootstrap + event marginals
-# ============================================================
-
-
-def fit_markov(shifts, vocab: Vocab, alpha: float = 0.5) -> np.ndarray:
-    n_z = vocab.n_zones
-    counts = np.full((N_TIME_BUCKETS, n_z, n_z), alpha, dtype=np.float64)
-    for shift in shifts:
-        for gp1, gp2 in zip(shift[:-1], shift[1:]):
-            z = vocab.zone_to_idx[gp1["zone"]]
-            zn = vocab.zone_to_idx[gp2["zone"]]
-            counts[gp1["time_bucket"], z, zn] += 1.0
-    return counts / counts.sum(axis=-1, keepdims=True)
-
-
-def event_dist_per_zone(shifts, vocab: Vocab, alpha: float = 0.5) -> np.ndarray:
-    """
-    P(event_type | zone) from real shifts.
-    Terminal events get zero probability mass — they should never appear
-    in synthetic mid-shift data (synthetic shifts have no real "end").
-    """
-    n_z, n_e = vocab.n_zones, vocab.n_events
-    counts = np.full((n_z, n_e), alpha, dtype=np.float64)
-    for shift in shifts:
-        for gp in shift:
-            if gp["event_type"] in TERMINAL_EVENTS:
-                continue
-            counts[
-                vocab.zone_to_idx[gp["zone"]], vocab.event_to_idx[gp["event_type"]]
-            ] += 1.0
-    # Zero out any terminal event rows entirely (in case alpha smoothing
-    # gave them mass).
-    for e_name in TERMINAL_EVENTS:
-        if e_name in vocab.event_to_idx:
-            counts[:, vocab.event_to_idx[e_name]] = 0.0
-    # Renormalise; if a zone now has all-zero row (very rare), uniform fallback.
-    row_sums = counts.sum(axis=-1, keepdims=True)
-    row_sums = np.where(row_sums == 0, 1.0, row_sums)
-    return counts / row_sums
-
-
-def sample_synthetic_shift(T, P_event, length, vocab, rng, start_zone, start_hour):
-    out = []
-    z = start_zone
-    t0 = datetime(2024, 1, 1, start_hour, 0, 0)
-    for step in range(length):
-        t = t0 + step * timedelta(minutes=STEP_MINUTES)
-        tb = time_bucket_of(t.hour)
-        e_idx = int(rng.choice(vocab.n_events, p=P_event[z]))
-        out.append(
-            {
-                "time": t,
-                "zone": vocab.zones[z],
-                "event_type": vocab.events[e_idx],
-                "time_bucket": tb,
-            }
-        )
-        z = int(rng.choice(vocab.n_zones, p=T[tb, z]))
-    return out
-
-
-def build_synthetic_dataset(real_shifts, vocab, n_trajectories=200, length=80, seed=1):
-    T = fit_markov(real_shifts, vocab)
-    P_event = event_dist_per_zone(real_shifts, vocab)
-    rng = np.random.default_rng(seed)
-    out = []
-    for _ in range(n_trajectories):
-        start = int(rng.integers(vocab.n_zones))
-        start_hour = int(rng.choice([6, 7, 8, 14, 22]))
-        out.append(
-            sample_synthetic_shift(T, P_event, length, vocab, rng, start, start_hour)
-        )
-    return out
-
-
-# ============================================================
-# 4. State / Action variants
-# ============================================================
-
-STATE_VARIANTS = {
-    "S1_zone": ["curr_zone"],
-    "S2_zone_time": ["curr_zone", "time_bucket"],
-    "S3_zone_time_prev": ["curr_zone", "time_bucket", "prev_zone"],
-    "S4_full_event": ["curr_zone", "time_bucket", "prev_zone", "curr_event"],
-    "S5_full_duration": [
-        "curr_zone",
-        "time_bucket",
-        "prev_zone",
-        "curr_event",
-        "dwell_bin",
-    ],
-}
-
-ACTION_VARIANTS = {
-    "A1_next_zone": "next_zone",
-    "A2_next_event": "next_event",
-    "A3_joint": "joint",
-}
-
-
-def dwell_bin_index(steps_in_zone: int) -> int:
-    for i, b in enumerate(DWELL_BINS):
-        if steps_in_zone <= b:
-            return i
-    return len(DWELL_BINS)
-
-
-def feature_vocab_size(name: str, vocab: Vocab) -> int:
-    if name == "curr_zone":
-        return vocab.n_zones
-    if name == "time_bucket":
-        return N_TIME_BUCKETS
-    if name == "prev_zone":
-        return vocab.n_zones + 1
-    if name == "curr_event":
-        return vocab.n_events
-    if name == "dwell_bin":
-        return len(DWELL_BINS) + 1
-    raise ValueError(name)
-
-
-def action_vocab_size(kind: str, vocab: Vocab) -> int:
-    if kind == "next_zone":
-        return vocab.n_zones
-    if kind == "next_event":
-        return vocab.n_events
-    if kind == "joint":
-        return vocab.n_zones * vocab.n_events
-    raise ValueError(kind)
-
-
-def encode_action(kind, nz, ne, vocab):
-    if kind == "next_zone":
-        return nz
-    if kind == "next_event":
-        return ne
-    if kind == "joint":
-        return nz * vocab.n_events + ne
-    raise ValueError(kind)
-
-
-def shifts_to_sa(shifts, feature_names, action_kind, vocab: Vocab):
-    """
-    Build (X, y) for one (state, action) combination.
-    Skips transitions where the NEXT event is terminal (occupy_content):
-    the policy is not asked to predict shift end, only mid-shift decisions.
-    """
-    X_rows, y_rows = [], []
-    for shift in shifts:
-        prev_z = vocab.n_zones
-        dwell = 1
-        for i in range(len(shift) - 1):
-            gp = shift[i]
-            gpn = shift[i + 1]
-
-            # Skip if the next event is terminal — not a learnable decision.
-            if gpn["event_type"] in TERMINAL_EVENTS:
-                continue
-
-            cz = vocab.zone_to_idx[gp["zone"]]
-            tb = gp["time_bucket"]
-            ce = vocab.event_to_idx[gp["event_type"]]
-            db = dwell_bin_index(dwell)
-
-            row = []
-            for f in feature_names:
-                if f == "curr_zone":
-                    row.append(cz)
-                elif f == "time_bucket":
-                    row.append(tb)
-                elif f == "prev_zone":
-                    row.append(prev_z)
-                elif f == "curr_event":
-                    row.append(ce)
-                elif f == "dwell_bin":
-                    row.append(db)
-            X_rows.append(row)
-
-            nz = vocab.zone_to_idx[gpn["zone"]]
-            ne = vocab.event_to_idx[gpn["event_type"]]
-            y_rows.append(encode_action(action_kind, nz, ne, vocab))
-
-            if gpn["zone"] == gp["zone"]:
-                dwell += 1
-            else:
-                dwell = 1
-                prev_z = cz
-    return np.array(X_rows, dtype=np.int32), np.array(y_rows, dtype=np.int32)
-
-
-# ============================================================
-# 5. Flax policy
-# ============================================================
-
-
-class BCPolicy(nn.Module):
-    feature_vocab_sizes: tuple
-    n_actions: int
-    embed_dim: int = 16
-    hidden_dim: int = 64
-
-    @nn.compact
-    def __call__(self, x):
-        pieces = []
-        for i, vsize in enumerate(self.feature_vocab_sizes):
-            pieces.append(nn.Embed(vsize, self.embed_dim, name=f"embed_{i}")(x[:, i]))
-        h = jnp.concatenate(pieces, axis=-1)
-        h = nn.relu(nn.Dense(self.hidden_dim)(h))
-        h = nn.relu(nn.Dense(self.hidden_dim)(h))
-        return nn.Dense(self.n_actions)(h)
-
-
-def count_params(params) -> int:
-    return int(sum(p.size for p in jax.tree.leaves(params)))
-
-
-@dataclasses.dataclass
-class TrainConfig:
-    batch_size: int = 256
-    n_epochs: int = 30
-    learning_rate: float = 3e-3
-    seed: int = 42
-
-
-def make_train_state(model, n_features, rng, config: TrainConfig):
-    params = model.init(rng, jnp.zeros((1, n_features), dtype=jnp.int32))["params"]
-    return train_state.TrainState.create(
-        apply_fn=model.apply, params=params, tx=optax.adam(config.learning_rate)
-    )
-
-
-def make_train_eval_steps(n_actions: int):
-    @jax.jit
-    def train_step(state, bx, by):
-        def loss_fn(params):
-            logits = state.apply_fn({"params": params}, bx)
-            oh = jax.nn.one_hot(by, n_actions)
-            return optax.softmax_cross_entropy(logits, oh).mean(), logits
-
-        (loss, logits), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
-        state = state.apply_gradients(grads=grads)
-        acc = (jnp.argmax(logits, axis=-1) == by).mean()
-        return state, loss, acc
-
-    @jax.jit
-    def eval_step(state, x, y):
-        logits = state.apply_fn({"params": state.params}, x)
-        top1 = (jnp.argmax(logits, axis=-1) == y).mean()
-        k = min(3, n_actions)
-        topk_idx = jnp.argsort(logits, axis=-1)[:, -k:]
-        topk = jnp.any(topk_idx == y[:, None], axis=-1).mean()
-        return top1, topk
-
-    return train_step, eval_step
-
-
-def iterate_batches(x, y, batch_size, rng):
-    n = x.shape[0]
-    idx = rng.permutation(n)
-    for start in range(0, n, batch_size):
-        sl = idx[start : start + batch_size]
-        yield x[sl], y[sl]
-
-
-# ============================================================
-# 6. Rollout (bookkeeping, not simulation)
-# ============================================================
-
-
-def policy_rollout(
-    state, feature_names, action_kind, length, real_seed_shift, vocab: Vocab, rng
-):
-    if not real_seed_shift:
-        return []
-    gp0 = real_seed_shift[0]
-    cz = vocab.zone_to_idx[gp0["zone"]]
-    tb = gp0["time_bucket"]
-    ce = vocab.event_to_idx[gp0["event_type"]]
-    prev_z = vocab.n_zones
-    dwell = 1
-
-    traj = [dict(gp0)]
-    for step in range(1, length):
-        row = []
-        for f in feature_names:
-            if f == "curr_zone":
-                row.append(cz)
-            elif f == "time_bucket":
-                row.append(tb)
-            elif f == "prev_zone":
-                row.append(prev_z)
-            elif f == "curr_event":
-                row.append(ce)
-            elif f == "dwell_bin":
-                row.append(dwell_bin_index(dwell))
-        x = jnp.array([row], dtype=jnp.int32)
-        logits = state.apply_fn({"params": state.params}, x)
-        probs = np.array(jax.nn.softmax(logits)[0])
-        a = int(rng.choice(len(probs), p=probs))
-
-        if action_kind == "next_zone":
-            nz, ne = a, ce
-        elif action_kind == "next_event":
-            nz, ne = cz, a
-        else:
-            nz = a // vocab.n_events
-            ne = a % vocab.n_events
-
-        if nz == cz:
-            dwell += 1
-        else:
-            dwell = 1
-            prev_z = cz
-        cz, ce = nz, ne
-        tb = min(int((step / length) * N_TIME_BUCKETS), N_TIME_BUCKETS - 1)
-        traj.append(
-            {
-                "time": None,
-                "zone": vocab.zones[cz],
-                "event_type": vocab.events[ce],
-                "time_bucket": tb,
-            }
-        )
-    return traj
-
-
-def freq(items, universe):
-    c = Counter(items)
-    arr = np.array([c.get(u, 0) for u in universe], dtype=np.float64)
-    s = arr.sum()
-    return arr / s if s else arr
-
-
-def total_variation(p, q):
-    return 0.5 * float(np.abs(p - q).sum())
-
-
-# ============================================================
-# 7. Sweep runner
-# ============================================================
-
-
-@dataclasses.dataclass
-class SweepResult:
-    state_name: str
-    action_name: str
-    n_features: int
-    n_params: int
-    top1: float
-    topk: float
-    tv_zones: float
-    tv_events: float
-
-    def passes(self):
-        return (
-            self.tv_zones <= TV_THRESHOLD_ZONES
-            and self.tv_events <= TV_THRESHOLD_EVENTS
-        )
-
-
-def run_one(
-    state_name,
-    action_name,
-    feature_names,
-    action_kind,
-    train_shifts,
-    eval_shifts,
-    synthetic,
-    vocab,
-    cfg: TrainConfig,
-):
-    X_syn, y_syn = shifts_to_sa(synthetic, feature_names, action_kind, vocab)
-    X_real, y_real = shifts_to_sa(train_shifts, feature_names, action_kind, vocab)
-    X_train = np.concatenate([X_syn, X_real]) if len(X_real) else X_syn
-    y_train = np.concatenate([y_syn, y_real]) if len(y_real) else y_syn
-
-    X_eval, y_eval = shifts_to_sa(eval_shifts, feature_names, action_kind, vocab)
-    if len(X_eval) == 0:
-        raise ValueError(f"No eval pairs for {state_name}/{action_name}")
-
-    feat_sizes = tuple(feature_vocab_size(f, vocab) for f in feature_names)
-    n_actions = action_vocab_size(action_kind, vocab)
-    model = BCPolicy(feature_vocab_sizes=feat_sizes, n_actions=n_actions)
-    rng_key = jax.random.PRNGKey(cfg.seed)
-    state = make_train_state(model, len(feature_names), rng_key, cfg)
-    n_params = count_params(state.params)
-
-    train_step, eval_step = make_train_eval_steps(n_actions)
-    np_rng = np.random.default_rng(cfg.seed)
-    for _ in range(cfg.n_epochs):
-        for bx, by in iterate_batches(X_train, y_train, cfg.batch_size, np_rng):
-            state, _, _ = train_step(state, jnp.array(bx), jnp.array(by))
-
-    top1, topk = eval_step(state, jnp.array(X_eval), jnp.array(y_eval))
-    top1, topk = float(top1), float(topk)
-
-    rollout = policy_rollout(
-        state,
-        feature_names,
-        action_kind,
-        length=len(eval_shifts[0]),
-        real_seed_shift=eval_shifts[0],
-        vocab=vocab,
-        rng=np_rng,
-    )
-    real_z = [
-        gp["zone"]
-        for s in eval_shifts
-        for gp in s
-        if gp["event_type"] not in TERMINAL_EVENTS
-    ]
-    real_e = [
-        gp["event_type"]
-        for s in eval_shifts
-        for gp in s
-        if gp["event_type"] not in TERMINAL_EVENTS
-    ]
-    pred_z = [gp["zone"] for gp in rollout if gp["event_type"] not in TERMINAL_EVENTS]
-    pred_e = [
-        gp["event_type"] for gp in rollout if gp["event_type"] not in TERMINAL_EVENTS
-    ]
-    tv_z = total_variation(freq(real_z, vocab.zones), freq(pred_z, vocab.zones))
-    tv_e = total_variation(freq(real_e, vocab.events), freq(pred_e, vocab.events))
-
-    return SweepResult(
-        state_name, action_name, len(feature_names), n_params, top1, topk, tv_z, tv_e
-    ), rollout
-
-
-def occam_recommendation(state_results: list[SweepResult]) -> str:
-    state_results = sorted(state_results, key=lambda r: r.n_features)
-    passing = [r for r in state_results if r.passes()]
-    pick_tv = passing[0].state_name if passing else None
-
-    pick_elbow = None
-    for i in range(len(state_results) - 1):
-        gain = state_results[i + 1].top1 - state_results[i].top1
-        if gain < ELBOW_THRESHOLD:
-            pick_elbow = state_results[i].state_name
-            break
-    if pick_elbow is None:
-        pick_elbow = state_results[-1].state_name
-
-    msg = ["\nOCCAM RECOMMENDATION", "-" * 60]
-    msg.append(
-        f"Distributional filter (TV ≤ {TV_THRESHOLD_ZONES}/{TV_THRESHOLD_EVENTS}):"
-    )
-    msg.append(f"  → smallest passing variant: {pick_tv or 'NONE PASSED'}")
-    msg.append(f"Elbow filter (top-1 gain < {ELBOW_THRESHOLD:.2f}):")
-    msg.append(f"  → plateau variant: {pick_elbow}")
-
-    if pick_tv and pick_tv == pick_elbow:
-        msg.append(f"\nBoth filters agree → recommend {pick_tv}.")
-    elif pick_tv and pick_elbow:
-        msg.append(f"\nFilters disagree: TV says {pick_tv}, elbow says {pick_elbow}.")
-        msg.append("This is a modelling judgment, not an automatic answer —")
-        msg.append("inspect the table and decide based on which gap is acceptable.")
-    else:
-        msg.append("\nNo variant passed the distributional check.")
-        msg.append("Possible causes: too little real data, or a feature is missing.")
-    return "\n".join(msg)
-
-
-def print_table(results: list[SweepResult]):
+        bed, room = r.get(bed_c, ""), r.get(room_c, "")
+        if not bed or not room or not room.strip():
+            continue
+        keys = by_bed.get(_norm_name(bed)) or by_room.get(_norm_name(bed))
+        if not keys:
+            unmatched.append(bed)
+            continue
+        for k in keys:
+            out[k] = f"room:{std_code(room)}"
     print(
-        f"\n{'State':<22}{'Action':<18}{'#feat':>6}{'#params':>10}"
-        f"{'top1':>8}{'top3':>8}{'TV_zone':>10}{'TV_evt':>10}{'pass':>6}"
+        f"[nursing] {len(out)} flowsheet keys mapped via bed names; "
+        f"{len(unmatched)} nursing rows unmatched"
+        + (f" (e.g. {unmatched[:3]!r})" if unmatched else "")
+        + "."
     )
-    print("-" * 98)
-    for r in results:
+    return out
+
+
+def _parse_door_edges(door_names: dict[int, str]) -> dict[int, str]:
+    """DoorName 'A <sep> B' -> {DoorKey: 'door:A|B'} with standardised,
+    order-independent endpoints. Names that do not split into exactly two
+    parts are left out (they fall back to the raw namespaced name)."""
+    out: dict[int, str] = {}
+    for k, name in door_names.items():
+        parts = [std_code(p) for p in re.split(DOOR_NAME_SEPARATORS, name) if p.strip()]
+        if len(parts) == 2:
+            a, b = sorted(parts)
+            out[k] = f"door:{a}|{b}"
+    return out
+
+
+def _load_room_maps(
+    con, crosswalk_csv: str | None, nursing_csv: str | None = None
+) -> dict[str, dict[int, str]]:
+    """Per-class {source_key -> canonical symbol}: 'room:<code>' for points,
+    'door:A|B' for door edges.
+
+    Priority (later overrides earlier): ROOM_RESOLUTION joins -> door edge
+    parse -> nursing CSV -> crosswalk CSV. Any class with no mapping at all
+    is absent from the dict and uses the namespaced fallback."""
+    # Optional room-key -> room-name prettifier, shared across classes.
+    room_names: dict[int, str] = {}
+    if ROOM_NAME_TABLE is not None:
+        try:
+            room_names = _load_ref_map(con, *ROOM_NAME_TABLE)
+        except duckdb.Error:
+            print(
+                f"[rooms] {ROOM_NAME_TABLE[0]} not readable; using raw room keys as symbols."
+            )
+
+    def room_symbol(room_val) -> str:
+        try:
+            k = int(room_val)
+            name = room_names.get(k)
+            return f"room:{std_code(name)}" if name is not None else f"room:{k}"
+        except (TypeError, ValueError):
+            # String room names go through the SAME standardisation as door
+            # endpoints, so "Nursery 1" (RoomName) and "nursery 1" (in a
+            # DoorName) land on one spelling and the frames can align.
+            return f"room:{std_code(str(room_val))}"
+
+    maps: dict[str, dict[int, str]] = {}
+    for iclass, spec in ROOM_RESOLUTION.items():
+        if spec is None:
+            continue
+        tbl, kcol, rcol = spec
+        try:
+            rows = con.execute(f"select {kcol}, {rcol} from {tbl}").fetchall()
+        except duckdb.Error as e:
+            print(
+                f"[rooms] {iclass}: cannot read {rcol} from {tbl} "
+                f"({type(e).__name__}); leaving this class on the namespaced fallback."
+            )
+            continue
+        maps[iclass] = {
+            int(k): room_symbol(r) for k, r in rows if k is not None and r is not None
+        }
+
+    if DOOR_EDGES:
+        try:
+            door_names = _load_ref_map(con, *SOURCE_REF["Door Message"])
+            edges = _parse_door_edges(door_names)
+            maps.setdefault("Door Message", {}).update(edges)
+            print(
+                f"[rooms] door edges parsed: {len(edges)}/{len(door_names)} "
+                "door names split into two endpoints."
+            )
+        except duckdb.Error:
+            pass
+
+    if nursing_csv:
+        maps.setdefault("Flowsheet", {}).update(_load_nursing_map(con, nursing_csv))
+
+    if crosswalk_csv:
+        n_rows = n_skip = 0
+        with open(crosswalk_csv, newline="", encoding="utf-8-sig") as f:
+            for row in csv.DictReader(f):
+                room = (row.get("room") or "").strip()
+                if not room:
+                    n_skip += 1
+                    continue
+                iclass = row["iclass"].strip()
+                key = int(row["source_key"])
+                maps.setdefault(iclass, {})[key] = f"room:{std_code(room)}"
+                n_rows += 1
         print(
-            f"{r.state_name:<22}{r.action_name:<18}{r.n_features:>6}"
-            f"{r.n_params:>10}{r.top1:>8.3f}{r.topk:>8.3f}"
-            f"{r.tv_zones:>10.3f}{r.tv_events:>10.3f}"
-            f"{('  ✓' if r.passes() else '  ✗'):>6}"
+            f"[rooms] crosswalk {crosswalk_csv}: {n_rows} mappings applied"
+            + (f", {n_skip} blank rows skipped" if n_skip else "")
+            + "."
         )
 
+    return maps
 
-def save_csv(results, path):
-    with open(path, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(
-            [
-                "state",
-                "action",
-                "n_features",
-                "n_params",
-                "top1",
-                "top3",
-                "tv_zones",
-                "tv_events",
-                "pass",
-            ]
+
+def load_shifts(
+    con, crosswalk_csv: str | None = None, nursing_csv: str | None = None
+) -> tuple[list[Shift], Counter]:
+    """Build per-(staff, shift) touchpoint sequences from DuckDB.
+
+    Returns (shifts, resolution_stats) where resolution_stats counts, per
+    (iclass, outcome), how each event's location was resolved:
+    outcome in {"room", "edge", "fallback", "null"}.
+    """
+    # Fallback name maps (old behaviour) and the shared room maps.
+    loc_maps: dict[str, dict[int, str]] = {}
+    for iclass, (tbl, kcol, ncol) in SOURCE_REF.items():
+        loc_maps[iclass] = _load_ref_map(con, tbl, kcol, ncol)
+    if FLOWSHEET_SOURCE_TABLE:
+        tbl, kcol, ncol = FLOWSHEET_SOURCE_TABLE
+        loc_maps["Flowsheet"] = _load_ref_map(con, tbl, kcol, ncol)
+
+    room_maps = _load_room_maps(con, crosswalk_csv, nursing_csv)
+    roster_names = loc_maps.get("Roster", {})
+    res_stats: Counter = Counter()
+
+    def resolve(iclass: str, source_key) -> str:
+        prefix = CLASS_PREFIX.get(iclass, "x")
+        if source_key is None:
+            res_stats[(iclass, "null")] += 1
+            return f"{prefix}:na"
+        k = int(source_key)
+        # 1) shared spatial frame (point rooms and door edges)
+        sym = room_maps.get(iclass, {}).get(k)
+        if sym is not None:
+            res_stats[(iclass, "room" if sym.startswith("room:") else "edge")] += 1
+            return sym
+        # 2) namespaced fallback (never collides across classes)
+        res_stats[(iclass, "fallback")] += 1
+        name = loc_maps.get(iclass, {}).get(k)
+        return f"{prefix}:{name if name is not None else source_key}"
+
+    # One ordered stream per staff member, with everything resolved in SQL
+    # except location (done in Python because it is class-conditional).
+    q = """
+    select
+        e.MasterIndexId          as staff,
+        epoch(e.EventDateTime)   as ts,
+        e.SourceKey              as source_key,
+        e.LinkKey                as link_key,
+        e.PatientDurableKey      as patient,
+        it.InteractionType       as itype,
+        it.InteractionTypeClass  as iclass,
+        coalesce(s.Role, 'unknown')       as role
+    from Data.StaffLocationEvent e
+    join Ref.InteractionType it
+      on e.InteractionTypeKey = it.InteractionTypeKey
+    left join Ref.Staff s
+      on s.MasterIndexId = e.MasterIndexId
+    order by e.MasterIndexId, e.EventDateTime
+    """
+    rows = con.execute(q).fetchall()
+
+    # (a) collect rostered intervals per staff from Roster Start/End by LinkKey
+    #     Roster Start's SourceKey names the unit (Ref.Roster) -- a shift-level
+    #     feature, far too coarse to be a location.
+    starts: dict[tuple[str, int], tuple[float, str]] = {}
+    ends: dict[tuple[str, int], float] = {}
+    for staff, ts, sk, link_key, patient, itype, iclass, role in rows:
+        if iclass != "Roster" or link_key is None:
+            continue
+        key = (staff, int(link_key))
+        if itype == "Roster Start":
+            unit = roster_names.get(int(sk), str(sk)) if sk is not None else "unknown"
+            starts[key] = (float(ts), unit)
+        elif itype == "Roster End":
+            ends[key] = float(ts)
+
+    intervals: dict[str, list[tuple[float, float, int, str]]] = defaultdict(list)
+    for key, (t0, unit) in starts.items():
+        t1 = ends.get(key)
+        if t1 is None or t1 <= t0:
+            continue  # unmatched or non-monotonic pair -> skip (report separately)
+        staff, link_key = key
+        intervals[staff].append((t0, t1, link_key, unit))
+    for staff in intervals:
+        intervals[staff].sort()
+
+    def which_shift(staff: str, ts: float) -> tuple[int, str] | None:
+        for t0, t1, link_key, unit in intervals.get(
+            staff, ()
+        ):  # linear; fine for a prototype
+            if t0 <= ts <= t1:
+                return link_key, unit
+        return None
+
+    # (b) assign each activity event to its containing shift
+    shifts: dict[tuple[str, int], Shift] = {}
+    for staff, ts, sk, link_key, patient, itype, iclass, role in rows:
+        if iclass == "Roster":
+            continue
+        ts = float(ts)
+        hit = which_shift(staff, ts)
+        if hit is None:
+            if not KEEP_UNROSTERED:
+                continue
+            sh, unit = -1, "unknown"
+        else:
+            sh, unit = hit
+        skey = (staff, sh)
+        if skey not in shifts:
+            shifts[skey] = Shift(staff=staff, link_key=sh, unit=unit)
+        tb = min(N_TIME_BUCKETS - 1, int(((ts % 86400) / 86400) * N_TIME_BUCKETS))
+        shifts[skey].steps.append(
+            Step(
+                ts=ts,
+                location=resolve(iclass, sk),
+                iclass=iclass,
+                itype=itype,
+                role=str(role),
+                patient=(str(patient) if patient is not None else None),
+                time_bucket=tb,
+                unit=unit,
+            )
         )
-        for r in results:
-            w.writerow(
-                [
-                    r.state_name,
-                    r.action_name,
-                    r.n_features,
-                    r.n_params,
-                    f"{r.top1:.4f}",
-                    f"{r.topk:.4f}",
-                    f"{r.tv_zones:.4f}",
-                    f"{r.tv_events:.4f}",
-                    "1" if r.passes() else "0",
-                ]
+
+    kept = [shift for shift in shifts.values() if len(shift.steps) >= MIN_SHIFT_EVENTS]
+    for shift in kept:
+        shift.steps.sort(key=lambda st: st.ts)
+    return kept, res_stats
+
+
+def report_spatial_frame(shifts: list[Shift], res_stats: Counter) -> None:
+    """Coverage of the shared room frame + the actual collapse check.
+
+    Two failure modes this catches:
+      - low room coverage: ROOM_RESOLUTION columns wrong / crosswalk too thin,
+        so most events are still living in per-class namespaces;
+      - zero multi-class rooms: every class resolved, but into DISJOINT room
+        sets -- i.e. the room columns do not share a key space and nothing
+        actually collapsed. Symbols would look canonical while behaving
+        exactly like the old namespaced ones.
+    """
+    print("\n--- shared spatial frame ---")
+    for iclass in sorted({c for c, _ in res_stats}):
+        room = res_stats.get((iclass, "room"), 0)
+        edge = res_stats.get((iclass, "edge"), 0)
+        fb = res_stats.get((iclass, "fallback"), 0)
+        nul = res_stats.get((iclass, "null"), 0)
+        tot = max(1, room + edge + fb + nul)
+        print(
+            f"  {iclass:14s} room {room / tot:6.1%}   edge {edge / tot:6.1%}   "
+            f"fallback {fb / tot:6.1%}   null {nul / tot:6.1%}   ({tot} events)"
+        )
+
+    room_classes: dict[str, set[str]] = defaultdict(set)
+    endpoints: set[str] = set()
+    for sh in shifts:
+        for s in sh.steps:
+            if s.location.startswith("room:"):
+                room_classes[s.location].add(s.iclass)
+            elif s.location.startswith("door:") and "|" in s.location:
+                endpoints.update(s.location[len("door:") :].split("|"))
+    multi = sum(1 for v in room_classes.values() if len(v) >= 2)
+    print(
+        f"  rooms in shared frame: {len(room_classes)}; containing >=2 classes: {multi}"
+    )
+    room_capable = {c for (c, outcome) in res_stats if outcome == "room"}
+    if len(room_capable) >= 2 and multi == 0:
+        print(
+            "  WARNING: >=2 classes resolve to rooms, yet no room contains "
+            "more than one class -- their room vocabularies are disjoint; "
+            "nothing has collapsed. Check spellings / the crosswalk."
+        )
+    elif len(room_capable) < 2 and room_classes:
+        print(
+            "  (collapse check idle: only one class resolves to point-rooms "
+            "so far -- expected until infer-ws output is applied.)"
+        )
+
+    # Door-endpoint vocabulary vs room-code vocabulary. Endpoints naming
+    # corridors, kitchens, stairwells legitimately never match; but if NO
+    # endpoint matches any room, the two vocabularies use different spellings
+    # for the same places -> extend std_code() with the needed regex.
+    if endpoints:
+        rooms = {r[len("room:") :] for r in room_classes}
+        matched = sorted(endpoints & rooms)
+        unmatched = sorted(endpoints - rooms)
+        print(
+            f"  door endpoints: {len(endpoints)} distinct; "
+            f"{len(matched)} match a room code"
+            + (f" (e.g. {matched[:3]})" if matched else "")
+            + "."
+        )
+        if unmatched:
+            print(f"  endpoints with no matching room: {unmatched}")
+        if not matched:
+            print(
+                "  NOTE: zero endpoint/room matches -- likely a spelling "
+                "mismatch between DoorName parts and RoomName; inspect the "
+                "lists above and extend std_code()."
             )
 
 
-# ============================================================
-# Data-artefact saving (for inspection / showing in meetings)
-# ============================================================
+# ------------------------------------------------------------------
+# 1c. infer-ws: place workstations by co-occurrence with flowsheet rooms
+# ------------------------------------------------------------------
 
 
-def save_shifts_csv(shifts, path, source_label):
-    """
-    Save a list of resampled shifts to one flat CSV. Columns:
-    source, shift_idx, step_idx, time, zone, event_type, time_bucket.
-    """
-    with open(path, "w", newline="") as f:
+def run_infer_ws(
+    con,
+    nursing_csv: str | None,
+    out_path: str,
+    window_min: int = WS_WINDOW_MIN,
+    min_support: int = WS_MIN_SUPPORT,
+    min_share: float = WS_MIN_SHARE,
+) -> None:
+    """Keiran's plan (b): infer each workstation's room from where the SAME
+    staff member charts flowsheets within +/- `window_min` minutes of using
+    it. The modal room wins if it has enough votes (support) and a clear
+    enough majority (share). Confident rows get a room; the rest are written
+    with a blank room (the crosswalk loader skips blanks, so the output file
+    is directly usable AND directly editable).
+
+    Caveat: WOWs are mobile. A workstation with a split vote may genuinely
+    have no fixed room; treat share as a fixedness score, not only as
+    matching confidence."""
+    room_maps = _load_room_maps(con, None, nursing_csv)
+    fs_rooms = room_maps.get("Flowsheet", {})
+    if not fs_rooms:
+        raise SystemExit(
+            "[infer-ws] no flowsheet room mapping available; "
+            "provide --nursing or fix ROOM_RESOLUTION first."
+        )
+    ws_names = _load_ref_map(con, *SOURCE_REF["Workstation"])
+
+    rows = con.execute("""
+        select e.MasterIndexId, epoch(e.EventDateTime), e.SourceKey,
+               it.InteractionTypeClass
+        from Data.StaffLocationEvent e
+        join Ref.InteractionType it
+          on e.InteractionTypeKey = it.InteractionTypeKey
+        where it.InteractionTypeClass in ('Workstation', 'Flowsheet')
+          and e.SourceKey is not null
+        order by e.MasterIndexId, e.EventDateTime
+    """).fetchall()
+
+    window = window_min * 60.0
+    votes: dict[int, Counter] = defaultdict(Counter)
+    from itertools import groupby
+
+    # Per staff member: two-pointer sweep of flowsheet events around each
+    # workstation event.
+    for _staff, grp in groupby(rows, key=lambda r: r[0]):
+        evs = [(float(ts), int(sk), ic) for _s, ts, sk, ic in grp]
+        fs = [
+            (ts, fs_rooms[sk])
+            for ts, sk, ic in evs
+            if ic == "Flowsheet" and sk in fs_rooms
+        ]
+        if not fs:
+            continue
+        lo = 0
+        for ts, sk, ic in evs:
+            if ic != "Workstation":
+                continue
+            while lo < len(fs) and fs[lo][0] < ts - window:
+                lo += 1
+            j = lo
+            while j < len(fs) and fs[j][0] <= ts + window:
+                votes[sk][fs[j][1]] += 1
+                j += 1
+
+    n_conf = 0
+    with open(out_path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(
             [
-                "source",
-                "shift_idx",
-                "step_idx",
-                "time",
-                "zone",
-                "event_type",
-                "time_bucket",
+                "iclass",
+                "source_key",
+                "name_hint",
+                "room",
+                "support",
+                "share",
+                "runner_up",
             ]
         )
-        for si, shift in enumerate(shifts):
-            for step, gp in enumerate(shift):
-                t = gp["time"].isoformat() if gp.get("time") is not None else ""
-                w.writerow(
-                    [
-                        source_label,
-                        si,
-                        step,
-                        t,
-                        gp["zone"],
-                        gp["event_type"],
-                        gp["time_bucket"],
-                    ]
-                )
-
-
-def save_markov_csv(T, vocab: Vocab, path):
-    """
-    Save the Markov transition table P(next_zone | curr_zone, time_bucket)
-    as a long-format CSV for easy inspection.
-    """
-    tb_names = ["0_night", "1_morning", "2_afternoon", "3_evening"]
-    with open(path, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["time_bucket", "curr_zone", "next_zone", "probability"])
-        for tb in range(N_TIME_BUCKETS):
-            for z in range(vocab.n_zones):
-                for zn in range(vocab.n_zones):
-                    w.writerow(
-                        [
-                            tb_names[tb],
-                            vocab.zones[z],
-                            vocab.zones[zn],
-                            f"{T[tb, z, zn]:.4f}",
-                        ]
-                    )
-
-
-def save_event_dist_csv(P_event, vocab: Vocab, path):
-    """Save P(event_type | zone) as a long-format CSV."""
-    with open(path, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["zone", "event_type", "probability"])
-        for z in range(vocab.n_zones):
-            for e in range(vocab.n_events):
-                w.writerow([vocab.zones[z], vocab.events[e], f"{P_event[z, e]:.4f}"])
-
-
-def save_rollouts_csv(rollouts: dict, path):
-    """
-    Save a dict of {variant_name: rollout_trajectory} to one CSV.
-    Columns: variant, step_idx, zone, event_type, time_bucket.
-    """
-    with open(path, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["variant", "step_idx", "zone", "event_type", "time_bucket"])
-        for variant, rollout in rollouts.items():
-            for step, gp in enumerate(rollout):
-                w.writerow(
-                    [variant, step, gp["zone"], gp["event_type"], gp["time_bucket"]]
-                )
-
-
-# ============================================================
-# 8. Modes
-# ============================================================
-
-
-def split_train_eval(real_shifts):
-    if len(real_shifts) >= 2:
-        n_eval = max(1, len(real_shifts) // 5)
-        return real_shifts[:-n_eval], real_shifts[-n_eval:]
-    s = real_shifts[0]
-    split = int(0.8 * len(s))
-    return [s[:split]], [s[split:]]
-
-
-def run_sweep(real_shifts, vocab, out_csv, data_dir=None):
-    train_shifts, eval_shifts = split_train_eval(real_shifts)
-    print(f"Shifts: {len(train_shifts)} train, {len(eval_shifts)} eval")
+        for sk in sorted(ws_names):
+            ctr = votes.get(sk, Counter())
+            support = sum(ctr.values())
+            if support == 0:
+                w.writerow(["Workstation", sk, ws_names[sk], "", 0, "", ""])
+                continue
+            ranked = ctr.most_common(2)
+            best_room, best_n = ranked[0]
+            runner = ranked[1][0].removeprefix("room:") if len(ranked) > 1 else ""
+            share = best_n / support
+            confident = support >= min_support and share >= min_share
+            room = best_room.removeprefix("room:") if confident else ""
+            if confident:
+                n_conf += 1
+            w.writerow(
+                ["Workstation", sk, ws_names[sk], room, support, f"{share:.2f}", runner]
+            )
     print(
-        f"Total grid points: "
-        f"{sum(len(s) for s in train_shifts)} train, "
-        f"{sum(len(s) for s in eval_shifts)} eval"
+        f"[infer-ws] {n_conf}/{len(ws_names)} workstations placed "
+        f"(window=+/-{window_min}min, support>={min_support}, share>={min_share})."
     )
-    print(f"Vocab: {vocab.n_zones} zones {vocab.zones}")
-    print(f"       {vocab.n_events} events {vocab.events}")
-
-    synthetic = build_synthetic_dataset(
-        train_shifts, vocab, n_trajectories=200, length=80, seed=1
+    print(
+        f"[infer-ws] wrote {out_path}; low-share rows left blank -- a WOW "
+        "with a split vote may genuinely be mobile, not just uncertain. "
+        "Review, edit, then pass via --crosswalk."
     )
-    print(f"Synthetic: {len(synthetic)} shifts × {len(synthetic[0])} steps")
 
-    # Save the upstream data artefacts.
-    if data_dir:
-        import os
 
-        os.makedirs(data_dir, exist_ok=True)
-        save_shifts_csv(real_shifts, f"{data_dir}/resampled_real.csv", "real")
-        save_shifts_csv(
-            train_shifts, f"{data_dir}/resampled_real_train.csv", "real_train"
-        )
-        save_shifts_csv(eval_shifts, f"{data_dir}/resampled_real_eval.csv", "real_eval")
-        save_shifts_csv(synthetic, f"{data_dir}/synthetic.csv", "synthetic")
-        save_markov_csv(
-            fit_markov(train_shifts, vocab), vocab, f"{data_dir}/markov_transitions.csv"
-        )
-        save_event_dist_csv(
-            event_dist_per_zone(train_shifts, vocab),
-            vocab,
-            f"{data_dir}/event_dist_per_zone.csv",
-        )
-        print(f"Saved data artefacts → {data_dir}/")
+# ------------------------------------------------------------------
+# 2. State / action variants (what BC and Markov condition on)
+# ------------------------------------------------------------------
+# Action target = next location by default (the movement question). Swap to
+# "iclass" or "itype" to ask "what do they do next" instead. Note that with
+# the shared frame, "next_loc" now genuinely means "next room" for resolved
+# events; iclass survives separately in S4, so no information is destroyed
+# by the collapse -- it just moves out of the location symbol.
 
-    cfg = TrainConfig()
-    rollouts: dict[str, list[dict]] = {}
+STATE_VARIANTS = {
+    "S1_loc": lambda s, prev: (s.location,),
+    "S2_loc_time": lambda s, prev: (s.location, s.time_bucket),
+    "S3_loc_time_role": lambda s, prev: (s.location, s.time_bucket, s.role),
+    "S4_loc_time_role_class": lambda s, prev: (
+        s.location,
+        s.time_bucket,
+        s.role,
+        s.iclass,
+    ),
+    "S5_bigram": lambda s, prev: (
+        s.location,
+        s.time_bucket,
+        s.role,
+        (prev.location if prev else "<s>"),
+    ),
+    "S6_bigram_unit": lambda s, prev: (
+        s.location,
+        s.time_bucket,
+        s.role,
+        (prev.location if prev else "<s>"),
+        s.unit,
+    ),
+}
+ACTION_KEYS = {
+    "next_loc": lambda s: s.location,
+    "next_class": lambda s: s.iclass,
+    "next_itype": lambda s: s.itype,
+}
 
-    # Include the real held-out shift as a baseline for visual comparison.
-    if eval_shifts:
-        rollouts["REAL_heldout"] = eval_shifts[0]
 
-    print("\n" + "=" * 70)
-    print("PHASE 1 — STATE SWEEP (action = next_event)")
-    print("=" * 70)
-    state_results = []
-    for sname, fnames in STATE_VARIANTS.items():
-        print(f"  {sname:<22} ...", end=" ", flush=True)
-        r, rollout = run_one(
-            sname,
-            "A2_next_event",
-            fnames,
-            "next_event",
-            train_shifts,
-            eval_shifts,
-            synthetic,
-            vocab,
-            cfg,
-        )
-        state_results.append(r)
-        rollouts[f"{sname}__A2_next_event"] = rollout
+def build_pairs(shifts, state_fn, action_key):
+    """Return list of (state_tuple, action_str) across all shifts."""
+    pairs = []
+    for sh in shifts:
+        prev = None
+        for cur, nxt in zip(sh.steps, sh.steps[1:]):
+            pairs.append((state_fn(cur, prev), action_key(nxt)))
+            prev = cur
+    return pairs
+
+
+def split_pairs(pairs, frac=0.8, seed=0):
+    rng = np.random.default_rng(seed)
+    idx = rng.permutation(len(pairs))
+    cut = int(len(pairs) * frac)
+    tr = [pairs[i] for i in idx[:cut]]
+    te = [pairs[i] for i in idx[cut:]]
+    return tr, te
+
+
+# ------------------------------------------------------------------
+# 3. Learnability battery
+# ------------------------------------------------------------------
+
+
+def conditional_entropy(pairs) -> tuple[float, float]:
+    """H(action) and H(action | state), in bits. Gap = mutual information."""
+    a_counts = Counter(a for _, a in pairs)
+    n = sum(a_counts.values())
+    H_a = -sum((c / n) * math.log2(c / n) for c in a_counts.values())
+
+    by_state: defaultdict[tuple, Counter] = defaultdict(Counter)
+    for s, a in pairs:
+        by_state[s][a] += 1
+    H_a_given_s = 0.0
+    for s, ctr in by_state.items():
+        m = sum(ctr.values())
+        h = -sum((c / m) * math.log2(c / m) for c in ctr.values())
+        H_a_given_s += (m / n) * h
+    return H_a, H_a_given_s
+
+
+def variant_stats(shifts, action_key) -> dict:
+    """Process-mining-style: how many distinct action paths, how concentrated."""
+    paths = Counter(tuple(action_key(s) for s in sh.steps) for sh in shifts)
+    total = sum(paths.values())
+    top = paths.most_common(1)[0][1] if paths else 0
+    return {
+        "n_shifts": len(shifts),
+        "distinct_paths": len(paths),
+        "top_path_share": round(top / total, 3) if total else 0.0,
+        "singletons": sum(1 for c in paths.values() if c == 1),
+    }
+
+
+class MarkovModel:
+    """Order-k categorical model P(action | last-k actions), Laplace-smoothed.
+
+    This is a first-class interpretable baseline (a transition table). Its
+    held-out top-k and perplexity are the primary learnability numbers.
+    """
+
+    def __init__(self, order=1, alpha=0.5):
+        self.order = order
+        self.alpha = alpha
+        self.table: dict[tuple, Counter] = defaultdict(Counter)
+        self.vocab: set = set()
+
+    def fit(self, seq_pairs):
+        # seq_pairs: list of (context_tuple, action). We only use the last-k
+        # actions from context, which we encode as the state tuple here.
+        for ctx, a in seq_pairs:
+            self.table[ctx][a] += 1
+            self.vocab.add(a)
+
+    def _dist(self, ctx) -> dict:
+        ctr = self.table.get(ctx, Counter())
+        V = max(1, len(self.vocab))
+        denom = sum(ctr.values()) + self.alpha * V
+        return {a: (ctr.get(a, 0) + self.alpha) / denom for a in self.vocab}
+
+    def evaluate(self, seq_pairs, topk=TOPK):
+        top1 = topk_hit = 0
+        ll = 0.0
+        for ctx, a in seq_pairs:
+            dist = self._dist(ctx)
+            ranked = sorted(dist, key=dist.get, reverse=True)
+            if ranked and ranked[0] == a:
+                top1 += 1
+            if a in ranked[:topk]:
+                topk_hit += 1
+            p = dist.get(a, self.alpha / max(1, len(self.vocab)))
+            ll += math.log2(max(p, 1e-12))
+        n = max(1, len(seq_pairs))
+        return {
+            "top1": round(top1 / n, 3),
+            f"top{topk}": round(topk_hit / n, 3),
+            "perplexity": round(2 ** (-ll / n), 2),
+        }
+
+
+def run_battery(shifts, action_name="next_loc", order=1):
+    action_key = ACTION_KEYS[action_name]
+    print(f"\n=== Learnability battery (action = {action_name}) ===")
+    print("variants:", variant_stats(shifts, action_key))
+
+    # Markov context = last `order` actions.
+    seq = []
+    for sh in shifts:
+        acts = [action_key(s) for s in sh.steps]
+        for i in range(order, len(acts)):
+            ctx = tuple(acts[i - order : i])
+            seq.append((ctx, acts[i]))
+    tr, te = split_pairs(seq)
+    m = MarkovModel(order=order)
+    m.fit(tr)
+    print(f"markov(order={order}) held-out:", m.evaluate(te))
+
+    # Information-theoretic ceiling using the richest state variant.
+    pairs = build_pairs(shifts, STATE_VARIANTS["S5_bigram"], action_key)
+    H_a, H_ags = conditional_entropy(pairs)
+    print(
+        f"entropy: H(a)={H_a:.2f} bits  H(a|state)={H_ags:.2f} bits  "
+        f"info gain={H_a - H_ags:.2f} bits"
+    )
+    print(
+        "reading: large info gain + low perplexity => structure IRL can use; "
+        "H(a|state) near H(a) => little conditional signal (noisy)."
+    )
+
+
+# ------------------------------------------------------------------
+# 3b. BC rule-out: grouped split + baselines + decision rule
+# ------------------------------------------------------------------
+# A rule-out is only trustworthy if (a) train and test never share a shift
+# (otherwise within-shift autocorrelation leaks and inflates top-1), and
+# (b) BC is measured as LIFT over baselines on the SAME held-out set. On
+# categorical state the empirical conditional P(a|state) is BC's ceiling; a
+# neural net can only help by generalising to state combos unseen in train.
+
+
+def grouped_split(shifts, frac=0.8, seed=0):
+    """Split by SHIFT, not by pair. All pairs from a shift stay on one side."""
+    rng = np.random.default_rng(seed)
+    idx = rng.permutation(len(shifts))
+    cut = int(len(shifts) * frac)
+    return [shifts[i] for i in idx[:cut]], [shifts[i] for i in idx[cut:]]
+
+
+def _topk_eval(predict, test_pairs, topk=TOPK):
+    """predict: state_tuple -> ranked list of actions (best first)."""
+    top1 = topk_hit = 0
+    for s, a in test_pairs:
+        ranked = predict(s)
+        if ranked and ranked[0] == a:
+            top1 += 1
+        if a in ranked[:topk]:
+            topk_hit += 1
+    n = max(1, len(test_pairs))
+    return round(top1 / n, 3), round(topk_hit / n, 3)
+
+
+def run_ruleout(shifts, action_name="next_loc", use_bc=True):
+    action_key = ACTION_KEYS[action_name]
+    tr_shifts, te_shifts = grouped_split(shifts)
+    print(f"\n=== BC rule-out (action = {action_name}) ===")
+    print(f"grouped split: {len(tr_shifts)} train shifts, {len(te_shifts)} test shifts")
+
+    # --- baseline 1: majority class (ignores state entirely) ---
+    tr_actions = [action_key(s) for sh in tr_shifts for s in sh.steps]
+    marginal_rank = [a for a, _ in Counter(tr_actions).most_common()]
+    test_min = build_pairs(te_shifts, STATE_VARIANTS["S1_loc"], action_key)
+    maj_top1, maj_topk = _topk_eval(lambda s: marginal_rank, test_min)
+    print(f"{'majority-class':22s} top1={maj_top1:.3f} top{TOPK}={maj_topk:.3f}")
+
+    # --- baseline 2: order-1 Markov P(next | current location) ---
+    markov_table = defaultdict(Counter)
+    for sh in tr_shifts:
+        acts = [action_key(s) for s in sh.steps]
+        for prev, nxt in zip(acts, acts[1:]):
+            markov_table[(prev,)][nxt] += 1
+
+    def markov_pred(_state, _cache={}):
+        # state for S1 is (location,), which equals the current action symbol
+        ctx = (_state[0],)
+        ctr = markov_table.get(ctx)
+        return [a for a, _ in ctr.most_common()] if ctr else marginal_rank
+
+    mk_top1, mk_topk = _topk_eval(markov_pred, test_min)
+    print(f"{'markov(prev-loc)':22s} top1={mk_top1:.3f} top{TOPK}={mk_topk:.3f}")
+
+    # --- count-based BC (the ceiling for each categorical state variant) ---
+    print("\ncount-based BC  P(a|state)  (unseen state -> backoff to majority):")
+    count_scores = {}
+    unseen_frac = {}
+    for name, state_fn in STATE_VARIANTS.items():
+        table = defaultdict(Counter)
+        for s, a in build_pairs(tr_shifts, state_fn, action_key):
+            table[s][a] += 1
+        test_pairs = build_pairs(te_shifts, state_fn, action_key)
+        n_unseen = sum(1 for s, _ in test_pairs if s not in table)
+        unseen_frac[name] = round(n_unseen / max(1, len(test_pairs)), 3)
+
+        def pred(s, _t=table):
+            ctr = _t.get(s)
+            return [a for a, _ in ctr.most_common()] if ctr else marginal_rank
+
+        t1, tk = _topk_eval(pred, test_pairs)
+        count_scores[name] = t1
         print(
-            f"top1={r.top1:.3f}  TVz={r.tv_zones:.3f}  TVe={r.tv_events:.3f}"
-            f"  {'pass' if r.passes() else 'fail'}"
+            f"  {name:26s} top1={t1:.3f} top{TOPK}={tk:.3f}  "
+            f"(unseen states: {unseen_frac[name]:.0%})"
         )
-    print_table(state_results)
-    print(occam_recommendation(state_results))
 
-    print("\n" + "=" * 70)
-    print("PHASE 2 — ACTION SWEEP (state = best from Phase 1)")
-    print("=" * 70)
-    passing = [r for r in state_results if r.passes()]
-    if passing:
-        best_state = min(passing, key=lambda r: r.n_features).state_name
+    # --- optional neural BC on richest state (only helps via generalisation) ---
+    nn_top1 = None
+    if use_bc:
+        try:
+            nn_top1 = _run_bc_grouped(tr_shifts, te_shifts, action_key)
+            print(f"\nneural BC (S5, embeddings) top1={nn_top1:.3f}")
+        except ImportError:
+            print("\n[bc] flax/optax not installed; skipping neural BC.")
+
+    # --- decision ---
+    best_count = max(count_scores.values())
+    best_state = max(count_scores, key=count_scores.get)
+    lift_over_markov = best_count - mk_top1
+    lift_over_majority = best_count - maj_top1
+    print("\n--- verdict ---")
+    print(f"best count-BC state: {best_state}  top1={best_count:.3f}")
+    print(
+        f"lift over majority: {lift_over_majority:+.3f}   "
+        f"lift over markov: {lift_over_markov:+.3f}"
+    )
+    if lift_over_majority < 0.03:
+        print(
+            "RULE OUT: BC barely beats predicting the single most common action. "
+            "State carries almost no signal for this target -> IRL over these "
+            "features will not work either. Try a different action target, or "
+            "fall to process mining / empirical-distribution ABM."
+        )
+    elif lift_over_markov < 0.02:
+        print(
+            "PARTIAL: BC beats majority but not order-1 Markov. There IS "
+            "sequential structure, but the extra features (time/role/bigram) "
+            "add nothing over 'where they just were'. IRL over those features "
+            "is not justified; a Markov/empirical model is the honest ceiling."
+        )
     else:
-        best_state = state_results[-1].state_name
-    print(f"Best state from Phase 1: {best_state}")
-    best_fnames = STATE_VARIANTS[best_state]
+        if nn_top1 is not None and nn_top1 - best_count > 0.02:
+            print(
+                "KEEP: neural BC beats the count table -> many test state combos "
+                "are unseen in train (state is sparse); embeddings generalise. "
+                "BC works; carry this state into IRL."
+            )
+        else:
+            print(
+                "KEEP: BC beats both baselines and the count table is the ceiling "
+                "(state is dense enough). Representation carries signal -> "
+                "proceed to IRL. A count/Markov policy is a strong Mesa baseline."
+            )
 
-    action_results = []
-    for aname, akind in ACTION_VARIANTS.items():
-        print(f"  {aname:<18} ...", end=" ", flush=True)
-        r, rollout = run_one(
-            best_state,
-            aname,
-            best_fnames,
-            akind,
-            train_shifts,
-            eval_shifts,
-            synthetic,
-            vocab,
-            cfg,
+
+def _run_bc_grouped(tr_shifts, te_shifts, action_key):
+    """Neural BC with a grouped split (no shift shared across train/test)."""
+    import jax
+    import jax.numpy as jnp
+    import optax
+    from flax import linen as nn
+
+    tr = build_pairs(tr_shifts, STATE_VARIANTS["S5_bigram"], action_key)
+    te = build_pairs(te_shifts, STATE_VARIANTS["S5_bigram"], action_key)
+    n_fields = len(tr[0][0])
+    # Build vocab from TRAIN only; map unseen test values to a reserved index.
+    vocabs = []
+    for f in range(n_fields):
+        vals = sorted({p[0][f] for p in tr}, key=str)
+        vocabs.append({v: i for i, v in enumerate(vals)})  # unseen -> len(vocab)
+    a_vals = sorted({a for _, a in tr}, key=str)
+    a_vocab = {v: i for i, v in enumerate(a_vals)}
+
+    def enc_x(pairs):
+        return np.array(
+            [
+                [vocabs[f].get(p[0][f], len(vocabs[f])) for f in range(n_fields)]
+                for p in pairs
+            ]
         )
-        action_results.append(r)
-        rollouts[f"{best_state}__{aname}"] = rollout
-        print(
-            f"top1={r.top1:.3f}  TVz={r.tv_zones:.3f}  TVe={r.tv_events:.3f}"
-            f"  {'pass' if r.passes() else 'fail'}"
-        )
-    print_table(action_results)
 
-    print("\n" + "=" * 70)
-    print("SUMMARY")
-    print("=" * 70)
-    print(f"Recommended state: {best_state}  →  features: {best_fnames}")
-    best_action = max(action_results, key=lambda r: r.top1).action_name
-    print(f"Most learnable action under that state: {best_action}")
-    print("\nNote: 'most learnable' ≠ 'best for IRL'. For IRL prefer next_event")
-    print("or joint — event prediction is the more informative target and the")
-    print("one the reward function will care about.")
+    Xtr, Xte = enc_x(tr), enc_x(te)
+    ytr = np.array([a_vocab[a] for _, a in tr])
+    # test actions unseen in train are unpredictable by construction -> keep,
+    # they simply count as misses (honest for a rule-out).
+    yte = np.array([a_vocab.get(a, -1) for _, a in te])
 
-    if out_csv:
-        save_csv(state_results + action_results, out_csv)
-        print(f"\nResults written to: {out_csv}")
+    class BC(nn.Module):
+        sizes: tuple
+        n_out: int
 
-    if data_dir:
-        save_rollouts_csv(rollouts, f"{data_dir}/rollouts.csv")
-        print(f"Rollouts written to: {data_dir}/rollouts.csv")
+        @nn.compact
+        def __call__(self, x):
+            embs = [
+                nn.Embed(self.sizes[f] + 1, 8)(x[:, f]) for f in range(len(self.sizes))
+            ]
+            h = jnp.concatenate(embs, axis=-1)
+            h = nn.relu(nn.Dense(64)(h))
+            return nn.Dense(self.n_out)(h)
+
+    model = BC(tuple(len(v) for v in vocabs), len(a_vocab))
+    params = model.init(jax.random.PRNGKey(0), jnp.array(Xtr[:2]))
+    opt = optax.adam(1e-2)
+    opt_state = opt.init(params)
+
+    def loss_fn(p, xb, yb):
+        logits = model.apply(p, xb)
+        return optax.softmax_cross_entropy_with_integer_labels(logits, yb).mean()
+
+    @jax.jit
+    def step(p, os, xb, yb):
+        loss, g = jax.value_and_grad(loss_fn)(p, xb, yb)
+        u, os = opt.update(g, os)
+        return optax.apply_updates(p, u), os, loss
+
+    Xtrj, ytrj = jnp.array(Xtr), jnp.array(ytr)
+    for _ in range(300):
+        params, opt_state, _ = step(params, opt_state, Xtrj, ytrj)
+    pred = np.array(model.apply(params, jnp.array(Xte)).argmax(-1))
+    return float((pred == yte).mean())
 
 
-def run_single(real_shifts, vocab):
-    train_shifts, eval_shifts = split_train_eval(real_shifts)
-    synthetic = build_synthetic_dataset(
-        train_shifts, vocab, n_trajectories=200, length=80, seed=1
-    )
-    cfg = TrainConfig()
-    r, _ = run_one(
-        "S3_zone_time_prev",
-        "A2_next_event",
-        STATE_VARIANTS["S3_zone_time_prev"],
-        "next_event",
-        train_shifts,
-        eval_shifts,
-        synthetic,
-        vocab,
-        cfg,
-    )
-    print_table([r])
+# ------------------------------------------------------------------
+# 4. Occam state-variant sweep (Markov as the fast learner)
+# ------------------------------------------------------------------
+
+
+def run_sweep(shifts, action_name="next_loc", use_bc=False):
+    action_key = ACTION_KEYS[action_name]
+    print(f"\n=== State-variant sweep (action = {action_name}) ===")
+    print(f"{'variant':28s} {'top1':>6s} {'top3':>6s}")
+    prev_top1 = None
+    for name, state_fn in STATE_VARIANTS.items():
+        pairs = build_pairs(shifts, state_fn, action_key)
+        tr, te = split_pairs(pairs)
+        # Reuse MarkovModel as a generic P(a|state) lookup over the full state.
+        m = MarkovModel(order=0)
+        m.fit(tr)
+        r = m.evaluate(te)
+        gain = "" if prev_top1 is None else f"  ({r['top1'] - prev_top1:+.3f})"
+        print(f"{name:28s} {r['top1']:6.3f} {r[f'top{TOPK}']:6.3f}{gain}")
+        prev_top1 = r["top1"]
+    if use_bc:
+        try:
+            _run_bc(shifts, action_key)
+        except ImportError:
+            print("\n[bc] flax/optax not installed; skipping neural BC.")
+
+
+def _run_bc(shifts, action_key):
+    """Optional Flax MLP BC over the richest state. Guarded import."""
+    import jax
+    import jax.numpy as jnp
+    import optax
+    from flax import linen as nn
+
+    pairs = build_pairs(shifts, STATE_VARIANTS["S5_bigram"], action_key)
+    # Encode each categorical field with its own vocab.
+    n_fields = len(pairs[0][0])
+    vocabs = [
+        {v: i for i, v in enumerate({p[0][f] for p in pairs})} for f in range(n_fields)
+    ]
+    a_vocab = {v: i for i, v in enumerate({a for _, a in pairs})}
+    X = np.array([[vocabs[f][p[0][f]] for f in range(n_fields)] for p in pairs])
+    y = np.array([a_vocab[a] for _, a in pairs])
+    tr, te = split_pairs(list(range(len(y))))
+    tr, te = np.array(tr), np.array(te)
+
+    class BC(nn.Module):
+        sizes: tuple
+        n_out: int
+
+        @nn.compact
+        def __call__(self, x):
+            embs = [nn.Embed(self.sizes[f], 8)(x[:, f]) for f in range(len(self.sizes))]
+            h = jnp.concatenate(embs, axis=-1)
+            h = nn.relu(nn.Dense(64)(h))
+            return nn.Dense(self.n_out)(h)
+
+    model = BC(tuple(len(v) for v in vocabs), len(a_vocab))
+    key = jax.random.PRNGKey(0)
+    params = model.init(key, jnp.array(X[:2]))
+    opt = optax.adam(1e-2)
+    opt_state = opt.init(params)
+
+    def loss_fn(p, xb, yb):
+        logits = model.apply(p, xb)
+        return optax.softmax_cross_entropy_with_integer_labels(logits, yb).mean()
+
+    @jax.jit
+    def step(p, os, xb, yb):
+        loss, g = jax.value_and_grad(loss_fn)(p, xb, yb)
+        u, os = opt.update(g, os)
+        return optax.apply_updates(p, u), os, loss
+
+    Xtr, ytr = jnp.array(X[tr]), jnp.array(y[tr])
+    for _ in range(300):
+        params, opt_state, _ = step(params, opt_state, Xtr, ytr)
+    logits = model.apply(params, jnp.array(X[te]))
+    pred = np.array(logits.argmax(-1))
+    top1 = float((pred == y[te]).mean())
+    print(f"\n[bc] S5_bigram held-out top1 = {top1:.3f}")
+
+
+# ------------------------------------------------------------------
+# main
+# ------------------------------------------------------------------
 
 
 def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--csv", required=True)
-    p.add_argument("--hcw", type=int, default=1)
-    p.add_argument("--mode", choices=["sweep", "single"], default="sweep")
-    p.add_argument("--out-csv", default=None)
-    p.add_argument(
-        "--save-data",
-        default=None,
-        help="Directory to save resampled real, synthetic, "
-        "Markov tables, and rollouts as CSVs",
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--db", required=True, help="path to the DuckDB file")
+    ap.add_argument("cmd", choices=["infer-ws", "battery", "sweep", "ruleout"])
+    ap.add_argument("--action", default="next_loc", choices=list(ACTION_KEYS))
+    ap.add_argument("--order", type=int, default=1)
+    ap.add_argument("--bc", action="store_true")
+    ap.add_argument(
+        "--crosswalk",
+        default=CROSSWALK_CSV,
+        help="CSV with columns iclass,source_key,room mapping "
+        "class-specific keys into the shared room frame",
     )
-    args = p.parse_args()
+    ap.add_argument(
+        "--nursing",
+        default=NURSING_CSV,
+        help="optional nursing-staff CSV linking flowsheet bed "
+        "locations (or SourceKeys) to floorplan room codes",
+    )
+    ap.add_argument(
+        "--out", default="ws_crosswalk.csv", help="(infer-ws only) output CSV path"
+    )
+    args = ap.parse_args()
 
-    real_shifts = load_real_data(args.csv, hcw_id=args.hcw)
-    vocab = build_vocab(real_shifts)
+    con = duckdb.connect(args.db, read_only=True)
 
-    if args.mode == "sweep":
-        run_sweep(real_shifts, vocab, args.out_csv, data_dir=args.save_data)
+    if args.cmd == "infer-ws":
+        run_infer_ws(con, nursing_csv=args.nursing, out_path=args.out)
+        return
+    shifts, res_stats = load_shifts(
+        con, crosswalk_csv=args.crosswalk, nursing_csv=args.nursing
+    )
+    print(
+        f"loaded {len(shifts)} shifts, "
+        f"{sum(len(s.steps) for s in shifts)} touchpoints, "
+        f"{len({s.staff for s in shifts})} staff"
+    )
+    report_spatial_frame(shifts, res_stats)
+
+    if args.cmd == "battery":
+        run_battery(shifts, args.action, order=args.order)
+    elif args.cmd == "ruleout":
+        run_ruleout(shifts, args.action, use_bc=args.bc)
     else:
-        run_single(real_shifts, vocab)
+        run_sweep(shifts, args.action, use_bc=args.bc)
 
 
 if __name__ == "__main__":
