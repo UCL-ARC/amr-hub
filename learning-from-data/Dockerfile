@@ -12,7 +12,7 @@ FROM --platform=linux/amd64 python:3.12-slim
 RUN pip install --no-cache-dir duckdb numpy
 
 WORKDIR /app
-COPY bc_prototype.py /app/bc_prototype.py
+COPY bc-prototype.py /app/bc_prototype.py
 COPY run_analysis.sh /app/run_analysis.sh
 RUN chmod +x /app/run_analysis.sh
 
