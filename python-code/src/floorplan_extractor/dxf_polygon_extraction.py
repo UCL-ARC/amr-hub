@@ -813,9 +813,10 @@ def attach_open_boundary_doors(
     -------
     geopandas.GeoDataFrame
         Copy of ``labelled_polygons`` with open-boundary spans attached to
-        both configured rooms. ``door_count`` and ``open_boundary_count`` are
-        recalculated for every room. Attachment provenance is stored in
-        ``result.attrs["open_boundary_attachment_report"]``.
+        both configured rooms. The spans are also retained in an ``openings``
+        column for dedicated YAML serialisation. ``door_count`` and
+        ``open_boundary_count`` are recalculated for every room. Attachment
+        provenance is stored in ``result.attrs["open_boundary_attachment_report"]``.
 
     Raises
     ------
@@ -837,6 +838,14 @@ def attach_open_boundary_doors(
                 [list(door) for door in value] if isinstance(value, list) else []
             )
         )
+    result["openings"] = result.get(
+        "openings",
+        pd.Series([[] for _ in range(len(result))], index=result.index),
+    ).apply(
+        lambda value: (
+            [list(opening) for opening in value] if isinstance(value, list) else []
+        )
+    )
 
     room_indices: dict[str, object] = {}
     for span in spans:
@@ -870,6 +879,9 @@ def attach_open_boundary_doors(
                 span_key,
                 room_label,
             )
+            room_openings = result.loc[room_index, "openings"]
+            if door_quad not in room_openings:
+                room_openings.append(door_quad.copy())
             open_boundary_counts[room_index] += 1
             room_attachments.append(
                 {
