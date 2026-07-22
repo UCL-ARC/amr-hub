@@ -717,7 +717,7 @@ def _append_open_boundary_door(
     door_quad: DoorQuad,
     span_key: tuple[XY, XY],
     room_label: str,
-) -> None:
+) -> bool:
     """Append an open-boundary segment unless it duplicates or overlaps a door."""
     exact_match = False
     for existing_door in room_doors:
@@ -735,6 +735,9 @@ def _append_open_boundary_door(
 
     if not exact_match:
         room_doors.append(door_quad.copy())
+        return True
+
+    return False
 
 
 def attach_open_boundary_doors(
@@ -766,7 +769,8 @@ def attach_open_boundary_doors(
     geopandas.GeoDataFrame
         Copy of ``labelled_polygons`` with open-boundary spans attached to
         both configured rooms. ``door_count`` and ``open_boundary_count`` are
-        recalculated for every room.
+        recalculated for every room. Attachment provenance is stored in
+        ``result.attrs["open_boundary_attachment_report"]``.
 
     Raises
     ------
@@ -802,6 +806,7 @@ def attach_open_boundary_doors(
             room_indices[room_label] = matches[0]
 
     open_boundary_counts = dict.fromkeys(result.index, 0)
+    attachment_report: list[dict[str, object]] = []
     for span in spans:
         door_quad = _line_to_xyxy(span.geometry)
         if door_quad is None:
@@ -809,10 +814,11 @@ def attach_open_boundary_doors(
             raise ValueError(msg)
         span_key = _canonical_line_key(span.geometry)
 
+        room_attachments: list[dict[str, str]] = []
         for room_label in span.rooms:
             room_index = room_indices[room_label]
             room_doors = result.loc[room_index, door_column]
-            _append_open_boundary_door(
+            attached = _append_open_boundary_door(
                 room_doors,
                 span,
                 door_quad,
@@ -820,6 +826,24 @@ def attach_open_boundary_doors(
                 room_label,
             )
             open_boundary_counts[room_index] += 1
+            room_attachments.append(
+                {
+                    "room": room_label,
+                    "status": "attached" if attached else "deduplicated",
+                }
+            )
+
+        attachment_report.append(
+            {
+                "rooms": list(span.rooms),
+                "door_xyxy": door_quad.copy(),
+                "attached_room_count": len(span.rooms),
+                "deduplicated_room_count": sum(
+                    item["status"] == "deduplicated" for item in room_attachments
+                ),
+                "room_attachments": room_attachments,
+            }
+        )
 
     result["open_boundary_count"] = [
         open_boundary_counts.get(room_index, 0) for room_index in result.index
@@ -827,6 +851,7 @@ def attach_open_boundary_doors(
     result["door_count"] = result[door_column].apply(len)
     result.attrs.update(source_attrs)
     result.attrs["open_boundary_spans"] = spans
+    result.attrs["open_boundary_attachment_report"] = attachment_report
     return result
 
 

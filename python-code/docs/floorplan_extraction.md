@@ -129,6 +129,12 @@ one contiguous, straight, non-zero-length span that lies on both room
 boundaries; point-only, multipart, ambiguous, and third-room spans are
 rejected.
 
+The returned GeoDataFrame includes `open_boundary_count` for each room and an
+`open_boundary_attachment_report` metadata entry. The report records the
+configured room pair, canonical segment, and whether each room received a new
+segment or deduplicated an exact CAD-door match. Invalid configurations and
+partial CAD-door overlaps remain actionable extraction errors.
+
 ### Shared walls
 
 Source room polygons often follow opposite faces of the same physical wall.
@@ -197,11 +203,13 @@ The example plots:
 - room polygons in pale blue;
 - final room boundaries in grey;
 - room labels at representative interior points;
-- canonical door openings as solid red overlays on the wall boundaries.
+- physical canonical door openings as solid red overlays on the wall
+  boundaries;
+- configured open-boundary spans as solid blue overlays.
 
 A white underlay makes door segments visible against the room boundary.
-Shared doors are deduplicated for plotting, so each physical opening appears
-once even though it is present in both room records.
+Shared doors and open boundaries are deduplicated for plotting, so each
+connection appears once even though it is present in both room records.
 
 The example also contains an optional shared-wall diagnostic helper. When
 enabled, it can display accepted midlines and rejected candidate overlaps.

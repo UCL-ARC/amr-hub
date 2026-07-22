@@ -121,8 +121,14 @@ def plot_extracted_floorplan(
     )
 
     if door_column is not None and door_column in production_gdf.columns:
-        door_label = "Canonical door opening"
-        for x1, y1, x2, y2 in _unique_door_segments(production_gdf[door_column]):
+        open_boundary_spans = production_gdf.attrs.get("open_boundary_spans", [])
+        open_boundary_keys = _open_boundary_segment_keys(open_boundary_spans)
+
+        door_label = "Canonical physical door"
+        for x1, y1, x2, y2 in _unique_door_segments(
+            production_gdf[door_column],
+            excluded_keys=open_boundary_keys,
+        ):
             ax.plot(
                 [x1, x2],
                 [y1, y2],
@@ -142,6 +148,28 @@ def plot_extracted_floorplan(
                 zorder=5,
             )
             door_label = "_nolegend_"
+
+        open_boundary_label = "Configured open boundary"
+        for x1, y1, x2, y2 in _unique_open_boundary_segments(open_boundary_spans):
+            ax.plot(
+                [x1, x2],
+                [y1, y2],
+                color="white",
+                linewidth=3.6,
+                solid_capstyle="butt",
+                label="_nolegend_",
+                zorder=4,
+            )
+            ax.plot(
+                [x1, x2],
+                [y1, y2],
+                color="#2563eb",
+                linewidth=2.0,
+                solid_capstyle="butt",
+                label=open_boundary_label,
+                zorder=5,
+            )
+            open_boundary_label = "_nolegend_"
 
     # _plot_shared_wall_diagnostics(
     #     ax,
@@ -175,24 +203,49 @@ def plot_extracted_floorplan(
     plt.close(fig)
 
 
-def _unique_door_segments(door_values):
-    """Return canonical door segments once, including doors shared by two rooms."""
+def _segment_key(start, end):
+    """Return a rounded, direction-independent key for one line segment."""
+    return tuple(
+        sorted(
+            (
+                (round(float(start[0]), 8), round(float(start[1]), 8)),
+                (round(float(end[0]), 8), round(float(end[1]), 8)),
+            )
+        )
+    )
+
+
+def _unique_door_segments(door_values, *, excluded_keys=None):
+    """Return canonical physical-door segments once across all room records."""
     segments = {}
 
     for room_doors in door_values:
         for x1, y1, x2, y2 in room_doors:
             start = (float(x1), float(y1))
             end = (float(x2), float(y2))
-            key = tuple(
-                sorted(
-                    (
-                        (round(start[0], 8), round(start[1], 8)),
-                        (round(end[0], 8), round(end[1], 8)),
-                    )
-                )
-            )
+            key = _segment_key(start, end)
+            if excluded_keys and key in excluded_keys:
+                continue
             segments.setdefault(key, (*start, *end))
 
+    return segments.values()
+
+
+def _open_boundary_segment_keys(spans):
+    """Return plotting keys for configured open-boundary spans."""
+    return {
+        _segment_key(span.geometry.coords[0], span.geometry.coords[-1])
+        for span in spans
+    }
+
+
+def _unique_open_boundary_segments(spans):
+    """Return configured open-boundary segments once across both room records."""
+    segments = {}
+    for span in spans:
+        start = tuple(float(value) for value in span.geometry.coords[0])
+        end = tuple(float(value) for value in span.geometry.coords[-1])
+        segments.setdefault(_segment_key(start, end), (*start, *end))
     return segments.values()
 
 
