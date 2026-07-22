@@ -402,6 +402,55 @@ def test_construct_open_boundary_uses_coincident_room_boundaries() -> None:
     ]
 
 
+def test_construct_open_boundaries_covers_configured_room_pairs() -> None:
+    """Both configured wallless-boundary pairs produce isolated spans."""
+    first_length = 2600.0001147631556
+    second_length = 1918.2363968233985
+    rooms = _labelled_rooms(
+        ["E02NN045", "E02NN023", "E02NN046", "E02NN050a"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, first_length), (0.0, first_length)]),
+            Polygon(
+                [(5.0, 0.0), (10.0, 0.0), (10.0, first_length), (5.0, first_length)]
+            ),
+            Polygon(
+                [
+                    (20.0, 0.0),
+                    (25.0, 0.0),
+                    (25.0, second_length),
+                    (20.0, second_length),
+                ]
+            ),
+            Polygon(
+                [
+                    (25.0, 0.0),
+                    (30.0, 0.0),
+                    (30.0, second_length),
+                    (25.0, second_length),
+                ]
+            ),
+        ],
+    )
+    config = OpenBoundaryConfig(
+        tolerance=1e-6,
+        pairs=[
+            OpenBoundaryPairConfig(rooms=("E02NN045", "E02NN023")),
+            OpenBoundaryPairConfig(rooms=("E02NN046", "E02NN050a")),
+        ],
+    )
+
+    spans = construct_open_boundaries(rooms, config, POLYGON_LABEL_TARGET)
+
+    assert [span.rooms for span in spans] == [
+        ("E02NN045", "E02NN023"),
+        ("E02NN046", "E02NN050a"),
+    ]
+    assert [span.geometry.length for span in spans] == pytest.approx(
+        [first_length, second_length]
+    )
+    assert all(span.geometry.coords[0] < span.geometry.coords[-1] for span in spans)
+
+
 def test_construct_open_boundary_snaps_numerical_coordinate_drift() -> None:
     """Boundary endpoints within tolerance are canonicalised to one line."""
     rooms = _labelled_rooms(
