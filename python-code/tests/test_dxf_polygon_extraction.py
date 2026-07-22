@@ -623,6 +623,18 @@ def test_attach_open_boundary_doors_creates_door_column_without_cad_doors() -> N
     ]
     assert result["door_count"].to_list() == [1, 1]
     assert result["open_boundary_count"].to_list() == [1, 1]
+    assert result.attrs["open_boundary_attachment_report"] == [
+        {
+            "rooms": ["101", "CORRIDOR"],
+            "door_xyxy": [5.0, 0.0, 5.0, 10.0],
+            "attached_room_count": 2,
+            "deduplicated_room_count": 0,
+            "room_attachments": [
+                {"room": "101", "status": "attached"},
+                {"room": "CORRIDOR", "status": "attached"},
+            ],
+        }
+    ]
 
 
 def test_attach_open_boundary_doors_deduplicates_exact_cad_match() -> None:
@@ -647,6 +659,16 @@ def test_attach_open_boundary_doors_deduplicates_exact_cad_match() -> None:
 
     assert result["doors"].apply(len).to_list() == [1, 1]
     assert result["open_boundary_count"].to_list() == [1, 1]
+    assert (
+        result.attrs["open_boundary_attachment_report"][0]["deduplicated_room_count"]
+        == 2
+    )
+    assert [
+        attachment["status"]
+        for attachment in result.attrs["open_boundary_attachment_report"][0][
+            "room_attachments"
+        ]
+    ] == ["deduplicated", "deduplicated"]
 
 
 def test_attach_open_boundary_doors_rejects_partial_cad_overlap() -> None:
