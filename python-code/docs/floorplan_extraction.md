@@ -135,6 +135,12 @@ configured room pair, canonical segment, and whether each room received a new
 segment or deduplicated an exact CAD-door match. Invalid configurations and
 partial CAD-door overlaps remain actionable extraction errors.
 
+When `open_boundaries` is configured, the extraction example also emits the
+same segments in an `openings` list. These non-operable spatial boundaries are
+removed from the room's physical `walls` and supplied separately so the spatial
+reader can close the room region without treating the span as a solid collision
+wall. Existing YAML files without `openings` are unchanged.
+
 ### Shared walls
 
 Source room polygons often follow opposite faces of the same physical wall.

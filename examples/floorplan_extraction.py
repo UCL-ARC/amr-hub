@@ -333,6 +333,10 @@ def main() -> None:
         production_gdf,
         room_name_column=pec.polygons.polygon_label_target,
         door_column=door_column,
+        opening_column="openings" if pec.open_boundaries else None,
+        opening_tolerance=(
+            pec.open_boundaries.tolerance if pec.open_boundaries else 1.0e-6
+        ),
     )
 
     logger.info("Writing floorplan diagnostic plot to %s", args.diagnostic)

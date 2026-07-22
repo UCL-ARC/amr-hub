@@ -647,6 +647,10 @@ def test_attach_open_boundary_doors_creates_door_column_without_cad_doors() -> N
         [[5.0, 0.0, 5.0, 10.0]],
         [[5.0, 0.0, 5.0, 10.0]],
     ]
+    assert result["openings"].to_list() == [
+        [[5.0, 0.0, 5.0, 10.0]],
+        [[5.0, 0.0, 5.0, 10.0]],
+    ]
     assert result["door_count"].to_list() == [1, 1]
     assert result["open_boundary_count"].to_list() == [1, 1]
     assert result.attrs["open_boundary_attachment_report"] == [

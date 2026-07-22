@@ -164,3 +164,49 @@ def test_open_boundary_round_trip_creates_shared_floor_connection(
     assert reader.door_list[0].end == (5.0, 10.0)
     assert floor.edge_set == {(0, 1), (1, 0)}
     assert floor.adjacency_matrix.tolist() == [[0, 1], [1, 0]]
+
+
+def test_opening_serialisation_excludes_span_from_physical_walls() -> None:
+    """Extractor YAML keeps configured openings distinct from physical walls."""
+    opening = [5.0, 0.0, 5.0, 10.0]
+    rooms_gdf = gpd.GeoDataFrame(
+        {
+            ROOM_NAME_COLUMN: ["101", "CORRIDOR"],
+            "doors": [[], []],
+            "openings": [[opening], [opening]],
+            "geometry": [
+                Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+                Polygon(
+                    [
+                        (5.0 + 5e-7, 0.0),
+                        (10.0, 0.0),
+                        (10.0, 10.0),
+                        (5.0 + 5e-7, 10.0),
+                    ]
+                ),
+            ],
+        },
+        geometry="geometry",
+    )
+    rooms = polygons_to_rooms(
+        rooms_gdf,
+        ROOM_NAME_COLUMN,
+        door_column="doors",
+        opening_column="openings",
+    )
+
+    assert all(len(room["walls"]) == 3 for room in rooms)
+    assert all(room["openings"] == [FlowList(opening)] for room in rooms)
+    data = build_yaml_structure(
+        building_name=BUILDING_NAME,
+        building_address=BUILDING_ADDRESS,
+        floor_level=FLOOR_LEVEL,
+        rooms=rooms,
+    )
+    register_yaml_representers()
+    dumped = yaml.safe_dump(data, sort_keys=False)
+    loaded = yaml.safe_load(dumped)
+
+    serialised_rooms = loaded["building"]["floors"][0]["rooms"]
+    assert all(len(room["walls"]) == 3 for room in serialised_rooms)
+    assert all(room["openings"] == [opening] for room in serialised_rooms)
