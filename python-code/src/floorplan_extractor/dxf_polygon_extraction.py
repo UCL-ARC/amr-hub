@@ -33,6 +33,7 @@ internal helpers and are not part of the public API.
 
 from dataclasses import dataclass, field
 from itertools import pairwise
+from math import isfinite
 from pathlib import Path
 from typing import Any
 
@@ -160,6 +161,23 @@ class PolygonMergeConfig:
 
 
 @dataclass(frozen=True)
+class OpenBoundaryPairConfig:
+    """Configuration identifying one wallless boundary between two rooms."""
+
+    rooms: tuple[str, str]
+    selector_point: XY | None = None
+
+
+@dataclass(frozen=True)
+class OpenBoundaryConfig:
+    """Configuration for constructing explicit wallless room boundaries."""
+
+    tolerance: float = 1e-6
+    min_length: float = 0.0
+    pairs: list[OpenBoundaryPairConfig] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class ExtractionConfig:
     """
     Top-level configuration for DXF extraction.
@@ -175,6 +193,8 @@ class ExtractionConfig:
     shared_walls : SharedWallConfig or None
         If provided and enabled, shared-wall normalisation may be applied by
         downstream processing.
+    open_boundaries : OpenBoundaryConfig or None
+        Explicit wallless room pairs to construct from final room boundaries.
     polygon_splits : list[PolygonSplitConfig]
         Floorplan-specific polygon splits applied before label attachment.
     polygon_additions : list[PolygonAdditionConfig]
@@ -188,6 +208,7 @@ class ExtractionConfig:
     door_layer_name: str | None = None
     doors: DoorAttachmentConfig | None = None
     shared_walls: SharedWallConfig | None = None
+    open_boundaries: OpenBoundaryConfig | None = None
     polygon_splits: list[PolygonSplitConfig] = field(default_factory=list)
     polygon_additions: list[PolygonAdditionConfig] = field(default_factory=list)
     polygon_merges: list[PolygonMergeConfig] = field(default_factory=list)
@@ -224,6 +245,13 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
       min_overlap_ratio: 0.75
       min_overlap_length: 250
       canonical_line: midline
+
+    open_boundaries:             # optional
+      tolerance: 1.0e-6
+      min_length: 0.0
+      pairs:
+        - rooms: [ROOM_A, ROOM_B]
+          selector_point: [x, y] # optional
 
     polygon_splits:              # optional
       - selector_point: [x, y]
@@ -276,6 +304,7 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
     door_layer_name: str | None = None
     door_config: DoorAttachmentConfig | None = None
     shared_wall_config: SharedWallConfig | None = None
+    open_boundary_config: OpenBoundaryConfig | None = None
 
     if "doors" in data:
         door_block = data["doors"]
@@ -328,6 +357,9 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
             canonical_line=canonical_line,
         )
 
+    if "open_boundaries" in data:
+        open_boundary_config = _parse_open_boundaries(data["open_boundaries"])
+
     polygon_splits, polygon_additions, polygon_merges = _parse_polygon_corrections(data)
 
     return ExtractionConfig(
@@ -335,10 +367,113 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
         door_layer_name=door_layer_name,
         doors=door_config,
         shared_walls=shared_wall_config,
+        open_boundaries=open_boundary_config,
         polygon_splits=polygon_splits,
         polygon_additions=polygon_additions,
         polygon_merges=polygon_merges,
     )
+
+
+def _parse_open_boundaries(block: object) -> OpenBoundaryConfig:
+    """Parse and validate explicitly configured wallless room pairs."""
+    if not isinstance(block, dict):
+        msg = "'open_boundaries' block must be a mapping"
+        raise TypeError(msg)
+
+    tolerance = _parse_non_negative_float(
+        block.get("tolerance", 1e-6),
+        "open_boundaries.tolerance",
+    )
+    min_length = _parse_non_negative_float(
+        block.get("min_length", 0.0),
+        "open_boundaries.min_length",
+    )
+
+    pair_blocks = block.get("pairs")
+    if not isinstance(pair_blocks, list) or not pair_blocks:
+        msg = "'open_boundaries.pairs' must be a non-empty list"
+        raise ValueError(msg)
+
+    pairs = [_parse_open_boundary_pair(pair) for pair in pair_blocks]
+    pair_keys = [frozenset(pair.rooms) for pair in pairs]
+    if len(pair_keys) != len(set(pair_keys)):
+        msg = "'open_boundaries.pairs' must not contain duplicate room pairs"
+        raise ValueError(msg)
+
+    return OpenBoundaryConfig(
+        tolerance=tolerance,
+        min_length=min_length,
+        pairs=pairs,
+    )
+
+
+def _parse_open_boundary_pair(block: object) -> OpenBoundaryPairConfig:
+    """Parse one explicitly configured wallless room pair."""
+    if not isinstance(block, dict):
+        msg = "Each 'open_boundaries.pairs' entry must be a mapping"
+        raise TypeError(msg)
+
+    rooms = block.get("rooms")
+    if (
+        not isinstance(rooms, list)
+        or len(rooms) != 2
+        or not all(isinstance(room, str) and room.strip() for room in rooms)
+    ):
+        msg = "Open-boundary 'rooms' must contain exactly two non-empty strings"
+        raise ValueError(msg)
+
+    first_room, second_room = (room.strip() for room in rooms)
+    if first_room == second_room:
+        msg = "Open-boundary room labels must be distinct"
+        raise ValueError(msg)
+
+    selector_point = None
+    if "selector_point" in block:
+        selector_point = _parse_xy(
+            block["selector_point"],
+            "open_boundaries.pairs.selector_point",
+        )
+        if not all(isfinite(coordinate) for coordinate in selector_point):
+            msg = "Open-boundary 'selector_point' coordinates must be finite"
+            raise ValueError(msg)
+
+    return OpenBoundaryPairConfig(
+        rooms=(first_room, second_room),
+        selector_point=selector_point,
+    )
+
+
+def _parse_non_negative_float(value: object, field_name: str) -> float:
+    """Parse one finite, non-negative numeric configuration value."""
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        msg = f"'{field_name}' must be a number"
+        raise TypeError(msg)
+
+    parsed_value = float(value)
+    if not isfinite(parsed_value) or parsed_value < 0.0:
+        msg = f"'{field_name}' must be finite and non-negative"
+        raise ValueError(msg)
+
+    return parsed_value
+
+
+def _validate_open_boundary_room_labels(
+    labelled_polygons: gpd.GeoDataFrame,
+    config: OpenBoundaryConfig,
+    polygon_label_target: str,
+) -> None:
+    """Require every configured room label to identify exactly one final polygon."""
+    for pair in config.pairs:
+        for room_label in pair.rooms:
+            match_count = int(
+                (labelled_polygons[polygon_label_target] == room_label).sum()
+            )
+            if match_count != 1:
+                msg = (
+                    "Open-boundary room label must identify exactly one final "
+                    f"polygon; label {room_label!r} found {match_count}"
+                )
+                raise ValueError(msg)
 
 
 def _parse_polygon_corrections(
@@ -1387,6 +1522,13 @@ def extract_polygons(
         labelled_polygons = normalise_shared_walls(
             labelled_polygons,
             config.shared_walls,
+        )
+
+    if config.open_boundaries:
+        _validate_open_boundary_room_labels(
+            labelled_polygons,
+            config.open_boundaries,
+            config.polygons.polygon_label_target,
         )
 
     if config.door_layer_name and config.doors:

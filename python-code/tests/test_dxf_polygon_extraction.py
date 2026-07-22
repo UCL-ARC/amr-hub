@@ -12,6 +12,8 @@ from shapely.geometry import LineString, Point, Polygon
 from floorplan_extractor.dxf_polygon_extraction import (
     DoorAttachmentConfig,
     ExtractionConfig,
+    OpenBoundaryConfig,
+    OpenBoundaryPairConfig,
     PolygonAdditionConfig,
     PolygonExtractionConfig,
     PolygonMergeConfig,
@@ -27,6 +29,7 @@ from floorplan_extractor.dxf_polygon_extraction import (
     _flatten_z_points,
     _generate_polygons,
     _generate_room_numbers,
+    _validate_open_boundary_room_labels,
     attach_room_doors,
     config_from_yaml,
     extract_polygons,
@@ -202,6 +205,142 @@ def test_config_from_yaml(tmp_path: Path) -> None:
     assert config.door_layer_name is None
     assert config.doors is None
     assert config.shared_walls is None
+    assert config.open_boundaries is None
+
+
+def test_config_from_yaml_loads_open_boundary_config(tmp_path: Path) -> None:
+    """Open-boundary settings and room pairs are parsed when present."""
+    config_data = _base_config_data()
+    config_data["open_boundaries"] = {
+        "tolerance": 1e-6,
+        "min_length": 2.5,
+        "pairs": [
+            {"rooms": ["101", "CORRIDOR"]},
+            {
+                "rooms": ["102", "ANTE-ROOM"],
+                "selector_point": [5.0, 10.0],
+            },
+        ],
+    }
+
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
+
+    config = config_from_yaml(config_path)
+
+    assert config.open_boundaries == OpenBoundaryConfig(
+        tolerance=1e-6,
+        min_length=2.5,
+        pairs=[
+            OpenBoundaryPairConfig(rooms=("101", "CORRIDOR")),
+            OpenBoundaryPairConfig(
+                rooms=("102", "ANTE-ROOM"),
+                selector_point=(5.0, 10.0),
+            ),
+        ],
+    )
+
+
+@pytest.mark.parametrize(
+    ("open_boundaries", "exception", "expected_message"),
+    [
+        ([], TypeError, "block must be a mapping"),
+        ({}, ValueError, "pairs.*non-empty list"),
+        ({"pairs": [{}]}, ValueError, "exactly two non-empty strings"),
+        (
+            {"pairs": [{"rooms": ["101", "101"]}]},
+            ValueError,
+            "room labels must be distinct",
+        ),
+        (
+            {
+                "pairs": [
+                    {"rooms": ["101", "CORRIDOR"]},
+                    {"rooms": ["CORRIDOR", "101"]},
+                ]
+            },
+            ValueError,
+            "must not contain duplicate room pairs",
+        ),
+        (
+            {
+                "tolerance": -1.0,
+                "pairs": [{"rooms": ["101", "CORRIDOR"]}],
+            },
+            ValueError,
+            "tolerance.*finite and non-negative",
+        ),
+        (
+            {
+                "min_length": float("inf"),
+                "pairs": [{"rooms": ["101", "CORRIDOR"]}],
+            },
+            ValueError,
+            "min_length.*finite and non-negative",
+        ),
+        (
+            {
+                "pairs": [
+                    {
+                        "rooms": ["101", "CORRIDOR"],
+                        "selector_point": [0.0],
+                    }
+                ]
+            },
+            ValueError,
+            "selector_point.*exactly two coordinates",
+        ),
+    ],
+)
+def test_config_from_yaml_rejects_invalid_open_boundary_config(
+    tmp_path: Path,
+    open_boundaries: object,
+    exception: type[Exception],
+    expected_message: str,
+) -> None:
+    """Invalid open-boundary configuration fails with actionable errors."""
+    config_data = _base_config_data()
+    config_data["open_boundaries"] = open_boundaries
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
+
+    with pytest.raises(exception, match=expected_message):
+        config_from_yaml(config_path)
+
+
+@pytest.mark.parametrize(
+    ("labels", "room_label", "expected_count"),
+    [
+        (["101"], "CORRIDOR", 0),
+        (["101", "CORRIDOR", "CORRIDOR"], "CORRIDOR", 2),
+    ],
+)
+def test_open_boundary_config_requires_unique_final_room_labels(
+    labels: list[str],
+    room_label: str,
+    expected_count: int,
+) -> None:
+    """Each configured label must resolve to exactly one final room polygon."""
+    labelled_polygons = gpd.GeoDataFrame(
+        {
+            POLYGON_LABEL_TARGET: labels,
+            GEOMETRY_COLUMN: [Point(index, index) for index in range(len(labels))],
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+    config = OpenBoundaryConfig(
+        pairs=[OpenBoundaryPairConfig(rooms=("101", room_label))]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=rf"label {room_label!r} found {expected_count}",
+    ):
+        _validate_open_boundary_room_labels(
+            labelled_polygons,
+            config,
+            POLYGON_LABEL_TARGET,
+        )
 
 
 def test_config_from_yaml_loads_shared_wall_config(tmp_path: Path) -> None:

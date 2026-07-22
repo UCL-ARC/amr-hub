@@ -74,6 +74,14 @@ shared_walls:
   min_overlap_ratio: 0.5
   min_overlap_length: 150.0
   canonical_line: "midline"
+
+open_boundaries:
+  tolerance: 1.0e-6
+  min_length: 0.0
+  pairs:
+    - rooms: ["ROOM_A", "CORRIDOR"]
+    - rooms: ["ROOM_B", "ANTE_ROOM"]
+      selector_point: [5.0, 10.0]
 ```
 
 ### Room polygons and labels
@@ -97,6 +105,18 @@ Floorplan-specific corrections are applied through three optional lists:
 
 Splits and additions occur before label attachment. Merges occur before
 shared-wall and door normalisation.
+
+### Open boundaries
+
+The optional `open_boundaries` block identifies room pairs whose shared edge
+has no physical wall. Each pair must contain exactly two distinct room labels.
+An optional `selector_point` disambiguates multiple candidate spans for the
+same pair.
+
+`tolerance` controls permitted numerical coordinate drift and `min_length`
+sets the minimum accepted span length, both in floorplan coordinate units.
+They must be finite and non-negative. Configured labels must each resolve to
+exactly one room after polygon corrections and shared-wall normalisation.
 
 ### Shared walls
 
