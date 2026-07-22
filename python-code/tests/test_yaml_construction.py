@@ -1,9 +1,13 @@
 """Module for testing construction of yaml polygons."""
 
+from pathlib import Path
+
 import geopandas as gpd
+import numpy as np
 import yaml
 from shapely.geometry import Polygon
 
+from amr_hub_abm.read_space_input import SpaceInputReader
 from floorplan_extractor.yaml_construction import (
     FlowList,
     _polygon_to_walls,
@@ -117,3 +121,46 @@ def test_polygons_to_rooms_with_doors() -> None:
     )
 
     assert rooms[0]["doors"] == [FlowList([0.0, 0.0, 1.0, 0.0])]
+
+
+def test_open_boundary_round_trip_creates_shared_floor_connection(
+    tmp_path: Path,
+) -> None:
+    """Open-boundary door segments survive YAML loading as one shared edge."""
+    rooms_gdf = gpd.GeoDataFrame(
+        {
+            ROOM_NAME_COLUMN: ["101", "CORRIDOR"],
+            "doors": [
+                [[5.0, 0.0, 5.0, 10.0]],
+                [[5.0, 0.0, 5.0, 10.0]],
+            ],
+            "geometry": [
+                Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+                Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+            ],
+        },
+        geometry="geometry",
+    )
+    rooms = polygons_to_rooms(rooms_gdf, ROOM_NAME_COLUMN, door_column="doors")
+    data = build_yaml_structure(
+        building_name=BUILDING_NAME,
+        building_address=BUILDING_ADDRESS,
+        floor_level=FLOOR_LEVEL,
+        rooms=rooms,
+    )
+    register_yaml_representers()
+    input_path = tmp_path / "open-boundary.yml"
+    input_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    reader = SpaceInputReader(
+        input_path=input_path,
+        rng_generator=np.random.default_rng(),
+    )
+    floor = reader.buildings[0].floors[0]
+
+    assert len(reader.door_list) == 1
+    assert reader.door_list[0].connecting_rooms == (0, 1)
+    assert reader.door_list[0].start == (5.0, 0.0)
+    assert reader.door_list[0].end == (5.0, 10.0)
+    assert floor.edge_set == {(0, 1), (1, 0)}
+    assert floor.adjacency_matrix.tolist() == [[0, 1], [1, 0]]
