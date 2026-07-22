@@ -10,8 +10,10 @@ The extraction pipeline:
 2. filters and attaches room labels for the configured floor;
 3. applies configured polygon splits, additions, and merges;
 4. normalises accepted adjacent wall faces to a shared midline;
-5. projects CAD door symbols onto subsections of the final room boundaries;
-6. serialises labelled rooms as wall and door line segments.
+5. constructs configured open-boundary spans from the final room boundaries;
+6. projects CAD door symbols onto subsections of the final room boundaries;
+7. combines both kinds of connection in the existing door column and
+   serialises labelled rooms as wall and door line segments.
 
 The resulting geometry represents walls and doors as zero-thickness lines.
 Physical wall thickness can be applied when the YAML is loaded into another
@@ -119,9 +121,13 @@ They must be finite and non-negative. Configured labels must each resolve to
 exactly one room after polygon corrections and shared-wall normalisation. The
 extractor constructs each span from the final room boundaries, orders its
 endpoints deterministically, and stores the result in
-`GeoDataFrame.attrs["open_boundary_spans"]`. A pair must have one contiguous,
-straight, non-zero-length span that lies on both room boundaries; point-only,
-multipart, ambiguous, and third-room spans are rejected.
+`GeoDataFrame.attrs["open_boundary_spans"]`. The spans are then added to the
+configured door column (or a new `doors` column when no CAD door layer is
+configured), so both connected rooms receive the same segment. Exact matches
+to CAD doors are deduplicated; partial overlaps are rejected. A pair must have
+one contiguous, straight, non-zero-length span that lies on both room
+boundaries; point-only, multipart, ambiguous, and third-room spans are
+rejected.
 
 ### Shared walls
 

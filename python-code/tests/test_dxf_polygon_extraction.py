@@ -31,6 +31,7 @@ from floorplan_extractor.dxf_polygon_extraction import (
     _generate_polygons,
     _generate_room_numbers,
     _validate_open_boundary_room_labels,
+    attach_open_boundary_doors,
     attach_room_doors,
     config_from_yaml,
     construct_open_boundaries,
@@ -594,6 +595,80 @@ def test_extract_polygons_constructs_open_boundary_after_shared_wall_normalisati
     assert span.geometry.coords[0][1] == pytest.approx(0.0)
     assert span.geometry.coords[1][0] == pytest.approx(450.0)
     assert span.geometry.coords[1][1] == pytest.approx(400.0)
+    assert result["doors"].apply(len).to_list() == [1, 1]
+    assert result["open_boundary_count"].to_list() == [1, 1]
+    assert result["door_count"].to_list() == [1, 1]
+
+
+def test_attach_open_boundary_doors_creates_door_column_without_cad_doors() -> None:
+    """Configured spans create a shared serialised door segment."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+        ],
+    )
+    [span] = construct_open_boundaries(
+        rooms,
+        _open_boundary_config(("101", "CORRIDOR")),
+        POLYGON_LABEL_TARGET,
+    )
+
+    result = attach_open_boundary_doors(rooms, [span], POLYGON_LABEL_TARGET)
+
+    assert result["doors"].to_list() == [
+        [[5.0, 0.0, 5.0, 10.0]],
+        [[5.0, 0.0, 5.0, 10.0]],
+    ]
+    assert result["door_count"].to_list() == [1, 1]
+    assert result["open_boundary_count"].to_list() == [1, 1]
+
+
+def test_attach_open_boundary_doors_deduplicates_exact_cad_match() -> None:
+    """An exact CAD match is retained once in each connected room."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+        ],
+    )
+    rooms["doors"] = [
+        [[5.0, 10.0, 5.0, 0.0]],
+        [[5.0, 0.0, 5.0, 10.0]],
+    ]
+    span = OpenBoundarySpan(
+        rooms=("101", "CORRIDOR"),
+        geometry=LineString([(5.0, 0.0), (5.0, 10.0)]),
+    )
+
+    result = attach_open_boundary_doors(rooms, [span], POLYGON_LABEL_TARGET)
+
+    assert result["doors"].apply(len).to_list() == [1, 1]
+    assert result["open_boundary_count"].to_list() == [1, 1]
+
+
+def test_attach_open_boundary_doors_rejects_partial_cad_overlap() -> None:
+    """A partial CAD overlap cannot be silently combined with an open span."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+        ],
+    )
+    rooms["doors"] = [
+        [[5.0, 2.0, 5.0, 4.0]],
+        [[5.0, 2.0, 5.0, 4.0]],
+    ]
+    span = OpenBoundarySpan(
+        rooms=("101", "CORRIDOR"),
+        geometry=LineString([(5.0, 0.0), (5.0, 10.0)]),
+    )
+
+    with pytest.raises(ValueError, match="partially overlaps"):
+        attach_open_boundary_doors(rooms, [span], POLYGON_LABEL_TARGET)
 
 
 def test_config_from_yaml_loads_shared_wall_config(tmp_path: Path) -> None:

@@ -268,6 +268,9 @@ def main() -> None:
     production_gdf = gdf.loc[gdf["has_label"], :].copy()
     production_gdf.attrs = dict(gdf.attrs)
     review_gdf = gdf.loc[gdf["needs_review"], :]
+    door_column = (
+        pec.doors.out_col if pec.doors else "doors" if pec.open_boundaries else None
+    )
 
     if len(review_gdf) > 0:
         logger.warning("Identified %s rooms for review", len(review_gdf))
@@ -276,14 +279,14 @@ def main() -> None:
     rooms = polygons_to_rooms(
         production_gdf,
         room_name_column=pec.polygons.polygon_label_target,
-        door_column=pec.doors.out_col if pec.doors else None,
+        door_column=door_column,
     )
 
     logger.info("Writing floorplan diagnostic plot to %s", args.diagnostic)
     plot_extracted_floorplan(
         production_gdf,
         room_name_column=pec.polygons.polygon_label_target,
-        door_column=pec.doors.out_col if pec.doors else None,
+        door_column=door_column,
         output_path=args.diagnostic,
     )
 
