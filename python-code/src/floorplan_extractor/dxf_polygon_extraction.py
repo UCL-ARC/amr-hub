@@ -50,7 +50,7 @@ from shapely.geometry import (
     Polygon,
 )
 from shapely.geometry.base import BaseGeometry
-from shapely.ops import linemerge, polygonize, snap, split, unary_union
+from shapely.ops import linemerge, nearest_points, polygonize, snap, split, unary_union
 
 from floorplan_extractor.shared_walls import SharedWallConfig, normalise_shared_walls
 
@@ -536,6 +536,16 @@ def _line_lies_on_boundary(
     return line.difference(boundary.buffer(tolerance)).is_empty
 
 
+def _canonicalise_line_endpoints(
+    line: LineString,
+    boundary: BaseGeometry,
+) -> LineString:
+    """Project line endpoints onto the reference boundary."""
+    start, _ = nearest_points(boundary, Point(line.coords[0]))
+    end, _ = nearest_points(boundary, Point(line.coords[-1]))
+    return LineString([start, end])
+
+
 def _select_open_boundary_component(
     components: list[LineString],
     pair: OpenBoundaryPairConfig,
@@ -611,9 +621,44 @@ def _construct_open_boundary_span(
         merged = linework if isinstance(linework, LineString) else linemerge(linework)
         components = _linear_components(merged)
 
+    if not components and config.tolerance > 0.0:
+        tolerant_intersection = first_boundary.buffer(
+            config.tolerance,
+            cap_style=2,
+            join_style=2,
+        ).intersection(snapped_second_boundary)
+        components = _linear_components(tolerant_intersection)
+        if components:
+            linework = unary_union(components)
+            merged = (
+                linework if isinstance(linework, LineString) else linemerge(linework)
+            )
+            components = _linear_components(merged)
+            components = [
+                component
+                for component in components
+                if _line_lies_on_boundary(
+                    component,
+                    first_boundary,
+                    config.tolerance,
+                )
+                and _line_lies_on_boundary(
+                    component,
+                    second_boundary,
+                    config.tolerance,
+                )
+            ]
+
     span = _select_open_boundary_component(components, pair, config.tolerance)
     if not _line_is_straight(span, config.tolerance):
         msg = f"Open-boundary room pair {pair.rooms!r} must produce a straight span"
+        raise ValueError(msg)
+    span = _canonicalise_line_endpoints(span, first_boundary)
+    if span.length == 0.0:
+        msg = (
+            "Open-boundary room pair "
+            f"{pair.rooms!r} must share a non-zero-length boundary span"
+        )
         raise ValueError(msg)
     span = _ordered_line(span)
     if span.length < config.min_length:

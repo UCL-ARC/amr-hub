@@ -428,6 +428,32 @@ def test_construct_open_boundary_snaps_numerical_coordinate_drift() -> None:
     assert span.geometry.equals(LineString([(5.0, 0.0), (5.0, 10.0)]))
 
 
+def test_construct_open_boundary_handles_drift_along_segment_interior() -> None:
+    """Interior points on a long boundary are matched within tolerance."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 100.0), (0.0, 100.0)]),
+            Polygon(
+                [
+                    (5.0 + 5e-7, 10.0),
+                    (10.0, 10.0),
+                    (10.0, 90.0),
+                    (5.0 + 5e-7, 90.0),
+                ]
+            ),
+        ],
+    )
+
+    [span] = construct_open_boundaries(
+        rooms,
+        _open_boundary_config(("101", "CORRIDOR")),
+        POLYGON_LABEL_TARGET,
+    )
+
+    assert span.geometry.equals(LineString([(5.0, 10.0), (5.0, 90.0)]))
+
+
 @pytest.mark.parametrize(
     ("geometry", "expected_message"),
     [
