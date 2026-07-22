@@ -116,7 +116,12 @@ same pair.
 `tolerance` controls permitted numerical coordinate drift and `min_length`
 sets the minimum accepted span length, both in floorplan coordinate units.
 They must be finite and non-negative. Configured labels must each resolve to
-exactly one room after polygon corrections and shared-wall normalisation.
+exactly one room after polygon corrections and shared-wall normalisation. The
+extractor constructs each span from the final room boundaries, orders its
+endpoints deterministically, and stores the result in
+`GeoDataFrame.attrs["open_boundary_spans"]`. A pair must have one contiguous,
+straight, non-zero-length span that lies on both room boundaries; point-only,
+multipart, ambiguous, and third-room spans are rejected.
 
 ### Shared walls
 

@@ -14,6 +14,7 @@ from floorplan_extractor.dxf_polygon_extraction import (
     ExtractionConfig,
     OpenBoundaryConfig,
     OpenBoundaryPairConfig,
+    OpenBoundarySpan,
     PolygonAdditionConfig,
     PolygonExtractionConfig,
     PolygonMergeConfig,
@@ -32,6 +33,7 @@ from floorplan_extractor.dxf_polygon_extraction import (
     _validate_open_boundary_room_labels,
     attach_room_doors,
     config_from_yaml,
+    construct_open_boundaries,
     extract_polygons,
 )
 
@@ -153,6 +155,38 @@ def _shared_wall_extraction_gdf() -> gpd.GeoDataFrame:
     )
 
     return gpd.GeoDataFrame(rows, geometry=GEOMETRY_COLUMN)
+
+
+def _labelled_rooms(
+    labels: list[str],
+    geometries: list[Polygon],
+) -> gpd.GeoDataFrame:
+    return gpd.GeoDataFrame(
+        {
+            POLYGON_LABEL_TARGET: labels,
+            GEOMETRY_COLUMN: geometries,
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+
+
+def _open_boundary_config(
+    rooms: tuple[str, str],
+    *,
+    tolerance: float = 1e-6,
+    min_length: float = 0.0,
+    selector_point: tuple[float, float] | None = None,
+) -> OpenBoundaryConfig:
+    return OpenBoundaryConfig(
+        tolerance=tolerance,
+        min_length=min_length,
+        pairs=[
+            OpenBoundaryPairConfig(
+                rooms=rooms,
+                selector_point=selector_point,
+            )
+        ],
+    )
 
 
 def _canonical_segments(polygon: Polygon) -> set[tuple[tuple[float, float], ...]]:
@@ -341,6 +375,225 @@ def test_open_boundary_config_requires_unique_final_room_labels(
             config,
             POLYGON_LABEL_TARGET,
         )
+
+
+def test_construct_open_boundary_uses_coincident_room_boundaries() -> None:
+    """A coincident boundary becomes one deterministically ordered span."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+        ],
+    )
+
+    result = construct_open_boundaries(
+        rooms,
+        _open_boundary_config(("101", "CORRIDOR"), min_length=10.0),
+        POLYGON_LABEL_TARGET,
+    )
+
+    assert result == [
+        OpenBoundarySpan(
+            rooms=("101", "CORRIDOR"),
+            geometry=LineString([(5.0, 0.0), (5.0, 10.0)]),
+        )
+    ]
+
+
+def test_construct_open_boundary_snaps_numerical_coordinate_drift() -> None:
+    """Boundary endpoints within tolerance are canonicalised to one line."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon(
+                [
+                    (5.0 + 5e-7, 0.0),
+                    (10.0, 0.0),
+                    (10.0, 10.0),
+                    (5.0 + 5e-7, 10.0),
+                ]
+            ),
+        ],
+    )
+
+    [span] = construct_open_boundaries(
+        rooms,
+        _open_boundary_config(("101", "CORRIDOR")),
+        POLYGON_LABEL_TARGET,
+    )
+
+    assert span.geometry.equals(LineString([(5.0, 0.0), (5.0, 10.0)]))
+
+
+@pytest.mark.parametrize(
+    ("geometry", "expected_message"),
+    [
+        (
+            Polygon([(20.0, 0.0), (25.0, 0.0), (25.0, 10.0), (20.0, 10.0)]),
+            "non-zero-length boundary span",
+        ),
+        (
+            Polygon([(5.0, 10.0), (10.0, 10.0), (10.0, 15.0), (5.0, 15.0)]),
+            "non-zero-length boundary span",
+        ),
+    ],
+)
+def test_construct_open_boundary_rejects_disjoint_or_point_only_contact(
+    geometry: Polygon,
+    expected_message: str,
+) -> None:
+    """Separated rooms and point-only contact are not open boundaries."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            geometry,
+        ],
+    )
+
+    with pytest.raises(ValueError, match=expected_message):
+        construct_open_boundaries(
+            rooms,
+            _open_boundary_config(("101", "CORRIDOR")),
+            POLYGON_LABEL_TARGET,
+        )
+
+
+def test_construct_open_boundary_rejects_multipart_span_without_selector() -> None:
+    """Two disconnected shared spans require an explicit selector point."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon(
+                [
+                    (5.0, 0.0),
+                    (10.0, 0.0),
+                    (10.0, 10.0),
+                    (5.0, 10.0),
+                    (5.0, 7.0),
+                    (7.0, 7.0),
+                    (7.0, 3.0),
+                    (5.0, 3.0),
+                ]
+            ),
+        ],
+    )
+
+    with pytest.raises(ValueError, match="ambiguous or multipart"):
+        construct_open_boundaries(
+            rooms,
+            _open_boundary_config(("101", "CORRIDOR")),
+            POLYGON_LABEL_TARGET,
+        )
+
+
+def test_construct_open_boundary_selector_selects_one_multipart_span() -> None:
+    """A selector point chooses one disconnected shared span."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon(
+                [
+                    (5.0, 0.0),
+                    (10.0, 0.0),
+                    (10.0, 10.0),
+                    (5.0, 10.0),
+                    (5.0, 7.0),
+                    (7.0, 7.0),
+                    (7.0, 3.0),
+                    (5.0, 3.0),
+                ]
+            ),
+        ],
+    )
+
+    [span] = construct_open_boundaries(
+        rooms,
+        _open_boundary_config(
+            ("101", "CORRIDOR"),
+            selector_point=(5.0, 1.0),
+        ),
+        POLYGON_LABEL_TARGET,
+    )
+
+    assert span.geometry.equals(LineString([(5.0, 0.0), (5.0, 3.0)]))
+
+
+def test_construct_open_boundary_rejects_non_straight_span() -> None:
+    """A contiguous but bent shared boundary is not a canonical span."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 5.0), (0.0, 5.0)]),
+            Polygon(
+                [
+                    (5.0, 0.0),
+                    (10.0, 0.0),
+                    (10.0, 10.0),
+                    (0.0, 10.0),
+                    (0.0, 5.0),
+                    (5.0, 5.0),
+                ]
+            ),
+        ],
+    )
+
+    with pytest.raises(ValueError, match="straight span"):
+        construct_open_boundaries(
+            rooms,
+            _open_boundary_config(("101", "CORRIDOR")),
+            POLYGON_LABEL_TARGET,
+        )
+
+
+def test_construct_open_boundary_rejects_third_room_participation() -> None:
+    """A third polygon sharing the span causes an actionable rejection."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR", "THIRD"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+            Polygon([(4.0, 2.0), (5.0, 2.0), (5.0, 4.0), (4.0, 4.0)]),
+        ],
+    )
+
+    with pytest.raises(ValueError, match="third room 'THIRD'"):
+        construct_open_boundaries(
+            rooms,
+            _open_boundary_config(("101", "CORRIDOR")),
+            POLYGON_LABEL_TARGET,
+        )
+
+
+def test_extract_polygons_constructs_open_boundary_after_shared_wall_normalisation(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Open boundaries use the geometry returned by shared-wall normalisation."""
+    monkeypatch.setattr(
+        gpd,
+        "read_file",
+        lambda _: _shared_wall_extraction_gdf(),
+    )
+    config = ExtractionConfig(
+        polygons=_polygon_config(),
+        shared_walls=_shared_wall_config(enabled=True),
+        open_boundaries=_open_boundary_config(("101", "102")),
+    )
+
+    result = extract_polygons(tmp_path / "floorplan.dxf", config)
+
+    [span] = result.attrs["open_boundary_spans"]
+    assert isinstance(span, OpenBoundarySpan)
+    assert span.rooms == ("101", "102")
+    assert span.geometry.coords[0][0] == pytest.approx(450.0)
+    assert span.geometry.coords[0][1] == pytest.approx(0.0)
+    assert span.geometry.coords[1][0] == pytest.approx(450.0)
+    assert span.geometry.coords[1][1] == pytest.approx(400.0)
 
 
 def test_config_from_yaml_loads_shared_wall_config(tmp_path: Path) -> None:
