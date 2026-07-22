@@ -700,6 +700,136 @@ def construct_open_boundaries(
     ]
 
 
+def _door_quad_to_line(door: DoorQuad) -> LineString:
+    """Convert a serialised door segment into a Shapely line."""
+    if len(door) != 4:
+        msg = "Door segments must contain exactly four coordinates"
+        raise ValueError(msg)
+
+    return LineString(
+        [(float(door[0]), float(door[1])), (float(door[2]), float(door[3]))]
+    )
+
+
+def _append_open_boundary_door(
+    room_doors: list[DoorQuad],
+    span: OpenBoundarySpan,
+    door_quad: DoorQuad,
+    span_key: tuple[XY, XY],
+    room_label: str,
+) -> None:
+    """Append an open-boundary segment unless it duplicates or overlaps a door."""
+    exact_match = False
+    for existing_door in room_doors:
+        existing_line = _door_quad_to_line(existing_door)
+        if _canonical_line_key(existing_line) == span_key:
+            exact_match = True
+            continue
+        if existing_line.intersection(span.geometry).length > 0.0:
+            msg = (
+                "Open-boundary span for room pair "
+                f"{span.rooms!r} partially overlaps an existing CAD "
+                f"door in room {room_label!r}"
+            )
+            raise ValueError(msg)
+
+    if not exact_match:
+        room_doors.append(door_quad.copy())
+
+
+def attach_open_boundary_doors(
+    labelled_polygons: gpd.GeoDataFrame,
+    spans: list[OpenBoundarySpan],
+    polygon_label_target: str,
+    door_column: str = "doors",
+) -> gpd.GeoDataFrame:
+    """
+    Add configured open-boundary spans to the existing room door column.
+
+    Exact CAD-derived matches are deduplicated. A partial or enclosing overlap
+    with a CAD-derived segment is rejected because it would create ambiguous
+    connectivity on the same room interface.
+
+    Parameters
+    ----------
+    labelled_polygons : geopandas.GeoDataFrame
+        Final labelled room polygons, optionally containing attached doors.
+    spans : list[OpenBoundarySpan]
+        Canonical spans constructed from the final room boundaries.
+    polygon_label_target : str
+        Column containing the unique room labels.
+    door_column : str, default "doors"
+        Column containing serialised ``[x1, y1, x2, y2]`` door segments.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        Copy of ``labelled_polygons`` with open-boundary spans attached to
+        both configured rooms. ``door_count`` and ``open_boundary_count`` are
+        recalculated for every room.
+
+    Raises
+    ------
+    ValueError
+        If a span cannot be serialised or partially overlaps an existing
+        door segment.
+
+    """
+    if not spans:
+        return labelled_polygons
+
+    result = labelled_polygons.copy()
+    source_attrs = dict(result.attrs)
+    if door_column not in result.columns:
+        result[door_column] = [[] for _ in range(len(result))]
+    else:
+        result[door_column] = result[door_column].apply(
+            lambda value: (
+                [list(door) for door in value] if isinstance(value, list) else []
+            )
+        )
+
+    room_indices: dict[str, object] = {}
+    for span in spans:
+        for room_label in span.rooms:
+            matches = result.index[result[polygon_label_target] == room_label]
+            if len(matches) != 1:
+                msg = (
+                    "Open-boundary room label must identify exactly one final "
+                    f"polygon; label {room_label!r} found {len(matches)}"
+                )
+                raise ValueError(msg)
+            room_indices[room_label] = matches[0]
+
+    open_boundary_counts = dict.fromkeys(result.index, 0)
+    for span in spans:
+        door_quad = _line_to_xyxy(span.geometry)
+        if door_quad is None:
+            msg = f"Open-boundary span for room pair {span.rooms!r} is not linear"
+            raise ValueError(msg)
+        span_key = _canonical_line_key(span.geometry)
+
+        for room_label in span.rooms:
+            room_index = room_indices[room_label]
+            room_doors = result.loc[room_index, door_column]
+            _append_open_boundary_door(
+                room_doors,
+                span,
+                door_quad,
+                span_key,
+                room_label,
+            )
+            open_boundary_counts[room_index] += 1
+
+    result["open_boundary_count"] = [
+        open_boundary_counts.get(room_index, 0) for room_index in result.index
+    ]
+    result["door_count"] = result[door_column].apply(len)
+    result.attrs.update(source_attrs)
+    result.attrs["open_boundary_spans"] = spans
+    return result
+
+
 def _parse_polygon_corrections(
     data: dict[str, Any],
 ) -> tuple[
@@ -1748,6 +1878,7 @@ def extract_polygons(
             config.shared_walls,
         )
 
+    open_boundary_spans: list[OpenBoundarySpan] = []
     if config.open_boundaries:
         open_boundary_spans = construct_open_boundaries(
             labelled_polygons,
@@ -1762,6 +1893,15 @@ def extract_polygons(
             labelled_polygons,
             doors,
             config.doors,
+        )
+
+    if open_boundary_spans:
+        door_column = config.doors.out_col if config.doors else "doors"
+        labelled_polygons = attach_open_boundary_doors(
+            labelled_polygons,
+            open_boundary_spans,
+            config.polygons.polygon_label_target,
+            door_column,
         )
 
     labelled_polygons["has_label"] = labelled_polygons[
