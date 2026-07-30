@@ -10,8 +10,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from amr_hub_abm.exceptions import TimeError
-from amr_hub_abm.gpu_physics import GPUPhysicsEngine
 from amr_hub_abm.spatial.engine import SpatialQuery
+from amr_hub_abm.spatial.engine_gpu import GPUSpatialQuery
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -77,22 +77,26 @@ class Simulation:
 
     # NG Added Flag for GPU Acceleration
     use_gpu: bool = field(default=False)
-    gpu_engine: Any = field(default=None, init=False)
+    # Unified engine property (handles both CPU and GPU cleanly)
     spatial_engine: Any = field(default=None, init=False)
     agent_max_movement_attempts: int = field(default=5)
     # ------------------------------------------------------------------------------
 
     def __post_init__(self) -> None:
-        """Init for GPU to load CAD once at the start."""
+        """Initialize the appropriate spatial engine (CPU or GPU)."""
         if self.use_gpu:
-            self.gpu_engine = GPUPhysicsEngine()
-        # Initialize the CPU engine
+            # Pass the required interface arguments to the GPU engine
+            self.spatial_engine = GPUSpatialQuery(
+                space=self.space,
+                max_movement_attempts=self.agent_max_movement_attempts,
+            )
         else:
             self.spatial_engine = SpatialQuery(
                 space=self.space,
                 max_movement_attempts=self.agent_max_movement_attempts,
             )
-            self._agent_store = None
+
+        self._agent_store = None
 
     # ------------------------------------------------------------------------------
     def step(self, plot_path: Path | None = None, *, record: bool = False) -> None:
@@ -130,19 +134,20 @@ class Simulation:
         # randomize agent order each step to avoid bias
         self.rng_generator.shuffle(self.agents)
 
-        # NG: GPU Updates Agents
+        # Execute Simulation Tick
         if self.use_gpu:
-            self.gpu_engine.step_physics(self.agents)  # Takes the step and query
-
-        # CPU Updates all agents
+            # GPU handles all agents simultaneously via Warp
+            self.spatial_engine.step_physics(self.agents)
         else:
+            # CPU updates agents sequentially
             for agent in self.agents:
                 agent.perform_task(
                     current_time=self.time, engine=self.spatial_engine, record=record
                 )
 
-            if plot_path is not None:
-                self.plot_current_state(directory_path=plot_path)
+        # Render outputs (Fixed to ensure GPU mode also triggers plots if requested)
+        if plot_path is not None:
+            self.plot_current_state(directory_path=plot_path)
 
         self.time += 1
 
@@ -175,7 +180,7 @@ class Simulation:
         directory_path.mkdir(parents=True, exist_ok=True)
 
         for building in self.space:
-            axes: list[Axes] = [plt.subplots(nrows=len(building.floors), ncols=1)[1]]
+            axes: list[Axes] = [plt.subplots(nrows=len(building.floors), ncols=1)[1]]  # type: ignore  # noqa: PGH003
             building.plot_building(axes=axes, agents=self.agents, trajectory=trajectory)
             simulation_name = f"Simulation: {self.name}"
             if trajectory:
@@ -225,7 +230,7 @@ class Simulation:
             building.plot_building(
                 axes=axes,
                 agents=self.agents,
-                trajectory=trajectory,  # <- key change
+                trajectory=trajectory,
             )
 
             title = (

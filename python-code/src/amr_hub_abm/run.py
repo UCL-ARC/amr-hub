@@ -13,7 +13,8 @@ from amr_hub_abm.simulation_factory import create_simulation
 logger = logging.getLogger(__name__)
 
 
-def simulate(  # noqa: PLR0912, PLR0913
+# =============================================================================
+def simulate(  # noqa: PLR0913
     *,
     plot: bool = False,
     record: bool = False,
@@ -41,6 +42,7 @@ def simulate(  # noqa: PLR0912, PLR0913
     """
     config = sim_config
     simulation = create_simulation(config)
+
     # --------------------------------------------------------------------------
     # 6/5/2026 NG Added
     simulation.use_gpu = use_gpu
@@ -49,10 +51,7 @@ def simulate(  # noqa: PLR0912, PLR0913
 
     if use_gpu:
         logger.info("GPU Acceleration Enabled: Routing physics to NVIDIA Warp")
-        if plot or plot_trajectory:
-            logger.warning("PNG generation is disabled in GPU mode")
-        plot = False
-        plot_trajectory = False
+        # Note: Plotting is now fully supported in GPU mode via unified spatial_engine
     else:
         logger.info("CPU Mode Enabled: Using legacy Python movement logic")
     # --------------------------------------------------------------------------
@@ -71,7 +70,7 @@ def simulate(  # noqa: PLR0912, PLR0913
         logger.info(msg)
         msg = f"{[task.task_type.value for task in agent.tasks]}"
         logger.info(msg)
-    logger.info("Simulation created successfully...")
+    logger.info("Simulation starting...")
 
     plot_path = Path("../simulation_outputs") if plot else None
 
@@ -97,10 +96,12 @@ def simulate(  # noqa: PLR0912, PLR0913
             simulation.plot_agent_trajectories(record_path)
     # --------------------------------------------------------------------------
 
-    # NG: Writes Results to Disk
-    if getattr(simulation, "use_gpu", False) and simulation.gpu_engine is not None:
+    # NG: Writes Results to Disk (Updated to use unified spatial_engine)
+    if getattr(simulation, "use_gpu", False) and hasattr(
+        simulation.spatial_engine, "export_data"
+    ):
         logger.info("Exporting GPU Telemetry to disk")
-        simulation.gpu_engine.export_data(output_dir="simulation_outputs")
+        simulation.spatial_engine.export_data(output_dir="simulation_outputs")
 
     logger.info("Simulation completed successfully...")
 
@@ -109,6 +110,10 @@ def simulate(  # noqa: PLR0912, PLR0913
         plt.show()  # final blocking show so window stays up after sim ends
 
 
+# =============================================================================
+
+
+# =============================================================================
 def run_steps(
     simulation: Simulation,
     plot_path: Path | None,
@@ -141,6 +146,10 @@ def run_steps(
             simulation.plot_live(figures, trajectory=trajectory)
 
 
+# =============================================================================
+
+# =============================================================================
 # Make True for GPU
 if __name__ == "__main__":
     simulate(use_gpu=False, record=True)
+# =============================================================================

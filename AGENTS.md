@@ -66,7 +66,7 @@ events. This produces a `Simulation` (`simulation.py`), which owns:
   pattern), so `Agent.add_task` avoids a long if/elif chain. See the design
   notes in `task/task.py`'s module docstring for the reasoning.
 - **GPU path**: `simulation.use_gpu=True` routes physics through
-  `gpu_physics.GPUPhysicsEngine` (NVIDIA Warp) instead of the CPU
+  `gpu_physics.GPUSpatialQuery` (NVIDIA Warp) instead of the CPU
   agent-by-agent loop; PNG plotting is disabled in this mode. This is a
   parallel code path, not a drop-in replacement — check `use_gpu` branches in
   `simulation.py` and `run.py` when touching movement/physics.
