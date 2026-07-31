@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# Main Entry point
+# =============================================================================
 def simulate(  # noqa: PLR0913
     *,
     plot: bool = False,
@@ -43,7 +45,6 @@ def simulate(  # noqa: PLR0913
     config = sim_config
     simulation = create_simulation(config)
 
-    # --------------------------------------------------------------------------
     # 6/5/2026 NG Added
     simulation.use_gpu = use_gpu
     for agent in simulation.agents:
@@ -54,8 +55,8 @@ def simulate(  # noqa: PLR0913
         # Note: Plotting is now fully supported in GPU mode via unified spatial_engine
     else:
         logger.info("CPU Mode Enabled: Using legacy Python movement logic")
-    # --------------------------------------------------------------------------
 
+    # Manual setting infections should be replaced @yidilozdemir@arindamsaha1507
     if seed_infections:
         simulation.agents[0].infection_status = InfectionStatus.INFECTED
         simulation.agents[1].infection_status = InfectionStatus.EXPOSED
@@ -64,17 +65,20 @@ def simulate(  # noqa: PLR0913
         output_dir = Path("../simulation_outputs")
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Loop over each agent
+    # Debug info Loop over each agent
     for agent in simulation.agents:
         msg = f"Agent {agent.agent_type, agent.idx} task list"
         logger.info(msg)
         msg = f"{[task.task_type.value for task in agent.tasks]}"
         logger.info(msg)
-    logger.info("Simulation starting...")
 
+    logger.info("Simulation starting...")
     plot_path = Path("../simulation_outputs") if plot else None
 
+    # --------------------------------------------------------------------------
+    # This is the core sim where agent activity is simulated between recorded events
     run_steps(simulation, plot_path, record=record)
+    # --------------------------------------------------------------------------
 
     if plot_trajectory:
         record = True
@@ -94,9 +98,8 @@ def simulate(  # noqa: PLR0913
                 msg = "Plot path must be provided to plot agent trajectories."
                 raise ValueError(msg)
             simulation.plot_agent_trajectories(record_path)
-    # --------------------------------------------------------------------------
 
-    # NG: Writes Results to Disk (Updated to use unified spatial_engine)
+    # Writes Results to Disk (Updated to use unified spatial_engine)
     if getattr(simulation, "use_gpu", False) and hasattr(
         simulation.spatial_engine, "export_data"
     ):

@@ -99,34 +99,10 @@ class Simulation:
         self._agent_store = None
 
     # ------------------------------------------------------------------------------
+
+    # ------------------------------------------------------------------------------
     def step(self, plot_path: Path | None = None, *, record: bool = False) -> None:
-        """
-        Advance the simulation by one time step.
-
-        This method performs the following actions:
-
-        1. Checks if the simulation has already reached its total simulation time
-        and raises an error if so.
-
-        2. Randomizes the order of agents to avoid bias in action execution.
-
-        3. Iterates through each agent and calls their `perform_task` method to
-        execute their current task.
-
-        4. If a `plot_path` is provided, it calls the `plot_current_state` method to
-        save a plot of the current state of the simulation.
-
-        5. Increments the simulation time by one step.
-
-        Parameters
-        ----------
-        plot_path : Path | None
-            Directory to save the plot of the current state. If None, no plot is saved.
-        record : bool
-            Whether to record the state of agents during their task execution. Passed to
-            the `perform_task` method of agents.
-
-        """
+        """Advance the simulation by one time step."""
         if self.time >= self.total_simulation_time:
             msg = "Simulation has already reached its total simulation time."
             raise TimeError(msg)
@@ -134,18 +110,23 @@ class Simulation:
         # randomize agent order each step to avoid bias
         self.rng_generator.shuffle(self.agents)
 
-        # Execute Simulation Tick
-        if self.use_gpu:
-            # GPU handles all agents simultaneously via Warp
-            self.spatial_engine.step_physics(self.agents)
-        else:
-            # CPU updates agents sequentially
-            for agent in self.agents:
-                agent.perform_task(
-                    current_time=self.time, engine=self.spatial_engine, record=record
-                )
+        # --------------------------------------------------------------------------
+        # 1. CPU Evaluates Logic and set targets
+        # --------------------------------------------------------------------------
+        # Always run the task state machine so agents transition correctly.
+        for agent in self.agents:
+            agent.perform_task(
+                current_time=self.time, engine=self.spatial_engine, record=record
+            )
 
-        # Render outputs (Fixed to ensure GPU mode also triggers plots if requested)
+        # --------------------------------------------------------------------------
+        # 2. GPU Handover
+        # --------------------------------------------------------------------------
+        if self.use_gpu:
+            # GPU computes collision, stochastics, and proximity in one parallel batch
+            self.spatial_engine.step_physics(self.agents)
+        # --------------------------------------------------------------------------
+
         if plot_path is not None:
             self.plot_current_state(directory_path=plot_path)
 

@@ -313,6 +313,9 @@ def read_location_timeseries(
     return pd.read_csv(file_path)
 
 
+# ------------------------------------------------------------------------------
+# Main Function that reads the sparse collected data into memory
+# ------------------------------------------------------------------------------
 def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
     timeseries_data: pd.DataFrame,
     rooms: list[Room],

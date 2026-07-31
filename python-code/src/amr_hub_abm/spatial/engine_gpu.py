@@ -5,7 +5,7 @@ GPU Physics Engine for AMR-Hub.
 UCLARC: Nicolin Govender (6/5/26).
 Integrates existing CPU logic (Tasks/Agents/SpatialQueries) with GPU (CUDA Warp).
 Calculates HashGrid transmission, executes BVH spatial queries, handles stochastic
-movement with retries, and records telemetry for the HTML dashboard.
+movement, and batches execution to eliminate PCIe transfer bottlenecks.
 """
 
 from __future__ import annotations
@@ -38,57 +38,79 @@ wp.init()
 
 
 # =============================================================================
-# A] Agent moves in space (Stochastic with BVH Collision Retries)
+# A] Agent moves in space (Target-Based Steering and Single Collision)
+# One thread per agent
 # =============================================================================
 @wp.kernel
 def cuda_warp_kernel_kinematic_agent_movement(  # noqa: PLR0913
     mesh: wp.uint64,
     positions: wp.array(dtype=wp.vec3),
-    headings: wp.array(dtype=float),
+    targets: wp.array(dtype=wp.vec2),
     speeds: wp.array(dtype=float),
     stochastics: wp.array(dtype=float),
-    seed: wp.int32,  # Updated from standard 'int'
-    max_attempts: wp.int32,  # Updated from standard 'int'
+    radii: wp.array(dtype=float),
+    seed: wp.int32,
 ) -> None:
-    """Calculate stochastic agent movement and perform wall collision checks via BVH."""
+    """Calculate target-based steering and stochastic movement."""
     tid = wp.tid()
     pos = positions[tid]
-    h = headings[tid]
+    target = targets[tid]
     speed = speeds[tid]
     stoch = stochastics[tid]
+    radius = radii[tid]
 
-    # Cast tid to wp.int32 to match the seed parameter's type
+    # 1. Calculate vector to target
+    dir_x = target[0] - pos[0]
+    dir_y = target[1] - pos[1]
+    dist_to_target = wp.sqrt(dir_x * dir_x + dir_y * dir_y)
+
+    # If already within interaction radius, don't move
+    if dist_to_target <= radius:
+        return
+
+    # Initialize random state for this thread
     state = wp.rand_init(seed, wp.int32(tid))  # pyright: ignore[reportArgumentType]
 
-    for _attempt in range(max_attempts):
-        # 1. Propose stochastic heading and deltas
-        heading_noise = wp.randn(state) * (stoch * 3.1415926535 / 180.0)
-        stoch_h = h + heading_noise
+    # 2. Base direction vector (normalized)
+    ndx = dir_x / dist_to_target
+    ndy = dir_y / dist_to_target
 
-        dx = speed * wp.cos(stoch_h)
-        dy = speed * wp.sin(stoch_h)
+    # 3. Apply Stochastic Drift (Trig-Free)
+    # Convert stoch (degrees) to a scalar perturbation magnitude (pi/180 ≈ 0.01745)
+    drift = wp.randn(state) * (stoch * 0.0174533)
 
-        dx_noise = wp.randn(state) * stoch
-        dy_noise = wp.randn(state) * stoch
+    # Add random perpendicular drift: perpendicular to (ndx, ndy) is (-ndy, ndx)
+    vx = ndx - ndy * drift
+    vy = ndy + ndx * drift
 
-        dx = (1.0 + dx_noise) * dx
-        dy = (1.0 + dy_noise) * dy
+    # Re-normalize using the known magnitude of the drift (sqrt(1^2 + drift^2))
+    v_mag = wp.sqrt(1.0 + drift * drift)
 
-        next_pos = wp.vec3(pos[0] + dx, pos[1] + dy, pos[2])
+    dx = (vx / v_mag) * speed
+    dy = (vy / v_mag) * speed
 
-        # 2. BVH Collision Check against walls
-        ray_dir = wp.normalize(next_pos - pos)
-        step_size = wp.length(next_pos - pos)
+    # Apply magnitude noise (optional, matching original logic)
+    dx = dx * (1.0 + wp.randn(state) * stoch)
+    dy = dy * (1.0 + wp.randn(state) * stoch)
 
-        root = wp.int32(0)
+    # Prevent overshooting the target
+    step_dist = wp.sqrt(dx * dx + dy * dy)
+    if step_dist > dist_to_target:
+        dx = dir_x
+        dy = dir_y
 
-        # Execute query with the root parameter
-        hit = wp.mesh_query_ray(mesh, pos, ray_dir, step_size, root)
+    next_pos = wp.vec3(pos[0] + dx, pos[1] + dy, pos[2])
 
-        if not hit.result:  # pyright: ignore[reportAttributeAccessIssue]
-            # Valid move, apply and exit loop
-            positions[tid] = next_pos
-            break
+    # 4. Single BVH Collision Check against walls
+    ray_dir = wp.normalize(next_pos - pos)
+    step_size = wp.length(next_pos - pos)
+
+    root = wp.int32(0)
+    hit = wp.mesh_query_ray(mesh, pos, ray_dir, step_size, root)
+
+    if not hit.result:  # pyright: ignore[reportAttributeAccessIssue]
+        # Valid move, apply immediately
+        positions[tid] = next_pos
 
 
 # =============================================================================
@@ -142,7 +164,7 @@ class GPUSpatialQuery:
     """Manages the Warp GPU state for the sim, mimics CPU spatial queries."""
 
     __slots__ = (
-        "current_tick",
+        "current_tick",  # TimeStep, using tick as the project had that
         "grid",
         "max_movement_attempts",
         "mesh",
@@ -152,6 +174,7 @@ class GPUSpatialQuery:
         "transmission_events",
     )
 
+    # ------------------------------------------------------------------------------
     def __init__(
         self,
         space: Sequence[Building],
@@ -163,7 +186,9 @@ class GPUSpatialQuery:
         self.space = space
         self.max_movement_attempts = max_movement_attempts
 
-        # Extract live geometry from the Space objects instead of an .npz file
+        # ------------------------------------------------------------------------------
+        # Extract live geometry from the Space objects
+        # ------------------------------------------------------------------------------
         wall_vertices, wall_indices = self._build_mesh_from_space()
         logger.info(
             f"Generated GPU Mesh: {len(wall_vertices)} vertices, {len(wall_indices) // 3} faces"  # noqa: E501, G004
@@ -179,6 +204,11 @@ class GPUSpatialQuery:
         self.transmission_events: list[dict[str, Any]] = []
         self.current_tick: int = 0
 
+    # ------------------------------------------------------------------------------
+
+    # ------------------------------------------------------------------------------
+    # Done at the start only
+    # ------------------------------------------------------------------------------
     def _build_mesh_from_space(self) -> tuple[np.ndarray, np.ndarray]:
         """Convert 2D room walls into a 3D GPU collision mesh."""
         vertices = []
@@ -218,7 +248,9 @@ class GPUSpatialQuery:
         return np.array(vertices, dtype=np.float32), np.array(indices, dtype=np.int32)
 
     # ------------------------------------------------------------------------------
-    # INTERFACE ALIGNMENT WITH CPU ENGINE
+
+    # ------------------------------------------------------------------------------
+    # Mimic CPU Engine
     # ------------------------------------------------------------------------------
     def get_room(
         self,
@@ -244,6 +276,20 @@ class GPUSpatialQuery:
                     return room
         return None
 
+    # ------------------------------------------------------------------------------
+
+    # ------------------------------------------------------------------------------
+    def move_one_step(self, agent: Agent) -> None:
+        """
+        Defer physical movement for the agent.
+
+        The CPU calls this to move the agent, but in GPU mode,
+        we defer all physical movement until step_physics() processes the bulk batch.
+        """
+
+    # ------------------------------------------------------------------------------
+
+    # ------------------------------------------------------------------------------
     def is_target_reached(
         self,
         location: Location,
@@ -257,52 +303,70 @@ class GPUSpatialQuery:
             return False
         return location.distance_to(target) <= radius
 
+    # ------------------------------------------------------------------------------
+
+    # ------------------------------------------------------------------------------
     def estimate_time_to_reach_location(
         self, agent: Agent, target_location: Location
     ) -> float:
         """Estimate the time required to reach a target location."""
         return agent.location.distance_to(target_location) / agent.movement_speed
 
+    # ------------------------------------------------------------------------------
+
+    # ------------------------------------------------------------------------------
     def move_to_location(self, agent: Agent, new_location: Location) -> None:
         """Move the agent to a new location."""
         agent.location = new_location
 
+    # ------------------------------------------------------------------------------
+
+    # ------------------------------------------------------------------------------
     def head_to_point(self, agent: Agent, point: tuple[float, float]) -> None:
-        """Set the agent's heading to face a specific point."""
+        """Set the agent's target coordinates so the GPU can steer it(CPU)."""
         delta_x = point[0] - agent.location.x
         delta_y = point[1] - agent.location.y
         agent.heading_rad = math.atan2(delta_y, delta_x) % (2 * math.pi)
 
+        # Pass the target destination to the agent so it syncs with the GPU
+        agent.target_x = point[0]
+        agent.target_y = point[1]
+
     # ------------------------------------------------------------------------------
-    # GPU PHYSICS EXECUTION
+
     # ------------------------------------------------------------------------------
-    def step_physics(self, agents: list[Any]) -> None:
-        """Synchronize CPU agent state with the GPU and execute a tick."""
+    # Main Function that advances the simulation in time
+    # ------------------------------------------------------------------------------
+    def step_physics(self, agents: list[Any], batch_steps: int = 1) -> None:
+        """Sync state, push to GPU, batch time steps."""
         num_agents = len(agents)
         if num_agents == 0:
             return
 
-        # 1. Extract Python state to NumPy
+        # 1. Extract Python state to NumPy (done ONCE)
         pos_np = np.zeros((num_agents, 3), dtype=np.float32)
-        headings_np = np.zeros(num_agents, dtype=np.float64)
+        targets_np = np.zeros((num_agents, 2), dtype=np.float32)
         speeds_np = np.zeros(num_agents, dtype=np.float64)
         stoch_np = np.zeros(num_agents, dtype=np.float64)
+        radii_np = np.zeros(num_agents, dtype=np.float64)
         status_np = np.zeros(num_agents, dtype=np.int32)
         floor_np = np.zeros(num_agents, dtype=np.int32)
 
         for i, agent in enumerate(agents):
             pos_np[i] = [agent.location.x, agent.location.y, 1.0]  # Agent sits at Z=1.0
-            headings_np[i] = agent.heading_rad
+            targets_np[i] = [agent.target_x, agent.target_y]
             speeds_np[i] = agent.movement_speed
             stoch_np[i] = agent.stochasticity
+            radii_np[i] = agent.interaction_radius
             status_np[i] = agent.infection_status.value
             floor_np[i] = agent.location.floor
 
-        # 2. Push to GPU
+        # 2. Push to GPU (done ONCE)
         wp_pos = wp.array(pos_np, dtype=wp.vec3)
-        wp_headings = wp.array(headings_np, dtype=float)
+        wp_targets = wp.array(targets_np, dtype=wp.vec2)
         wp_speeds = wp.array(speeds_np, dtype=float)
         wp_stoch = wp.array(stoch_np, dtype=float)
+        wp_radii = wp.array(radii_np, dtype=float)
         wp_status = wp.array(status_np, dtype=wp.int32)
         wp_floors = wp.array(floor_np, dtype=wp.int32)
         wp_infectors = wp.full(
@@ -311,40 +375,45 @@ class GPUSpatialQuery:
             dtype=wp.int32,  # type: ignore  # noqa: PGH003
         )  # pyright: ignore[reportArgumentType]
 
-        seed = self.current_tick
+        # 3. Batch Loop (Eliminates PCIe Roundtrips)
+        for _step in range(batch_steps):
+            seed = self.current_tick
 
-        # 3. Execute Kinematics and Collision (Stochastic Retries)
-        wp.launch(
-            kernel=cuda_warp_kernel_kinematic_agent_movement,
-            dim=num_agents,
-            inputs=[
-                self.mesh.id,
-                wp_pos,
-                wp_headings,
-                wp_speeds,
-                wp_stoch,
-                seed,
-                self.max_movement_attempts,
-            ],
-        )
+            # A) Execute Target-Based Kinematics
+            wp.launch(
+                kernel=cuda_warp_kernel_kinematic_agent_movement,
+                dim=num_agents,
+                inputs=[
+                    self.mesh.id,
+                    wp_pos,
+                    wp_targets,
+                    wp_speeds,
+                    wp_stoch,
+                    wp_radii,
+                    seed,
+                ],
+            )
 
-        # 4. Execute Transmission Math
-        self.grid.build(points=wp_pos, radius=self.search_radius)
-        wp.launch(
-            kernel=cuda_warp_kernel_agent_proximity,
-            dim=num_agents,
-            inputs=[
-                self.grid.id,
-                wp_pos,
-                wp_status,
-                wp_floors,
-                self.search_radius,
-                wp_infectors,
-            ],
-        )
-        wp.synchronize()
+            # B) Execute Transmission Math
+            self.grid.build(points=wp_pos, radius=self.search_radius)
+            wp.launch(
+                kernel=cuda_warp_kernel_agent_proximity,
+                dim=num_agents,
+                inputs=[
+                    self.grid.id,
+                    wp_pos,
+                    wp_status,
+                    wp_floors,
+                    self.search_radius,
+                    wp_infectors,
+                ],
+            )
 
-        # 5. Pull from GPU and update Python state
+            # C) Wait for GPU to finish this micro-tick
+            wp.synchronize()
+            self.current_tick += 1
+
+        # 4. Pull from GPU (done ONCE at the end of the batch)
         new_pos_np = wp_pos.numpy()
         infectors_np = wp_infectors.numpy()
 
@@ -359,7 +428,6 @@ class GPUSpatialQuery:
             if infectors_np[i] != -1 and agent.infection_status.value == 0:
                 agent.infection_status = agent.infection_status.__class__(2)
 
-                # Record Transmission Event
                 source_agent = agents[infectors_np[i]]
                 self.transmission_events.append(
                     {
@@ -371,7 +439,7 @@ class GPUSpatialQuery:
                     }
                 )
 
-            # Record standard telemetry for the Dash Viewer
+            # Record batched telemetry for the Dash Viewer
             self.telemetry.append(
                 {
                     "time": self.current_tick,
@@ -382,8 +450,9 @@ class GPUSpatialQuery:
                 }
             )
 
-        self.current_tick += 1
+    # ------------------------------------------------------------------------------
 
+    # ------------------------------------------------------------------------------
     def export_data(self, output_dir: str = "simulation_outputs") -> None:
         """Save the simulation ledgers to CSV for the Dash Viewer."""
         logger.info("Exporting GPU telemetry to %s...", output_dir)
@@ -395,7 +464,6 @@ class GPUSpatialQuery:
             telemetry_path = out_path / "gpu_sim_telemetry.csv"
             df_telemetry.to_csv(telemetry_path, index=False)
 
-        # Build schema to prevent Dash viewer crash if nobody was infected
         cols: list[str] = [
             "time",
             "source_id",
@@ -414,6 +482,8 @@ class GPUSpatialQuery:
             df_empty.to_csv(empty_path, index=False)
 
         logger.info("Export complete")
+
+    # ------------------------------------------------------------------------------
 
 
 # =============================================================================
