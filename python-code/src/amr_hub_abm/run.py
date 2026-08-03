@@ -43,12 +43,7 @@ def simulate(  # noqa: PLR0913
 
     """
     config = sim_config
-    simulation = create_simulation(config)
-
-    # 6/5/2026 NG Added
-    simulation.use_gpu = use_gpu
-    for agent in simulation.agents:
-        agent.use_gpu = use_gpu
+    simulation = create_simulation(config, use_gpu=use_gpu)
 
     if use_gpu:
         logger.info("GPU Acceleration Enabled: Routing physics to NVIDIA Warp")

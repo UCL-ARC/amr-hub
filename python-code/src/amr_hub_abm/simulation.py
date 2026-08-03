@@ -111,16 +111,17 @@ class Simulation:
         self.rng_generator.shuffle(self.agents)
 
         # --------------------------------------------------------------------------
-        # 1. CPU Evaluates Logic and set targets
+        # 1. CPU Evaluates Logic and set targets but if GPU then no movement
         # --------------------------------------------------------------------------
         # Always run the task state machine so agents transition correctly.
+        # If engine is type gpu then polymorphic move_one_step does nothing
         for agent in self.agents:
             agent.perform_task(
                 current_time=self.time, engine=self.spatial_engine, record=record
             )
 
         # --------------------------------------------------------------------------
-        # 2. GPU Handover
+        # 2. GPU Handover to do "move_one_step"
         # --------------------------------------------------------------------------
         if self.use_gpu:
             # GPU computes collision, stochastics, and proximity in one parallel batch

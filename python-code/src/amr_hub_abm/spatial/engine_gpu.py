@@ -50,8 +50,9 @@ def cuda_warp_kernel_kinematic_agent_movement(  # noqa: PLR0913
     stochastics: wp.array(dtype=float),
     radii: wp.array(dtype=float),
     seed: wp.int32,
+    max_attempts: wp.int32,
 ) -> None:
-    """Calculate target-based steering and stochastic movement."""
+    """Calculate target-based steering, retrying on collision like the CPU engine."""
     tid = wp.tid()
     pos = positions[tid]
     target = targets[tid]
@@ -75,42 +76,49 @@ def cuda_warp_kernel_kinematic_agent_movement(  # noqa: PLR0913
     ndx = dir_x / dist_to_target
     ndy = dir_y / dist_to_target
 
-    # 3. Apply Stochastic Drift (Trig-Free)
-    # Convert stoch (degrees) to a scalar perturbation magnitude (pi/180 ≈ 0.01745)
-    drift = wp.randn(state) * (stoch * 0.0174533)
-
-    # Add random perpendicular drift: perpendicular to (ndx, ndy) is (-ndy, ndx)
-    vx = ndx - ndy * drift
-    vy = ndy + ndx * drift
-
-    # Re-normalize using the known magnitude of the drift (sqrt(1^2 + drift^2))
-    v_mag = wp.sqrt(1.0 + drift * drift)
-
-    dx = (vx / v_mag) * speed
-    dy = (vy / v_mag) * speed
-
-    # Apply magnitude noise (optional, matching original logic)
-    dx = dx * (1.0 + wp.randn(state) * stoch)
-    dy = dy * (1.0 + wp.randn(state) * stoch)
-
-    # Prevent overshooting the target
-    step_dist = wp.sqrt(dx * dx + dy * dy)
-    if step_dist > dist_to_target:
-        dx = dir_x
-        dy = dir_y
-
-    next_pos = wp.vec3(pos[0] + dx, pos[1] + dy, pos[2])
-
-    # 4. Single BVH Collision Check against walls
-    ray_dir = wp.normalize(next_pos - pos)
-    step_size = wp.length(next_pos - pos)
-
+    next_pos = pos
     root = wp.int32(0)
-    hit = wp.mesh_query_ray(mesh, pos, ray_dir, step_size, root)
 
-    if not hit.result:  # pyright: ignore[reportAttributeAccessIssue]
-        # Valid move, apply immediately
-        positions[tid] = next_pos
+    # 3/4. Retry the stochastic step up to max_attempts times on wall collision,
+    # mirroring CPU SpatialQuery.try_move_one_step. Each attempt draws fresh
+    # noise from the same evolving per-thread RNG state. If every attempt
+    # collides, the last attempted position is kept anyway (CPU parity).
+    for _attempt in range(max_attempts):
+        # Apply Stochastic Drift (Trig-Free)
+        # Convert stoch (degrees) to a scalar perturbation magnitude (pi/180 ≈ 0.01745)
+        drift = wp.randn(state) * (stoch * 0.0174533)
+
+        # Add random perpendicular drift: perpendicular to (ndx, ndy) is (-ndy, ndx)
+        vx = ndx - ndy * drift
+        vy = ndy + ndx * drift
+
+        # Re-normalize using the known magnitude of the drift (sqrt(1^2 + drift^2))
+        v_mag = wp.sqrt(1.0 + drift * drift)
+
+        dx = (vx / v_mag) * speed
+        dy = (vy / v_mag) * speed
+
+        # Apply magnitude noise (optional, matching original logic)
+        dx = dx * (1.0 + wp.randn(state) * stoch)
+        dy = dy * (1.0 + wp.randn(state) * stoch)
+
+        # Prevent overshooting the target
+        step_dist = wp.sqrt(dx * dx + dy * dy)
+        if step_dist > dist_to_target:
+            dx = dir_x
+            dy = dir_y
+
+        next_pos = wp.vec3(pos[0] + dx, pos[1] + dy, pos[2])
+
+        # BVH Collision Check against walls
+        ray_dir = wp.normalize(next_pos - pos)
+        step_size = wp.length(next_pos - pos)
+        hit = wp.mesh_query_ray(mesh, pos, ray_dir, step_size, root)
+
+        if not hit.result:  # pyright: ignore[reportAttributeAccessIssue]
+            break
+
+    positions[tid] = next_pos
 
 
 # =============================================================================
@@ -163,8 +171,29 @@ def cuda_warp_kernel_agent_proximity(  # noqa: PLR0913
 class GPUSpatialQuery:
     """Manages the Warp GPU state for the sim, mimics CPU spatial queries."""
 
+    # ------------------------------------------------------------------------------
     __slots__ = (
-        "current_tick",  # TimeStep, using tick as the project had that
+        "_floor_np",
+        # Persistent GPU buffers (allocated once, reused every step to avoid
+        # cudaMalloc/cudaFree churn from re-creating wp.array objects per step).
+        "_num_agents_cached",
+        # Reused host-side staging buffers (avoid re-allocating numpy arrays
+        # every tick just to immediately upload and discard them).
+        "_pos_np",
+        "_radii_np",
+        "_speeds_np",
+        "_status_np",
+        "_stoch_np",
+        "_targets_np",
+        "_wp_floors",
+        "_wp_infectors",
+        "_wp_pos",
+        "_wp_radii",
+        "_wp_speeds",
+        "_wp_status",
+        "_wp_stoch",
+        "_wp_targets",
+        "current_tick",  # TimeStep, using 'tick' as the project had that
         "grid",
         "max_movement_attempts",
         "mesh",
@@ -173,6 +202,7 @@ class GPUSpatialQuery:
         "telemetry",
         "transmission_events",
     )
+    # ------------------------------------------------------------------------------
 
     # ------------------------------------------------------------------------------
     def __init__(
@@ -200,9 +230,10 @@ class GPUSpatialQuery:
         )
         self.grid: wp.HashGrid = wp.HashGrid(dim_x=128, dim_y=128, dim_z=128)
         self.search_radius: float = 2.0
-        self.telemetry: list[dict[str, Any]] = []
+        self.telemetry: list[np.ndarray] = []
         self.transmission_events: list[dict[str, Any]] = []
         self.current_tick: int = 0
+        self._num_agents_cached: int = 0
 
     # ------------------------------------------------------------------------------
 
@@ -335,6 +366,45 @@ class GPUSpatialQuery:
     # ------------------------------------------------------------------------------
 
     # ------------------------------------------------------------------------------
+    # Batching loading of data into GPU arrays
+    # ------------------------------------------------------------------------------
+    def _ensure_gpu_buffers(self, num_agents: int) -> None:
+        """
+        (Re)allocate persistent GPU + host staging buffers if the agent count changes.
+
+        Allocating a fresh wp.array every tick forces a cudaMalloc/cudaFree
+        round-trip per field per step. Since the agent population is fixed for
+        the life of a simulation run, we allocate once and reuse the same
+        device buffers via `.assign()` (an in-place H2D copy) on every call.
+        """
+        if num_agents == self._num_agents_cached:
+            return
+
+        self._num_agents_cached = num_agents
+
+        # Host-side staging buffers (reused so we don't re-allocate numpy
+        # arrays every tick just to upload and discard them).
+        self._pos_np = np.zeros((num_agents, 3), dtype=np.float32)
+        self._targets_np = np.zeros((num_agents, 2), dtype=np.float32)
+        self._speeds_np = np.zeros(num_agents, dtype=np.float32)
+        self._stoch_np = np.zeros(num_agents, dtype=np.float32)
+        self._radii_np = np.zeros(num_agents, dtype=np.float32)
+        self._status_np = np.zeros(num_agents, dtype=np.int32)
+        self._floor_np = np.zeros(num_agents, dtype=np.int32)
+
+        # Device buffers.
+        self._wp_pos = wp.zeros(num_agents, dtype=wp.vec3)
+        self._wp_targets = wp.zeros(num_agents, dtype=wp.vec2)
+        self._wp_speeds = wp.zeros(num_agents, dtype=float)
+        self._wp_stoch = wp.zeros(num_agents, dtype=float)
+        self._wp_radii = wp.zeros(num_agents, dtype=float)
+        self._wp_status = wp.zeros(num_agents, dtype=wp.int32)
+        self._wp_floors = wp.zeros(num_agents, dtype=wp.int32)
+        self._wp_infectors = wp.zeros(num_agents, dtype=wp.int32)
+
+    # ------------------------------------------------------------------------------
+
+    # ------------------------------------------------------------------------------
     # Main Function that advances the simulation in time
     # ------------------------------------------------------------------------------
     def step_physics(self, agents: list[Any], batch_steps: int = 1) -> None:
@@ -343,37 +413,45 @@ class GPUSpatialQuery:
         if num_agents == 0:
             return
 
-        # 1. Extract Python state to NumPy (done ONCE)
-        pos_np = np.zeros((num_agents, 3), dtype=np.float32)
-        targets_np = np.zeros((num_agents, 2), dtype=np.float32)
-        speeds_np = np.zeros(num_agents, dtype=np.float64)
-        stoch_np = np.zeros(num_agents, dtype=np.float64)
-        radii_np = np.zeros(num_agents, dtype=np.float64)
-        status_np = np.zeros(num_agents, dtype=np.int32)
-        floor_np = np.zeros(num_agents, dtype=np.int32)
+        # ------------------------------------------------------------------------------
+        # 1. Extract Python state into reused host staging buffers (Done Once)
+        self._ensure_gpu_buffers(num_agents)
+
+        pos_np = self._pos_np
+        targets_np = self._targets_np
+        speeds_np = self._speeds_np
+        stoch_np = self._stoch_np
+        radii_np = self._radii_np
+        status_np = self._status_np
+        floor_np = self._floor_np
 
         for i, agent in enumerate(agents):
-            pos_np[i] = [agent.location.x, agent.location.y, 1.0]  # Agent sits at Z=1.0
-            targets_np[i] = [agent.target_x, agent.target_y]
+            pos_np[i] = (agent.location.x, agent.location.y, 1.0)  # Z=1.0
+            targets_np[i] = (agent.target_x, agent.target_y)
             speeds_np[i] = agent.movement_speed
             stoch_np[i] = agent.stochasticity
             radii_np[i] = agent.interaction_radius
             status_np[i] = agent.infection_status.value
             floor_np[i] = agent.location.floor
 
-        # 2. Push to GPU (done ONCE)
-        wp_pos = wp.array(pos_np, dtype=wp.vec3)
-        wp_targets = wp.array(targets_np, dtype=wp.vec2)
-        wp_speeds = wp.array(speeds_np, dtype=float)
-        wp_stoch = wp.array(stoch_np, dtype=float)
-        wp_radii = wp.array(radii_np, dtype=float)
-        wp_status = wp.array(status_np, dtype=wp.int32)
-        wp_floors = wp.array(floor_np, dtype=wp.int32)
-        wp_infectors = wp.full(
-            num_agents,
-            -1,
-            dtype=wp.int32,  # type: ignore  # noqa: PGH003
-        )  # pyright: ignore[reportArgumentType]
+        # 2. Push to GPU by copying into the existing persistent buffers
+        wp_pos = self._wp_pos
+        wp_targets = self._wp_targets
+        wp_speeds = self._wp_speeds
+        wp_stoch = self._wp_stoch
+        wp_radii = self._wp_radii
+        wp_status = self._wp_status
+        wp_floors = self._wp_floors
+        wp_infectors = self._wp_infectors
+
+        wp_pos.assign(pos_np)
+        wp_targets.assign(targets_np)
+        wp_speeds.assign(speeds_np)
+        wp_stoch.assign(stoch_np)
+        wp_radii.assign(radii_np)
+        wp_status.assign(status_np)
+        wp_floors.assign(floor_np)
+        wp_infectors.fill_(-1)
 
         # 3. Batch Loop (Eliminates PCIe Roundtrips)
         for _step in range(batch_steps):
@@ -391,6 +469,7 @@ class GPUSpatialQuery:
                     wp_stoch,
                     wp_radii,
                     seed,
+                    self.max_movement_attempts,
                 ],
             )
 
@@ -409,16 +488,22 @@ class GPUSpatialQuery:
                 ],
             )
 
-            # C) Wait for GPU to finish this micro-tick
-            wp.synchronize()
+            # Kernels launched on the same stream execute in issue order, so
+            # downstream launches already wait on upstream ones without an
+            # explicit host sync. `.numpy()` below performs the one sync we
+            # actually need, once, after the whole batch has been queued.
             self.current_tick += 1
+        # ------------------------------------------------------------------------------
 
-        # 4. Pull from GPU (done ONCE at the end of the batch)
+        # ------------------------------------------------------------------------------
+        # 4. Pull from GPU (done Once at the end of the batch)
         new_pos_np = wp_pos.numpy()
         infectors_np = wp_infectors.numpy()
 
+        telemetry_block = np.empty((num_agents, 5), dtype=np.float64)
+
         for i, agent in enumerate(agents):
-            # Update Python Brain using move_to_location for parity
+            # Update Host Agent logic using move_to_location for parity
             new_loc = replace(
                 agent.location, x=float(new_pos_np[i][0]), y=float(new_pos_np[i][1])
             )
@@ -439,16 +524,18 @@ class GPUSpatialQuery:
                     }
                 )
 
-            # Record batched telemetry for the Dash Viewer
-            self.telemetry.append(
-                {
-                    "time": self.current_tick,
-                    "agent_id": agent.idx,
-                    "pos_x": agent.location.x,
-                    "pos_y": agent.location.y,
-                    "status": agent.infection_status.value,
-                }
+            # Stage batched telemetry for the Dash Viewer (vectorized append
+            # below instead of one dict allocation per agent per tick).
+            telemetry_block[i] = (
+                self.current_tick,
+                agent.idx,
+                agent.location.x,
+                agent.location.y,
+                agent.infection_status.value,
             )
+
+        self.telemetry.append(telemetry_block)
+        # ------------------------------------------------------------------------------
 
     # ------------------------------------------------------------------------------
 
@@ -460,7 +547,12 @@ class GPUSpatialQuery:
         out_path.mkdir(parents=True, exist_ok=True)
 
         if self.telemetry:
-            df_telemetry = pd.DataFrame(self.telemetry)
+            telemetry_cols = ["time", "agent_id", "pos_x", "pos_y", "status"]
+            df_telemetry = pd.DataFrame(
+                np.concatenate(self.telemetry, axis=0), columns=telemetry_cols
+            )
+            df_telemetry["agent_id"] = df_telemetry["agent_id"].astype(int)
+            df_telemetry["status"] = df_telemetry["status"].astype(int)
             telemetry_path = out_path / "gpu_sim_telemetry.csv"
             df_telemetry.to_csv(telemetry_path, index=False)
 

@@ -4,6 +4,7 @@ import math
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 # Note: Adjust the import path if needed
@@ -30,10 +31,10 @@ def test_gpu_physics_engine_initialization(tmp_path: Path) -> None:
     assert engine.search_radius == 2.0
     assert isinstance(engine.telemetry, list)
 
-    # Add mock telemetry records to validate the pandas export step
-    engine.telemetry.append(
-        {"time": 0, "agent_id": "A1", "pos_x": 1.5, "pos_y": 2.5, "status": 0}
-    )
+    # Add a mock telemetry block (one row per agent, matching the columns
+    # written by export_data: time, agent_id, pos_x, pos_y, status) to
+    # validate the pandas export step.
+    engine.telemetry.append(np.array([[0, 1, 1.5, 2.5, 0]], dtype=np.float64))
 
     output_dir: Path = tmp_path / "sim_outputs"
     engine.export_data(output_dir=str(output_dir))
