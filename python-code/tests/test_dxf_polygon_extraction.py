@@ -177,6 +177,7 @@ def _open_boundary_config(
     tolerance: float = 1e-6,
     min_length: float = 0.0,
     selector_point: tuple[float, float] | None = None,
+    allow_multiple_spans: bool = False,
 ) -> OpenBoundaryConfig:
     return OpenBoundaryConfig(
         tolerance=tolerance,
@@ -185,6 +186,7 @@ def _open_boundary_config(
             OpenBoundaryPairConfig(
                 rooms=rooms,
                 selector_point=selector_point,
+                allow_multiple_spans=allow_multiple_spans,
             )
         ],
     )
@@ -255,6 +257,10 @@ def test_config_from_yaml_loads_open_boundary_config(tmp_path: Path) -> None:
                 "rooms": ["102", "ANTE-ROOM"],
                 "selector_point": [5.0, 10.0],
             },
+            {
+                "rooms": ["103", "L-SHAPED-CORRIDOR"],
+                "allow_multiple_spans": True,
+            },
         ],
     }
 
@@ -271,6 +277,10 @@ def test_config_from_yaml_loads_open_boundary_config(tmp_path: Path) -> None:
             OpenBoundaryPairConfig(
                 rooms=("102", "ANTE-ROOM"),
                 selector_point=(5.0, 10.0),
+            ),
+            OpenBoundaryPairConfig(
+                rooms=("103", "L-SHAPED-CORRIDOR"),
+                allow_multiple_spans=True,
             ),
         ],
     )
@@ -324,6 +334,31 @@ def test_config_from_yaml_loads_open_boundary_config(tmp_path: Path) -> None:
             },
             ValueError,
             "selector_point.*exactly two coordinates",
+        ),
+        (
+            {
+                "pairs": [
+                    {
+                        "rooms": ["101", "CORRIDOR"],
+                        "allow_multiple_spans": "yes",
+                    }
+                ]
+            },
+            TypeError,
+            "allow_multiple_spans.*boolean",
+        ),
+        (
+            {
+                "pairs": [
+                    {
+                        "rooms": ["101", "CORRIDOR"],
+                        "selector_point": [0.0, 0.0],
+                        "allow_multiple_spans": True,
+                    }
+                ]
+            },
+            ValueError,
+            "cannot combine.*allow_multiple_spans.*selector_point",
         ),
     ],
 )
@@ -624,6 +659,47 @@ def test_construct_open_boundary_rejects_non_straight_span() -> None:
             _open_boundary_config(("101", "CORRIDOR")),
             POLYGON_LABEL_TARGET,
         )
+
+
+def test_construct_open_boundary_allows_configured_multiple_straight_spans() -> None:
+    """An explicitly configured L-shaped opening retains both straight segments."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon(
+                [
+                    (0.0, 0.0),
+                    (10.0, 0.0),
+                    (10.0, 10.0),
+                    (5.0, 10.0),
+                    (5.0, 5.0),
+                    (0.0, 5.0),
+                ]
+            ),
+            Polygon(
+                [
+                    (0.0, 5.0),
+                    (5.0, 5.0),
+                    (5.0, 10.0),
+                    (10.0, 10.0),
+                    (10.0, 15.0),
+                    (0.0, 15.0),
+                ]
+            ),
+        ],
+    )
+
+    spans = construct_open_boundaries(
+        rooms,
+        _open_boundary_config(("101", "CORRIDOR"), allow_multiple_spans=True),
+        POLYGON_LABEL_TARGET,
+    )
+
+    assert [span.geometry for span in spans] == [
+        LineString([(0.0, 5.0), (5.0, 5.0)]),
+        LineString([(5.0, 5.0), (5.0, 10.0)]),
+        LineString([(5.0, 10.0), (10.0, 10.0)]),
+    ]
 
 
 def test_construct_open_boundary_rejects_third_room_participation() -> None:

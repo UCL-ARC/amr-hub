@@ -167,6 +167,7 @@ class OpenBoundaryPairConfig:
 
     rooms: tuple[str, str]
     selector_point: XY | None = None
+    allow_multiple_spans: bool = False
 
 
 @dataclass(frozen=True)
@@ -184,6 +185,18 @@ class OpenBoundarySpan:
 
     rooms: tuple[str, str]
     geometry: LineString
+
+
+@dataclass(frozen=True)
+class _OpenBoundarySpanContext:
+    """Geometry and configuration used to validate constructed spans."""
+
+    labelled_polygons: gpd.GeoDataFrame
+    pair: OpenBoundaryPairConfig
+    config: OpenBoundaryConfig
+    polygon_label_target: str
+    first_boundary: BaseGeometry
+    second_boundary: BaseGeometry
 
 
 @dataclass(frozen=True)
@@ -446,9 +459,18 @@ def _parse_open_boundary_pair(block: object) -> OpenBoundaryPairConfig:
             msg = "Open-boundary 'selector_point' coordinates must be finite"
             raise ValueError(msg)
 
+    allow_multiple_spans = block.get("allow_multiple_spans", False)
+    if not isinstance(allow_multiple_spans, bool):
+        msg = "Open-boundary 'allow_multiple_spans' must be a boolean"
+        raise TypeError(msg)
+    if allow_multiple_spans and selector_point is not None:
+        msg = "Open-boundary cannot combine 'allow_multiple_spans' and 'selector_point'"
+        raise ValueError(msg)
+
     return OpenBoundaryPairConfig(
         rooms=(first_room, second_room),
         selector_point=selector_point,
+        allow_multiple_spans=allow_multiple_spans,
     )
 
 
@@ -585,13 +607,74 @@ def _select_open_boundary_component(
     return matching[0]
 
 
-def _construct_open_boundary_span(
+def _canonicalise_open_boundary_spans(
+    spans: list[LineString],
+    context: _OpenBoundarySpanContext,
+) -> list[LineString]:
+    """Validate, canonicalise, and deterministically order boundary spans."""
+    canonical_spans: list[LineString] = []
+    for raw_span in spans:
+        if not _line_is_straight(raw_span, context.config.tolerance):
+            msg = (
+                "Open-boundary room pair "
+                f"{context.pair.rooms!r} must produce straight spans"
+            )
+            raise ValueError(msg)
+        span = _canonicalise_line_endpoints(raw_span, context.first_boundary)
+        if span.length == 0.0:
+            msg = (
+                "Open-boundary room pair "
+                f"{context.pair.rooms!r} must share a non-zero-length boundary span"
+            )
+            raise ValueError(msg)
+        span = _ordered_line(span)
+        if span.length < context.config.min_length:
+            msg = (
+                f"Open-boundary room pair {context.pair.rooms!r} span length "
+                f"{span.length} is below min_length {context.config.min_length}"
+            )
+            raise ValueError(msg)
+        if not _line_lies_on_boundary(
+            span,
+            context.first_boundary,
+            context.config.tolerance,
+        ) or not _line_lies_on_boundary(
+            span,
+            context.second_boundary,
+            context.config.tolerance,
+        ):
+            msg = (
+                "Open-boundary span must lie on both final room boundaries for "
+                f"room pair {context.pair.rooms!r}"
+            )
+            raise ValueError(msg)
+
+        for room_label, room_geometry in context.labelled_polygons[
+            [context.polygon_label_target, "geometry"]
+        ].itertuples(index=False, name=None):
+            if room_label in context.pair.rooms:
+                continue
+            if span.intersection(room_geometry).length > context.config.tolerance:
+                msg = (
+                    "Open-boundary span for room pair "
+                    f"{context.pair.rooms!r} participates in third room {room_label!r}"
+                )
+                raise ValueError(msg)
+        canonical_spans.append(span)
+
+    return sorted(
+        canonical_spans,
+        key=lambda span: (tuple(span.coords[0]), tuple(span.coords[-1])),
+    )
+
+
+def _construct_open_boundary_spans(
     labelled_polygons: gpd.GeoDataFrame,
     pair: OpenBoundaryPairConfig,
     config: OpenBoundaryConfig,
     polygon_label_target: str,
-) -> LineString:
-    """Construct one canonical span from two final labelled polygons."""
+) -> list[LineString]:
+    """Construct canonical spans from two final labelled polygons."""
     room_geometries = {
         label: labelled_polygons.loc[
             labelled_polygons[polygon_label_target] == label,
@@ -616,6 +699,7 @@ def _construct_open_boundary_span(
     )
     intersection = first_boundary.intersection(snapped_second_boundary)
     components = _linear_components(intersection)
+    unmerged_components = components
     if components:
         linework = unary_union(components)
         merged = linework if isinstance(linework, LineString) else linemerge(linework)
@@ -628,6 +712,7 @@ def _construct_open_boundary_span(
             join_style=2,
         ).intersection(snapped_second_boundary)
         components = _linear_components(tolerant_intersection)
+        unmerged_components = components
         if components:
             linework = unary_union(components)
             merged = (
@@ -648,47 +733,31 @@ def _construct_open_boundary_span(
                     config.tolerance,
                 )
             ]
+            unmerged_components = components
 
-    span = _select_open_boundary_component(components, pair, config.tolerance)
-    if not _line_is_straight(span, config.tolerance):
-        msg = f"Open-boundary room pair {pair.rooms!r} must produce a straight span"
-        raise ValueError(msg)
-    span = _canonicalise_line_endpoints(span, first_boundary)
-    if span.length == 0.0:
+    spans = (
+        unmerged_components
+        if pair.allow_multiple_spans
+        else [_select_open_boundary_component(components, pair, config.tolerance)]
+    )
+    if not spans:
         msg = (
             "Open-boundary room pair "
             f"{pair.rooms!r} must share a non-zero-length boundary span"
         )
         raise ValueError(msg)
-    span = _ordered_line(span)
-    if span.length < config.min_length:
-        msg = (
-            f"Open-boundary room pair {pair.rooms!r} span length "
-            f"{span.length} is below min_length {config.min_length}"
-        )
-        raise ValueError(msg)
-    if not _line_lies_on_boundary(span, first_boundary, config.tolerance) or not (
-        _line_lies_on_boundary(span, second_boundary, config.tolerance)
-    ):
-        msg = (
-            "Open-boundary span must lie on both final room boundaries for "
-            f"room pair {pair.rooms!r}"
-        )
-        raise ValueError(msg)
 
-    for room_label, room_geometry in labelled_polygons[
-        [polygon_label_target, "geometry"]
-    ].itertuples(index=False, name=None):
-        if room_label in pair.rooms:
-            continue
-        if span.intersection(room_geometry).length > config.tolerance:
-            msg = (
-                "Open-boundary span for room pair "
-                f"{pair.rooms!r} participates in third room {room_label!r}"
-            )
-            raise ValueError(msg)
-
-    return span
+    return _canonicalise_open_boundary_spans(
+        spans,
+        _OpenBoundarySpanContext(
+            labelled_polygons=labelled_polygons,
+            pair=pair,
+            config=config,
+            polygon_label_target=polygon_label_target,
+            first_boundary=first_boundary,
+            second_boundary=second_boundary,
+        ),
+    )
 
 
 def construct_open_boundaries(
@@ -701,8 +770,8 @@ def construct_open_boundaries(
 
     The input polygons must be the final corrected and shared-wall-normalised
     geometries. Each configured pair is snapped within ``config.tolerance``
-    before boundary intersection, and only one non-zero, straight span is
-    accepted for each pair.
+    before boundary intersection. Each pair accepts one non-zero, straight span
+    unless explicitly configured to retain multiple straight spans.
 
     Parameters
     ----------
@@ -732,16 +801,14 @@ def construct_open_boundaries(
     )
 
     return [
-        OpenBoundarySpan(
-            rooms=pair.rooms,
-            geometry=_construct_open_boundary_span(
-                labelled_polygons,
-                pair,
-                config,
-                polygon_label_target,
-            ),
-        )
+        OpenBoundarySpan(rooms=pair.rooms, geometry=span)
         for pair in config.pairs
+        for span in _construct_open_boundary_spans(
+            labelled_polygons,
+            pair,
+            config,
+            polygon_label_target,
+        )
     ]
 
 

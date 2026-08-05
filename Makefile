@@ -1,4 +1,4 @@
-.PHONY: help install install-dev install-docs install-all test test-cov lint format type-check docs docs-serve clean pre-commit pre-commit-install simple-example dashboard
+.PHONY: help install install-dev install-docs install-all test test-cov lint format type-check docs docs-serve clean pre-commit pre-commit-install simple-example dashboard floorplan-extraction
 
 # Determine if we're in the repo root or python-code directory
 PYTHON_CODE_DIR := $(shell if [ -d "python-code" ]; then echo "python-code"; else echo "."; fi)
@@ -22,6 +22,7 @@ help:
 	@echo "Example Usage:"
 	@echo "  make simple-example   Run the simple example script"
 	@echo "  make dashboard        Run the Solara dashboard example"
+	@echo "  make floorplan-extraction  Extract the configured floorplan to YAML and a diagnostic image"
 	@echo ""
 	@echo "Development:"
 	@echo "  make test             Run tests with pytest"
@@ -106,3 +107,6 @@ simple-example:
 
 dashboard:
 	$(CD) uv run solara run ../examples/solara_app.py
+
+floorplan-extraction:
+	$(CD) uv run python ../examples/floorplan_extraction.py
