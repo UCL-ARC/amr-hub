@@ -84,6 +84,8 @@ open_boundaries:
     - rooms: ["ROOM_A", "CORRIDOR"]
     - rooms: ["ROOM_B", "ANTE_ROOM"]
       selector_point: [5.0, 10.0]
+    - rooms: ["ROOM_C", "L_SHAPED_CORRIDOR"]
+      allow_multiple_spans: true
 ```
 
 ### Room polygons and labels
@@ -113,7 +115,9 @@ shared-wall and door normalisation.
 The optional `open_boundaries` block identifies room pairs whose shared edge
 has no physical wall. Each pair must contain exactly two distinct room labels.
 An optional `selector_point` disambiguates multiple candidate spans for the
-same pair.
+same pair. Set `allow_multiple_spans: true` for a pair with multiple straight
+shared segments that should all be open; it cannot be combined with
+`selector_point`.
 
 `tolerance` controls permitted numerical coordinate drift and `min_length`
 sets the minimum accepted span length, both in floorplan coordinate units.
@@ -126,8 +130,9 @@ configured door column (or a new `doors` column when no CAD door layer is
 configured), so both connected rooms receive the same segment. Exact matches
 to CAD doors are deduplicated; partial overlaps are rejected. A pair must have
 one contiguous, straight, non-zero-length span that lies on both room
-boundaries; point-only, multipart, ambiguous, and third-room spans are
-rejected.
+boundaries, unless `allow_multiple_spans` is set. In that case, every shared
+segment must be straight and satisfy the same checks. Point-only, ambiguous,
+and third-room spans are rejected.
 
 The returned GeoDataFrame includes `open_boundary_count` for each room and an
 `open_boundary_attachment_report` metadata entry. The report records the
