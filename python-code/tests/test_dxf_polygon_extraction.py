@@ -1103,6 +1103,38 @@ def test_attach_room_doors_projects_door_symbol_onto_shared_wall() -> None:
         assert door_line.difference(result.geometry.iloc[room_id].boundary).is_empty
 
 
+def test_attach_room_doors_merges_paired_rectangular_markers() -> None:
+    """Two rectangular jamb markers become one opening between their outer edges."""
+    rooms = gpd.GeoDataFrame(
+        {
+            GEOMETRY_COLUMN: [
+                Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+                Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+            ]
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+    doors = gpd.GeoDataFrame(
+        {
+            "EntityHandle": ["JAMB-A", "JAMB-B"],
+            GEOMETRY_COLUMN: [
+                LineString(
+                    [(4.0, 1.5), (6.0, 1.5), (6.0, 2.5), (4.0, 2.5), (4.0, 1.5)]
+                ),
+                LineString(
+                    [(4.0, 7.5), (6.0, 7.5), (6.0, 8.5), (4.0, 8.5), (4.0, 7.5)]
+                ),
+            ],
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+
+    result = attach_room_doors(rooms, doors)
+
+    expected_door = [5.0, 1.5, 5.0, 8.5]
+    assert result["doors"].to_list() == [[expected_door], [expected_door]]
+
+
 def test_flatten_z_points_removes_z_dimension() -> None:
     """Z-coordinates are removed from Point geometries."""
     gdf: gpd.GeoDataFrame = gpd.GeoDataFrame(

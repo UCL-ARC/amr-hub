@@ -174,7 +174,8 @@ def polygons_to_rooms(
         Column containing room names.
     door_column : str or None
         Optional column containing lists of canonical door segments represented
-        as ``[x1, y1, x2, y2]``.
+        as ``[x1, y1, x2, y2]``. These spans are emitted as doors and removed
+        from the physical wall list.
     opening_column : str or None
         Optional column containing lists of non-operable opening segments. When
         provided, those segments are emitted as ``openings`` and removed from
@@ -204,12 +205,15 @@ def polygons_to_rooms(
             LineString([(opening[0], opening[1]), (opening[2], opening[3])])
             for opening in opening_values
         ]
+        door_lines = [
+            LineString([(door[0], door[1]), (door[2], door[3])]) for door in door_values
+        ]
 
         d = {
             "name": row[room_name_column],
             "walls": _polygon_to_walls(
                 row.geometry,
-                opening_lines,
+                [*opening_lines, *door_lines],
                 opening_tolerance=opening_tolerance,
             ),
             "doors": door_values,
