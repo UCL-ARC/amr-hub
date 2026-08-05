@@ -1202,12 +1202,27 @@ def _polygon_boundary_segments(geometry: BaseGeometry) -> list[LineString]:
     return [LineString([start, end]) for start, end in pairwise(coords) if start != end]
 
 
+def _is_rectangular_door_marker(geometry: BaseGeometry) -> bool:
+    """Return whether geometry is a closed four-sided CAD door marker."""
+    if not isinstance(geometry, LineString) or not geometry.is_ring:
+        return False
+
+    coordinates = list(geometry.coords)
+    if len(coordinates) != 5:
+        return False
+
+    return Polygon(coordinates).is_valid and Polygon(coordinates).area > 0.0
+
+
 def _project_geometry_onto_segment(
     geometry: BaseGeometry,
     segment: LineString,
     tolerance: float,
     min_length: float,
 ) -> LineString | None:
+    if geometry.distance(segment) > tolerance:
+        return None
+
     nearby_geometry = geometry.intersection(
         segment.buffer(tolerance, cap_style="square")
     )
@@ -1236,6 +1251,72 @@ def _canonical_line_key(line: LineString) -> tuple[XY, XY]:
     end = (round(line.coords[-1][0], 8), round(line.coords[-1][1], 8))
     ordered = sorted((start, end))
     return ordered[0], ordered[1]
+
+
+def _merge_paired_door_markers(
+    projected_doors: gpd.GeoDataFrame,
+    config: DoorAttachmentConfig,
+) -> gpd.GeoDataFrame:
+    """Merge two collinear rectangular door markers into one opening span."""
+    if projected_doors.empty:
+        return projected_doors
+
+    rows = []
+    for _, group in projected_doors.groupby("projected_room_ids", sort=False):
+        markers = group.loc[group["is_rectangular_marker"]]
+        if len(group) != 2 or len(markers) != 2:
+            rows.extend(group.to_dict("records"))
+            continue
+
+        first, second = markers.geometry.iloc[0], markers.geometry.iloc[1]
+        origin = first.coords[0]
+        direction = (
+            first.coords[-1][0] - origin[0],
+            first.coords[-1][1] - origin[1],
+        )
+        direction_length = (direction[0] ** 2 + direction[1] ** 2) ** 0.5
+        if direction_length == 0.0:
+            rows.extend(group.to_dict("records"))
+            continue
+        if any(
+            abs(
+                direction[0] * (coordinate[1] - origin[1])
+                - direction[1] * (coordinate[0] - origin[0])
+            )
+            / direction_length
+            > config.boundary_tolerance
+            for coordinate in second.coords
+        ):
+            rows.extend(group.to_dict("records"))
+            continue
+
+        coordinates = [*first.coords, *second.coords]
+        distances = [
+            direction[0] * (coordinate[0] - origin[0])
+            + direction[1] * (coordinate[1] - origin[1])
+            for coordinate in coordinates
+        ]
+        opening = LineString(
+            [
+                coordinates[distances.index(min(distances))],
+                coordinates[distances.index(max(distances))],
+            ]
+        )
+        door_quad = _line_to_xyxy(opening)
+        if door_quad is None:
+            rows.extend(group.to_dict("records"))
+            continue
+        rows.append(
+            {
+                config.entity_col: tuple(markers[config.entity_col]),
+                "geometry": opening,
+                "door_xyxy": door_quad,
+                "projected_room_ids": markers["projected_room_ids"].iloc[0],
+                "is_rectangular_marker": True,
+            }
+        )
+
+    return gpd.GeoDataFrame(rows, geometry="geometry", crs=projected_doors.crs)
 
 
 def _project_doors_onto_room_boundaries(
@@ -1291,7 +1372,8 @@ def _project_doors_onto_room_boundaries(
                 config.entity_col: door[config.entity_col],
                 "geometry": projection,
                 "door_xyxy": door_quad,
-                "projected_room_ids": room_ids,
+                "projected_room_ids": frozenset(room_ids),
+                "is_rectangular_marker": _is_rectangular_door_marker(door.geometry),
             }
         )
 
@@ -1307,7 +1389,8 @@ def _project_doors_onto_room_boundaries(
             crs=rooms.crs,
         )
 
-    return gpd.GeoDataFrame(rows, geometry="geometry", crs=rooms.crs)
+    projected_doors = gpd.GeoDataFrame(rows, geometry="geometry", crs=rooms.crs)
+    return _merge_paired_door_markers(projected_doors, config)
 
 
 def attach_room_doors(

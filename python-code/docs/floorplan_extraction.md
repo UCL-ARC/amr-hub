@@ -134,6 +134,14 @@ boundaries, unless `allow_multiple_spans` is set. In that case, every shared
 segment must be straight and satisfy the same checks. Point-only, ambiguous,
 and third-room spans are rejected.
 
+Two rectangular CAD door markers on the same shared room boundary are treated
+as jambs: their outer endpoints define one passable opening. Other CAD door
+geometries retain their directly projected boundary overlap.
+
+All CAD door spans are emitted in `doors` and removed from the physical `walls`
+list. This makes the serialised door segment both the room-connection record and
+the corresponding collision-free opening for movement.
+
 The returned GeoDataFrame includes `open_boundary_count` for each room and an
 `open_boundary_attachment_report` metadata entry. The report records the
 configured room pair, canonical segment, and whether each room received a new

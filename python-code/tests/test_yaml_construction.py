@@ -164,6 +164,28 @@ def test_open_boundary_round_trip_creates_shared_floor_connection(
     assert reader.door_list[0].end == (5.0, 10.0)
     assert floor.edge_set == {(0, 1), (1, 0)}
     assert floor.adjacency_matrix.tolist() == [[0, 1], [1, 0]]
+    assert all(len(room["walls"]) == 3 for room in rooms)
+
+
+def test_door_serialisation_excludes_span_from_physical_walls() -> None:
+    """A physical door creates a gap in the collision-wall geometry."""
+    door = [5.0, 3.0, 5.0, 7.0]
+    rooms_gdf = gpd.GeoDataFrame(
+        {
+            ROOM_NAME_COLUMN: ["101", "CORRIDOR"],
+            "doors": [[door], [door]],
+            "geometry": [
+                Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+                Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+            ],
+        },
+        geometry="geometry",
+    )
+
+    rooms = polygons_to_rooms(rooms_gdf, ROOM_NAME_COLUMN, door_column="doors")
+
+    assert all(len(room["walls"]) == 5 for room in rooms)
+    assert all(room["doors"] == [FlowList(door)] for room in rooms)
 
 
 def test_opening_serialisation_excludes_span_from_physical_walls() -> None:
