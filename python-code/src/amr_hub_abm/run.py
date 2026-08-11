@@ -13,7 +13,10 @@ from amr_hub_abm.simulation_factory import create_simulation
 logger = logging.getLogger(__name__)
 
 
-def simulate(  # noqa: PLR0912, PLR0913
+# =============================================================================
+# Main Entry point
+# =============================================================================
+def simulate(  # noqa: PLR0913
     *,
     plot: bool = False,
     record: bool = False,
@@ -40,23 +43,15 @@ def simulate(  # noqa: PLR0912, PLR0913
 
     """
     config = sim_config
-    simulation = create_simulation(config)
-    # --------------------------------------------------------------------------
-    # 6/5/2026 NG Added
-    simulation.use_gpu = use_gpu
-    for agent in simulation.agents:
-        agent.use_gpu = use_gpu
+    simulation = create_simulation(config, use_gpu=use_gpu)
 
     if use_gpu:
         logger.info("GPU Acceleration Enabled: Routing physics to NVIDIA Warp")
-        if plot or plot_trajectory:
-            logger.warning("PNG generation is disabled in GPU mode")
-        plot = False
-        plot_trajectory = False
+        # Note: Plotting is now fully supported in GPU mode via unified spatial_engine
     else:
         logger.info("CPU Mode Enabled: Using legacy Python movement logic")
-    # --------------------------------------------------------------------------
 
+    # Manual setting infections should be replaced @yidilozdemir@arindamsaha1507
     if seed_infections:
         simulation.agents[0].infection_status = InfectionStatus.INFECTED
         simulation.agents[1].infection_status = InfectionStatus.EXPOSED
@@ -65,17 +60,20 @@ def simulate(  # noqa: PLR0912, PLR0913
         output_dir = Path("../simulation_outputs")
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Loop over each agent
+    # Debug info Loop over each agent
     for agent in simulation.agents:
         msg = f"Agent {agent.agent_type, agent.idx} task list"
         logger.info(msg)
         msg = f"{[task.task_type.value for task in agent.tasks]}"
         logger.info(msg)
-    logger.info("Simulation created successfully...")
 
+    logger.info("Simulation starting...")
     plot_path = Path("../simulation_outputs") if plot else None
 
+    # --------------------------------------------------------------------------
+    # This is the core sim where agent activity is simulated between recorded events
     run_steps(simulation, plot_path, record=record)
+    # --------------------------------------------------------------------------
 
     if plot_trajectory:
         record = True
@@ -95,12 +93,13 @@ def simulate(  # noqa: PLR0912, PLR0913
                 msg = "Plot path must be provided to plot agent trajectories."
                 raise ValueError(msg)
             simulation.plot_agent_trajectories(record_path)
-    # --------------------------------------------------------------------------
 
-    # NG: Writes Results to Disk
-    if getattr(simulation, "use_gpu", False) and simulation.gpu_engine is not None:
+    # Writes Results to Disk (Updated to use unified spatial_engine)
+    if getattr(simulation, "use_gpu", False) and hasattr(
+        simulation.spatial_engine, "export_data"
+    ):
         logger.info("Exporting GPU Telemetry to disk")
-        simulation.gpu_engine.export_data(output_dir="simulation_outputs")
+        simulation.spatial_engine.export_data(output_dir="simulation_outputs")
 
     logger.info("Simulation completed successfully...")
 
@@ -109,6 +108,10 @@ def simulate(  # noqa: PLR0912, PLR0913
         plt.show()  # final blocking show so window stays up after sim ends
 
 
+# =============================================================================
+
+
+# =============================================================================
 def run_steps(
     simulation: Simulation,
     plot_path: Path | None,
@@ -141,6 +144,10 @@ def run_steps(
             simulation.plot_live(figures, trajectory=trajectory)
 
 
+# =============================================================================
+
+# =============================================================================
 # Make True for GPU
 if __name__ == "__main__":
     simulate(use_gpu=False, record=True)
+# =============================================================================

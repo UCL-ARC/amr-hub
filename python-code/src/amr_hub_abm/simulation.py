@@ -10,8 +10,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from amr_hub_abm.exceptions import TimeError
-from amr_hub_abm.gpu_physics import GPUPhysicsEngine
 from amr_hub_abm.spatial.engine import SpatialQuery
+from amr_hub_abm.spatial.engine_gpu import GPUSpatialQuery
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -77,52 +77,32 @@ class Simulation:
 
     # NG Added Flag for GPU Acceleration
     use_gpu: bool = field(default=False)
-    gpu_engine: Any = field(default=None, init=False)
+    # Unified engine property (handles both CPU and GPU cleanly)
     spatial_engine: Any = field(default=None, init=False)
     agent_max_movement_attempts: int = field(default=5)
     # ------------------------------------------------------------------------------
 
     def __post_init__(self) -> None:
-        """Init for GPU to load CAD once at the start."""
+        """Initialize the appropriate spatial engine (CPU or GPU)."""
         if self.use_gpu:
-            self.gpu_engine = GPUPhysicsEngine()
-        # Initialize the CPU engine
+            # Pass the required interface arguments to the GPU engine
+            self.spatial_engine = GPUSpatialQuery(
+                space=self.space,
+                max_movement_attempts=self.agent_max_movement_attempts,
+            )
         else:
             self.spatial_engine = SpatialQuery(
                 space=self.space,
                 max_movement_attempts=self.agent_max_movement_attempts,
             )
-            self._agent_store = None
+
+        self._agent_store = None
+
+    # ------------------------------------------------------------------------------
 
     # ------------------------------------------------------------------------------
     def step(self, plot_path: Path | None = None, *, record: bool = False) -> None:
-        """
-        Advance the simulation by one time step.
-
-        This method performs the following actions:
-
-        1. Checks if the simulation has already reached its total simulation time
-        and raises an error if so.
-
-        2. Randomizes the order of agents to avoid bias in action execution.
-
-        3. Iterates through each agent and calls their `perform_task` method to
-        execute their current task.
-
-        4. If a `plot_path` is provided, it calls the `plot_current_state` method to
-        save a plot of the current state of the simulation.
-
-        5. Increments the simulation time by one step.
-
-        Parameters
-        ----------
-        plot_path : Path | None
-            Directory to save the plot of the current state. If None, no plot is saved.
-        record : bool
-            Whether to record the state of agents during their task execution. Passed to
-            the `perform_task` method of agents.
-
-        """
+        """Advance the simulation by one time step."""
         if self.time >= self.total_simulation_time:
             msg = "Simulation has already reached its total simulation time."
             raise TimeError(msg)
@@ -130,19 +110,26 @@ class Simulation:
         # randomize agent order each step to avoid bias
         self.rng_generator.shuffle(self.agents)
 
-        # NG: GPU Updates Agents
+        # --------------------------------------------------------------------------
+        # 1. CPU Evaluates Logic and set targets but if GPU then no movement
+        # --------------------------------------------------------------------------
+        # Always run the task state machine so agents transition correctly.
+        # If engine is type gpu then polymorphic move_one_step does nothing
+        for agent in self.agents:
+            agent.perform_task(
+                current_time=self.time, engine=self.spatial_engine, record=record
+            )
+
+        # --------------------------------------------------------------------------
+        # 2. GPU Handover to do "move_one_step"
+        # --------------------------------------------------------------------------
         if self.use_gpu:
-            self.gpu_engine.step_physics(self.agents)  # Takes the step and query
+            # GPU computes collision, stochastics, and proximity in one parallel batch
+            self.spatial_engine.step_physics(self.agents)
+        # --------------------------------------------------------------------------
 
-        # CPU Updates all agents
-        else:
-            for agent in self.agents:
-                agent.perform_task(
-                    current_time=self.time, engine=self.spatial_engine, record=record
-                )
-
-            if plot_path is not None:
-                self.plot_current_state(directory_path=plot_path)
+        if plot_path is not None:
+            self.plot_current_state(directory_path=plot_path)
 
         self.time += 1
 
@@ -175,7 +162,7 @@ class Simulation:
         directory_path.mkdir(parents=True, exist_ok=True)
 
         for building in self.space:
-            axes: list[Axes] = [plt.subplots(nrows=len(building.floors), ncols=1)[1]]
+            axes: list[Axes] = [plt.subplots(nrows=len(building.floors), ncols=1)[1]]  # type: ignore  # noqa: PGH003
             building.plot_building(axes=axes, agents=self.agents, trajectory=trajectory)
             simulation_name = f"Simulation: {self.name}"
             if trajectory:
@@ -225,7 +212,7 @@ class Simulation:
             building.plot_building(
                 axes=axes,
                 agents=self.agents,
-                trajectory=trajectory,  # <- key change
+                trajectory=trajectory,
             )
 
             title = (

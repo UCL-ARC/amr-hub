@@ -72,7 +72,7 @@ config parameter.
 | `config_path` argument    | `"tests/inputs/simulation_config.yml"`  | `python-code/src/amr_hub_abm/mesa_wrapper.py` | Stored on `HospitalABM`, but not actually used to load config |
 | plot output dir           | `"../simulation_outputs"`               | `python-code/src/amr_hub_abm/run.py`          | Used for PNG output                                           |
 | agent state output path   | `"simulation_outputs/agent_states.csv"` | `python-code/src/amr_hub_abm/run.py`          | Used for CSV recording                                        |
-| GPU export output dir     | `"simulation_outputs"`                  | `python-code/src/amr_hub_abm/run.py`          | Passed through to `GPUPhysicsEngine.export_data()`            |
+| GPU export output dir     | `"simulation_outputs"`                  | `python-code/src/amr_hub_abm/run.py`          | Passed through to `GPUSpatialQuery.export_data()`             |
 | live-plot refresh cadence | `simulation.time % 100 == 0`            | `python-code/src/amr_hub_abm/run.py`          |                                                               |
 
 ### GPU config caveat
