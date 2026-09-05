@@ -10,7 +10,11 @@ import pandas as pd
 from amr_hub_abm.agent.agent import Agent, AgentType
 from amr_hub_abm.agent.kinematics import AgentKinematicsConfig
 from amr_hub_abm.config import SimulationConfig
-from amr_hub_abm.exceptions import SimulationModeError
+from amr_hub_abm.exceptions import InvalidDefinitionError, SimulationModeError
+from amr_hub_abm.location_data import (
+    read_location_timeseries,
+    validate_location_timeseries,
+)
 from amr_hub_abm.read_space_input import SpaceInputReader
 from amr_hub_abm.simulation import Simulation, SimulationMode
 from amr_hub_abm.spatial.furniture import ContentType
@@ -52,23 +56,43 @@ def create_simulation(
     task_durations = config.task_durations
     rng_generator = np.random.default_rng()
 
-    buildings_path = Path(config.config_data["buildings_path"])
+    buildings_path_value = config.config_data["buildings_path"]
+    if not isinstance(buildings_path_value, (str, Path)):
+        msg = "'buildings_path' must be a path string."
+        raise InvalidDefinitionError(msg)
+    buildings_path = Path(buildings_path_value)
     msg = f"Buildings path from config: {buildings_path}"
     logger.debug(msg)
     space_reader = SpaceInputReader(buildings_path, rng_generator)
     logger.debug("Buildings loaded successfully.")
     logger.debug(space_reader.buildings)
 
-    start_time = pd.to_datetime(config.config_data["start_time"])
-    end_time = pd.to_datetime(config.config_data["end_time"])
+    start_time = pd.to_datetime(str(config.config_data["start_time"]))
+    end_time = pd.to_datetime(str(config.config_data["end_time"]))
     total_seconds = (end_time - start_time).total_seconds()
-    time_step_length_seconds = config.config_data["length_of_timestep_in_seconds"]
+    time_step_value = config.config_data["length_of_timestep_in_seconds"]
+    if (
+        isinstance(time_step_value, bool)
+        or not isinstance(time_step_value, int)
+        or time_step_value <= 0
+    ):
+        msg = "'length_of_timestep_in_seconds' must be a positive integer."
+        raise InvalidDefinitionError(msg)
+    time_step_length_seconds = time_step_value
     total_steps = int(total_seconds // time_step_length_seconds)
     logger.info("Total simulation time steps: %d", total_steps)
 
-    timeseries_data = read_location_timeseries(
-        file_path=Path(config.config_data["location_timeseries_path"])
+    timeseries_data = read_location_timeseries(config.location_data)
+    validation_report = validate_location_timeseries(
+        data=timeseries_data,
+        rooms=space_reader.rooms,
+        start_time=start_time,
+        end_time=end_time,
+        task_durations=task_durations,
     )
+    for warning in validation_report.warnings:
+        logger.warning("Location data validation warning: %s", warning)
+    validation_report.raise_for_errors()
 
     agents = parse_location_timeseries(
         timeseries_data=timeseries_data,
@@ -289,30 +313,6 @@ def update_hcw(  # noqa: PLR0913
     )
 
 
-def read_location_timeseries(
-    file_path: Path,
-) -> pd.DataFrame:
-    """
-    Read a CSV file containing location time series data for agents.
-
-    Parameters
-    ----------
-    file_path : Path
-        Path to the CSV file.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing the location time series data.
-
-    """
-    if not file_path.exists():
-        msg = f"Location time series file not found: {file_path}"
-        raise FileNotFoundError(msg)
-
-    return pd.read_csv(file_path)
-
-
 # ------------------------------------------------------------------------------
 # Main Function that reads the sparse collected data into memory
 # ------------------------------------------------------------------------------
@@ -327,7 +327,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
     task_durations: TaskDurationConfig,
 ) -> list[Agent]:
     """
-    Parse a CSV file containing location time series data for agents.
+    Parse validated location-event data for agents.
 
     Parameters
     ----------
@@ -358,15 +358,14 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
 
     for _, row in timeseries_data.iterrows():
         hcw_id = int(row["hcw_id"])
-        timestamp = row["timestamp"]
-        location_str = row["location"]
-        patient_id = int(row["patient_id"]) if row["patient_id"] != "-" else None
-        event_type = row["event_type"]
-        door_id = int(row["door_id"]) if row["door_id"] != "-" else None
+        timestamp = pd.Timestamp(row["timestamp"])
+        location_str = str(row["location"])
+        patient_id = _optional_int(row["patient_id"])
+        event_type = str(row["event_type"])
+        door_id = _optional_int(row["door_id"])
 
-        timestep = pd.to_datetime(timestamp)
         timestep_index = timestamp_to_timestep(
-            timestep, start_time, time_scaling_factor
+            timestamp, start_time, time_scaling_factor
         )
         building, floor, room_str = parse_location_string(location_str)
         additional_info: dict[Any, Any] = {}
@@ -388,7 +387,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
             msg = f"Patient ID must be provided for 'attend' events. Row: {row}"
             raise SimulationModeError(msg)
 
-        if patient_id:
+        if patient_id is not None:
             update_patient(
                 patient_id=patient_id,
                 space_tuple=(building, floor, room),
@@ -481,9 +480,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
             )
 
         elif event_type == "occupy_content":
-            content_type = (
-                int(row["content_type"]) if row["content_type"] != "-" else None
-            )
+            content_type = _optional_int(row["content_type"])
             if content_type is None:
                 msg = "Content type must be provided for 'occupy_content' events. "
                 msg += f"Row: {row}"
@@ -493,7 +490,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
             # the content's location when the task is executed
 
             location = Location(building=building, floor=floor, x=0, y=0)
-            additional_info["content_type"] = content_type
+            additional_info["content_type"] = ContentType(content_type)
             additional_info["room"] = room
 
         else:
@@ -513,6 +510,13 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
         )
 
     return list(hcw_dict.values()) + list(patient_dict.values())
+
+
+def _optional_int(value: object) -> int | None:
+    """Convert a nullable location-event value to an optional integer."""
+    if pd.isna(value) or value in {"", "-"}:  # pyright: ignore[reportArgumentType, reportCallIssue]
+        return None
+    return int(str(value))
 
 
 def timestamp_to_timestep(
