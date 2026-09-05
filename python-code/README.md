@@ -92,14 +92,37 @@ Simulation parameters are defined in `tests/inputs/simulation_config.yml`:
 
 ```yaml
 mode: data driven # "data driven" or "rule based"
-location_timeseries_path: tests/inputs/location_timeseries.csv # HCW location events
+location_data:
+  format: duckdb
+  path: tests/inputs/location_timeseries.duckdb
+  table: location_timeseries
+  schema_version: 1
 buildings_path: tests/inputs/buildings.yml # building/floor/room layout
 start_time: 2024-01-01 00:00:00
 end_time: 2024-01-02 00:00:00
 length_of_timestep_in_seconds: 1
 ```
 
-The location timeseries CSV defines the schedule of events for each healthcare worker (HCW): which patient to attend, when, which doors to access, and where to sit. See `tests/inputs/location_timeseries.csv` for an example.
+The location-event table defines the schedule for each healthcare worker (HCW):
+which patient to attend, when, which doors to access, and where to sit. The
+DuckDB file is opened read-only and checked before the simulation starts. Schema,
+version, event values, timestamps, and references to rooms, doors, and room content
+must all pass validation.
+
+The expected DuckDB database contains an `amr_hub_schema` metadata table and a
+`location_timeseries` event table. Events are processed deterministically using the
+explicit `event_sequence` column. The synthetic test database at
+`tests/inputs/location_timeseries.duckdb` is an example of schema version 1.
+
+Legacy CSV input remains available during the migration period:
+
+```yaml
+location_timeseries_path: tests/inputs/location_timeseries.csv
+```
+
+That setting is deprecated and emits a `DeprecationWarning`. CSV input is normalized
+to the same in-memory columns and goes through the same preflight validation as
+DuckDB input.
 
 #### Running from the terminal
 
