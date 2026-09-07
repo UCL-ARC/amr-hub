@@ -8,7 +8,7 @@ import pytest
 
 from amr_hub_abm.config import (
     LocationDataConfig,
-    LocationDataFormat,
+    LocationTimeseriesDataFormat,
     sim_config,
 )
 from amr_hub_abm.exceptions import LocationDataValidationError
@@ -24,7 +24,7 @@ def test_duckdb_and_legacy_csv_have_equivalent_events() -> None:
     duckdb_data = read_location_timeseries(sim_config.location_data)
     csv_data = read_location_timeseries(
         LocationDataConfig(
-            format=LocationDataFormat.CSV,
+            format=LocationTimeseriesDataFormat.CSV,
             path=Path("tests/inputs/location_timeseries.csv"),
         )
     )
@@ -59,7 +59,7 @@ def test_duckdb_schema_version_mismatch_is_rejected(tmp_path: Path) -> None:
         )
 
     source = LocationDataConfig(
-        format=LocationDataFormat.DUCKDB,
+        format=LocationTimeseriesDataFormat.DUCKDB,
         path=database_path,
         schema_version=1,
     )
@@ -74,7 +74,7 @@ def test_duckdb_collects_metadata_and_column_errors(tmp_path: Path) -> None:
         connection.execute("CREATE TABLE location_timeseries (hcw_id VARCHAR)")
 
     source = LocationDataConfig(
-        format=LocationDataFormat.DUCKDB,
+        format=LocationTimeseriesDataFormat.DUCKDB,
         path=database_path,
     )
     with pytest.raises(LocationDataValidationError) as exc_info:

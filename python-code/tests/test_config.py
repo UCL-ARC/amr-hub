@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from amr_hub_abm.config import LocationDataConfig, LocationDataFormat
+from amr_hub_abm.config import LocationDataConfig, LocationTimeseriesDataFormat
 from amr_hub_abm.exceptions import InvalidDefinitionError
 
 
@@ -21,7 +21,7 @@ def test_explicit_duckdb_location_data_config() -> None:
         }
     )
 
-    assert source.format == LocationDataFormat.DUCKDB
+    assert source.format == LocationTimeseriesDataFormat.DUCKDB
     assert source.path == Path("events.duckdb")
     assert source.table == "events"
     assert source.schema_version == 3
@@ -34,7 +34,7 @@ def test_legacy_csv_location_data_config_warns() -> None:
             {"location_timeseries_path": "events.csv"}
         )
 
-    assert source.format == LocationDataFormat.CSV
+    assert source.format == LocationTimeseriesDataFormat.CSV
     assert source.path == Path("events.csv")
 
 
