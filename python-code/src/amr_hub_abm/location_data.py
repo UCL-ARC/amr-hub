@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import duckdb
 import pandas as pd
 
-from amr_hub_abm.config import LocationDataConfig, LocationDataFormat
+from amr_hub_abm.config import LocationDataConfig, LocationTimeseriesDataFormat
 from amr_hub_abm.exceptions import LocationDataValidationError
 from amr_hub_abm.spatial.furniture import ContentType
 
@@ -66,7 +66,7 @@ def read_location_timeseries(source: LocationDataConfig) -> pd.DataFrame:
         msg = f"Location data file not found: {source.path}"
         raise FileNotFoundError(msg)
 
-    if source.format == LocationDataFormat.CSV:
+    if source.format == LocationTimeseriesDataFormat.CSV:
         data = _read_csv(source.path)
     else:
         data = _read_duckdb(source)

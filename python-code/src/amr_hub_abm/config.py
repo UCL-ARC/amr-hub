@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 
-class LocationDataFormat(StrEnum):
+class LocationTimeseriesDataFormat(StrEnum):
     """Supported location-event input formats."""
 
     CSV = "csv"
@@ -29,7 +29,7 @@ class LocationDataFormat(StrEnum):
 class LocationDataConfig:
     """Configuration for a location-event data source."""
 
-    format: LocationDataFormat
+    format: LocationTimeseriesDataFormat
     path: Path
     table: str = "location_timeseries"
     schema_version: int = 1
@@ -53,7 +53,7 @@ class LocationDataConfig:
                 DeprecationWarning,
                 stacklevel=2,
             )
-            return cls(format=LocationDataFormat.CSV, path=Path(legacy_path))
+            return cls(format=LocationTimeseriesDataFormat.CSV, path=Path(legacy_path))
 
         if not isinstance(source, dict):
             msg = "'location_data' must be a mapping."
@@ -68,7 +68,7 @@ class LocationDataConfig:
             msg = "'location_data.format' must be 'csv' or 'duckdb'."
             raise InvalidDefinitionError(msg)
         try:
-            data_format = LocationDataFormat(format_value)
+            data_format = LocationTimeseriesDataFormat(format_value)
         except ValueError as exc:
             msg = "'location_data.format' must be 'csv' or 'duckdb'."
             raise InvalidDefinitionError(msg) from exc
