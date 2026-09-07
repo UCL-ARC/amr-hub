@@ -26,7 +26,7 @@ class LocationTimeseriesDataFormat(StrEnum):
 
 
 @dataclass(frozen=True)
-class LocationDataConfig:
+class LocationTimeseriesDataConfig:
     """Configuration for a location-event data source."""
 
     format: LocationTimeseriesDataFormat
@@ -35,7 +35,9 @@ class LocationDataConfig:
     schema_version: int = 1
 
     @classmethod
-    def from_config(cls, config_data: Mapping[str, object]) -> LocationDataConfig:
+    def from_config(
+        cls, config_data: Mapping[str, object]
+    ) -> LocationTimeseriesDataConfig:
         """Build location-event configuration with legacy CSV compatibility."""
         source = config_data.get("location_data")
         legacy_path = config_data.get("location_timeseries_path")
@@ -111,7 +113,7 @@ class SimulationConfig:
 
     agent_kinematics: AgentKinematicsConfig
     task_durations: TaskDurationConfig
-    location_data: LocationDataConfig
+    location_data: LocationTimeseriesDataConfig
     config_data: Mapping[str, object]
 
     @classmethod
@@ -135,7 +137,7 @@ class SimulationConfig:
 
         agent_kinematics = AgentKinematicsConfig.from_config(config_data)
         task_durations = TaskDurationConfig.from_config(config_data)
-        location_data = LocationDataConfig.from_config(config_data)
+        location_data = LocationTimeseriesDataConfig.from_config(config_data)
 
         return cls(
             agent_kinematics=agent_kinematics,
