@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from amr_hub_abm.config import (
-    LocationDataConfig,
+    LocationTimeseriesDataConfig,
     LocationTimeseriesDataFormat,
     sim_config,
 )
@@ -23,7 +23,7 @@ def test_duckdb_and_legacy_csv_have_equivalent_events() -> None:
     """Test that both supported formats normalize to the same event values."""
     duckdb_data = read_location_timeseries(sim_config.location_data)
     csv_data = read_location_timeseries(
-        LocationDataConfig(
+        LocationTimeseriesDataConfig(
             format=LocationTimeseriesDataFormat.CSV,
             path=Path("tests/inputs/location_timeseries.csv"),
         )
@@ -58,7 +58,7 @@ def test_duckdb_schema_version_mismatch_is_rejected(tmp_path: Path) -> None:
             "INSERT INTO amr_hub_schema VALUES ('location_timeseries', 2)"
         )
 
-    source = LocationDataConfig(
+    source = LocationTimeseriesDataConfig(
         format=LocationTimeseriesDataFormat.DUCKDB,
         path=database_path,
         schema_version=1,
@@ -73,7 +73,7 @@ def test_duckdb_collects_metadata_and_column_errors(tmp_path: Path) -> None:
     with duckdb.connect(str(database_path)) as connection:
         connection.execute("CREATE TABLE location_timeseries (hcw_id VARCHAR)")
 
-    source = LocationDataConfig(
+    source = LocationTimeseriesDataConfig(
         format=LocationTimeseriesDataFormat.DUCKDB,
         path=database_path,
     )

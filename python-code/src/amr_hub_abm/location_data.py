@@ -9,7 +9,10 @@ from typing import TYPE_CHECKING
 import duckdb
 import pandas as pd
 
-from amr_hub_abm.config import LocationDataConfig, LocationTimeseriesDataFormat
+from amr_hub_abm.config import (
+    LocationTimeseriesDataConfig,
+    LocationTimeseriesDataFormat,
+)
 from amr_hub_abm.exceptions import LocationDataValidationError
 from amr_hub_abm.spatial.furniture import ContentType
 
@@ -60,7 +63,7 @@ class LocationDataValidationReport:
             raise LocationDataValidationError(self.errors, self.warnings)
 
 
-def read_location_timeseries(source: LocationDataConfig) -> pd.DataFrame:
+def read_location_timeseries(source: LocationTimeseriesDataConfig) -> pd.DataFrame:
     """Read CSV or DuckDB location events into one canonical DataFrame."""
     if not source.path.exists():
         msg = f"Location data file not found: {source.path}"
@@ -86,7 +89,7 @@ def _read_csv(file_path: Path) -> pd.DataFrame:
     return data
 
 
-def _read_duckdb(source: LocationDataConfig) -> pd.DataFrame:
+def _read_duckdb(source: LocationTimeseriesDataConfig) -> pd.DataFrame:
     """Read a versioned DuckDB location-event table in read-only mode."""
     if TABLE_NAME_PATTERN.fullmatch(source.table) is None:
         msg = f"Invalid DuckDB table name: {source.table!r}"
@@ -119,7 +122,7 @@ def _read_duckdb(source: LocationDataConfig) -> pd.DataFrame:
 
 def _validate_duckdb_metadata(
     connection: duckdb.DuckDBPyConnection,
-    source: LocationDataConfig,
+    source: LocationTimeseriesDataConfig,
     errors: list[str],
 ) -> None:
     """Validate the location-event schema version stored in DuckDB."""
