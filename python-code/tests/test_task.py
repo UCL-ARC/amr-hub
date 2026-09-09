@@ -23,6 +23,7 @@ from amr_hub_abm.task.task import (
     TaskProgress,
     TaskType,
 )
+from amr_hub_abm.task.tasklist import perform_to_be_started_task
 
 
 @pytest.fixture
@@ -460,11 +461,118 @@ def test_occupy_content_task_prepare(
 ) -> None:
     """Test the prepare method of TaskOccupyContent."""
     task = sample_occupy_content_task
-    task.prepare(sample_agent)
+    assert task.prepare(sample_agent)
 
     assert task.location is not None
     assert task.location.building == "A"
     assert task.location.floor == 0
+    assert task.content is not None
+    assert task.content.reserver_id is None
+
+
+def test_occupy_content_task_reserves_only_when_dispatched(
+    sample_occupy_content_task: TaskOccupyContent, sample_agent: Agent
+) -> None:
+    """Test that preparing is provisional and dispatch reserves the content."""
+    task = sample_occupy_content_task
+    agent_id = (sample_agent.idx, sample_agent.agent_type)
+
+    assert task.prepare(sample_agent)
+    assert task.content is not None
+    assert task.content.reserver_id is None
+
+    assert task.on_dispatch(sample_agent)
+    assert task.content.reserver_id == agent_id
+
+
+def test_occupy_content_task_waits_for_reserved_content(
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """Test that a task waits and retries while all matching content is reserved."""
+    task = sample_occupy_content_task
+    assert task.room is not None
+    chair = task.room.contents[0]
+    other_agent_id = (999, AgentType.HEALTHCARE_WORKER)
+    assert chair.try_reserve(other_agent_id)
+    sample_agent.location = Location(building="A", floor=0, x=1.0, y=1.0)
+    sample_agent.tasks = [task]
+
+    assert perform_to_be_started_task(sample_agent, 30, sample_engine)
+    assert task.progress == TaskProgress.NOT_STARTED
+    assert task.content is None
+    assert sample_agent.stationary is False
+
+    assert chair.release_reservation(other_agent_id)
+    assert perform_to_be_started_task(sample_agent, 30, sample_engine)
+    assert chair.reserver_id == (sample_agent.idx, sample_agent.agent_type)
+    assert task.progress == TaskProgress.MOVING_TO_LOCATION
+
+
+def test_occupy_content_task_selects_another_available_chair(
+    sample_occupy_content_task: TaskOccupyContent, sample_agent: Agent
+) -> None:
+    """Test that occupied chairs are skipped when another chair is available."""
+    task = sample_occupy_content_task
+    assert task.room is not None
+    first_chair = task.room.contents[0]
+    first_chair.occupier_id = (999, AgentType.HEALTHCARE_WORKER)
+    second_chair = Content(
+        content_type=ContentType.CHAIR,
+        location=Location(building="A", floor=0, x=3.0, y=3.0),
+    )
+    task.room.contents.append(second_chair)
+
+    assert task.prepare(sample_agent)
+    assert task.content is second_chair
+
+
+def test_two_agents_reserve_and_occupy_different_chairs(
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """Test that competing agents cannot reserve or occupy the same chair."""
+    first_task = sample_occupy_content_task
+    assert first_task.room is not None
+    second_chair = Content(
+        content_type=ContentType.CHAIR,
+        location=Location(building="A", floor=0, x=3.0, y=3.0),
+    )
+    first_task.room.contents.append(second_chair)
+    second_agent = Agent(
+        idx=2,
+        location=Location(building="A", floor=0, x=1.0, y=1.0),
+        heading_rad=0.0,
+        agent_type=AgentType.HEALTHCARE_WORKER,
+        rng_generator=np.random.default_rng(43),
+    )
+    second_task = TaskOccupyContent(
+        time_needed=first_task.time_needed,
+        time_due=first_task.time_due,
+        content_type=ContentType.CHAIR,
+        room=first_task.room,
+    )
+
+    assert first_task.prepare(sample_agent)
+    assert first_task.on_dispatch(sample_agent)
+    assert second_task.prepare(second_agent)
+    assert second_task.on_dispatch(second_agent)
+    assert first_task.content is not second_task.content
+
+    first_task.on_completed(sample_agent, current_time=30, engine=sample_engine)
+    second_task.on_completed(second_agent, current_time=30, engine=sample_engine)
+    assert first_task.content is not None
+    assert second_task.content is not None
+    assert first_task.content.occupier_id == (
+        sample_agent.idx,
+        sample_agent.agent_type,
+    )
+    assert second_task.content.occupier_id == (
+        second_agent.idx,
+        second_agent.agent_type,
+    )
 
 
 def test_occupy_content_task_prepare_no_content_raises(
@@ -488,16 +596,18 @@ def test_occupy_content_task_complete(
 ) -> None:
     """Test the complete method of TaskOccupyContent."""
     task = sample_occupy_content_task
-    task.prepare(sample_agent)
+    assert task.prepare(sample_agent)
+    assert task.on_dispatch(sample_agent)
 
     def mock_add_agent_occupancy(
         agent: Agent, content: Content, current_time: float, engine: SpatialQuery
-    ) -> None:
+    ) -> bool:
         """Mock function to simulate adding agent occupancy."""
         assert agent == sample_agent
         assert content.content_type == ContentType.CHAIR
         assert current_time == 0
         assert engine == sample_engine
+        return True
 
     monkeypatch.setattr(
         "amr_hub_abm.task.task.add_agent_occupancy", mock_add_agent_occupancy

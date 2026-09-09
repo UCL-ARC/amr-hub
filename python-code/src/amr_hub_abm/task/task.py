@@ -136,13 +136,32 @@ class Task:
 
     # -- lifecycle hooks (no-ops on the base class) -------------------------
 
-    def prepare(self, agent: Agent) -> None:
+    def prepare(self, agent: Agent) -> bool:  # noqa: ARG002
         """
         Resolve any late-bound state before the task is first scheduled.
 
-        Called once by the agent before the task leaves NOT_STARTED (e.g.
-        ``TaskOccupyContent`` resolves which content to occupy here).
+        Called while the task is NOT_STARTED (e.g. ``TaskOccupyContent``
+        resolves currently available content here).
+
+        Returns
+        -------
+        bool
+            Whether the task is ready for scheduling.
+
         """
+        return True
+
+    def on_dispatch(self, agent: Agent) -> bool:  # noqa: ARG002
+        """
+        Claim resources immediately before the task begins moving.
+
+        Returns
+        -------
+        bool
+            Whether the task acquired any resources needed to start.
+
+        """
+        return True
 
     def on_start_moving(self, agent: Agent, engine: SpatialQuery) -> None:
         """Handle the transition to MOVING_TO_LOCATION."""
@@ -371,7 +390,8 @@ class TaskOccupyContent(Task):
     task_type: TaskType = field(default=TaskType.OCCUPY_CONTENT, kw_only=True)
     content_type: int = -1
     room: Room | None = None
-    content: Content = field(init=False)
+    preferred_content: Content | None = None
+    content: Content | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
         """Validate that a room is provided."""
@@ -380,30 +400,61 @@ class TaskOccupyContent(Task):
             msg = "TaskOccupyContent requires a room."
             raise SimulationModeError(msg)
 
-    def prepare(self, agent: Agent) -> None:  # noqa: ARG002
-        """Resolve the concrete content instance and set the task location."""
+    def prepare(self, agent: Agent) -> bool:
+        """Resolve an available content instance and set the task location."""
         assert self.room is not None  # noqa: S101 - validated in __post_init__
-        content = next(
-            (c for c in self.room.contents if c.content_type == self.content_type),
-            None,
-        )
-        if content is None:
+        matching_content = [
+            content
+            for content in self.room.contents
+            if content.content_type == self.content_type
+        ]
+        if not matching_content:
             msg = (
                 f"No content of type {self.content_type} found in {self.room.name} "
                 f"for 'occupy_content' task."
             )
             raise SimulationModeError(msg)
 
+        agent_id = (agent.idx, agent.agent_type)
+        candidates = [
+            content for content in matching_content if content.is_available_to(agent_id)
+        ]
+        if not candidates:
+            self.content = None
+            self.location = None
+            return False
+
+        content = self.preferred_content
+        if content is None or not any(content is candidate for candidate in candidates):
+            content = candidates[0]
         self.content = content
         self.location = content.location
+        return True
+
+    def on_dispatch(self, agent: Agent) -> bool:
+        """Reserve the selected content before starting travel."""
+        if self.content is None:
+            return False
+        if self.content.try_reserve((agent.idx, agent.agent_type)):
+            return True
+        self.content = None
+        self.location = None
+        return False
 
     def on_completed(
         self, agent: Agent, current_time: int, engine: SpatialQuery
     ) -> None:
         """Occupy the content once the task finishes."""
-        add_agent_occupancy(
-            agent, self.content, current_time=current_time, engine=engine
-        )
+        agent_id = (agent.idx, agent.agent_type)
+        if (
+            self.content is None
+            or self.content.reserver_id != agent_id
+            or not add_agent_occupancy(
+                agent, self.content, current_time=current_time, engine=engine
+            )
+        ):
+            msg = f"Agent {agent.idx} could not occupy its reserved content."
+            raise SimulationModeError(msg)
 
 
 @dataclass
@@ -417,6 +468,7 @@ class TaskWorkstation(Task):
         """Validate that a room is provided."""
         super().__post_init__()
 
-    def prepare(self, agent: Agent) -> None:  # noqa: ARG002
+    def prepare(self, agent: Agent) -> bool:  # noqa: ARG002
         """Set the task location to the workstation location."""
         self.location = self.workstation_location
+        return True
