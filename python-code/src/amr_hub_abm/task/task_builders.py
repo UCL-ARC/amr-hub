@@ -19,7 +19,7 @@ from amr_hub_abm.task.task import (
 if TYPE_CHECKING:
     from amr_hub_abm.agent.agent import Agent
     from amr_hub_abm.spatial.door import Door
-    from amr_hub_abm.spatial.furniture import ContentType
+    from amr_hub_abm.spatial.furniture import Content, ContentType
     from amr_hub_abm.spatial.location import Location
     from amr_hub_abm.spatial.room import Room
 
@@ -38,6 +38,7 @@ class TaskBuilderContext:
     destination_room_idx: int | None
     content_type: ContentType | None
     content_room: Room | None
+    content: Content | None
 
 
 def build_task_context(
@@ -62,6 +63,7 @@ def build_task_context(
         destination_room_idx=cast("int | None", additional_info.get("destination")),
         content_type=cast("ContentType | None", additional_info.get("content_type")),
         content_room=cast("Room | None", additional_info.get("room")),
+        content=cast("Content | None", additional_info.get("content")),
     )
 
 
@@ -132,6 +134,7 @@ def build_occupy_content_task(context: TaskBuilderContext) -> Task:
     return TaskOccupyContent(
         content_type=context.content_type,
         room=context.content_room,
+        preferred_content=context.content,
         time_needed=context.time_needed,
         time_due=context.time,
     )
