@@ -10,8 +10,10 @@ The extraction pipeline:
 2. filters and attaches room labels for the configured floor;
 3. applies configured polygon splits, additions, and merges;
 4. normalises accepted adjacent wall faces to a shared midline;
-5. projects CAD door symbols onto subsections of the final room boundaries;
-6. serialises labelled rooms as wall and door line segments.
+5. constructs configured open-boundary spans from the final room boundaries;
+6. projects CAD door symbols onto subsections of the final room boundaries;
+7. combines both kinds of connection in the existing door column and
+   serialises labelled rooms as wall and door line segments.
 
 The resulting geometry represents walls and doors as zero-thickness lines.
 Physical wall thickness can be applied when the YAML is loaded into another
@@ -74,6 +76,16 @@ shared_walls:
   min_overlap_ratio: 0.5
   min_overlap_length: 150.0
   canonical_line: "midline"
+
+open_boundaries:
+  tolerance: 1.0e-6
+  min_length: 0.0
+  pairs:
+    - rooms: ["ROOM_A", "CORRIDOR"]
+    - rooms: ["ROOM_B", "ANTE_ROOM"]
+      selector_point: [5.0, 10.0]
+    - rooms: ["ROOM_C", "L_SHAPED_CORRIDOR"]
+      allow_multiple_spans: true
 ```
 
 ### Room polygons and labels
@@ -97,6 +109,50 @@ Floorplan-specific corrections are applied through three optional lists:
 
 Splits and additions occur before label attachment. Merges occur before
 shared-wall and door normalisation.
+
+### Open boundaries
+
+The optional `open_boundaries` block identifies room pairs whose shared edge
+has no physical wall. Each pair must contain exactly two distinct room labels.
+An optional `selector_point` disambiguates multiple candidate spans for the
+same pair. Set `allow_multiple_spans: true` for a pair with multiple straight
+shared segments that should all be open; it cannot be combined with
+`selector_point`.
+
+`tolerance` controls permitted numerical coordinate drift and `min_length`
+sets the minimum accepted span length, both in floorplan coordinate units.
+They must be finite and non-negative. Configured labels must each resolve to
+exactly one room after polygon corrections and shared-wall normalisation. The
+extractor constructs each span from the final room boundaries, orders its
+endpoints deterministically, and stores the result in
+`GeoDataFrame.attrs["open_boundary_spans"]`. The spans are then added to the
+configured door column (or a new `doors` column when no CAD door layer is
+configured), so both connected rooms receive the same segment. Exact matches
+to CAD doors are deduplicated; partial overlaps are rejected. A pair must have
+one contiguous, straight, non-zero-length span that lies on both room
+boundaries, unless `allow_multiple_spans` is set. In that case, every shared
+segment must be straight and satisfy the same checks. Point-only, ambiguous,
+and third-room spans are rejected.
+
+Two rectangular CAD door markers on the same shared room boundary are treated
+as jambs: their outer endpoints define one passable opening. Other CAD door
+geometries retain their directly projected boundary overlap.
+
+All CAD door spans are emitted in `doors` and removed from the physical `walls`
+list. This makes the serialised door segment both the room-connection record and
+the corresponding collision-free opening for movement.
+
+The returned GeoDataFrame includes `open_boundary_count` for each room and an
+`open_boundary_attachment_report` metadata entry. The report records the
+configured room pair, canonical segment, and whether each room received a new
+segment or deduplicated an exact CAD-door match. Invalid configurations and
+partial CAD-door overlaps remain actionable extraction errors.
+
+When `open_boundaries` is configured, the extraction example also emits the
+same segments in an `openings` list. These non-operable spatial boundaries are
+removed from the room's physical `walls` and supplied separately so the spatial
+reader can close the room region without treating the span as a solid collision
+wall. Existing YAML files without `openings` are unchanged.
 
 ### Shared walls
 
@@ -166,11 +222,13 @@ The example plots:
 - room polygons in pale blue;
 - final room boundaries in grey;
 - room labels at representative interior points;
-- canonical door openings as solid red overlays on the wall boundaries.
+- physical canonical door openings as solid red overlays on the wall
+  boundaries;
+- configured open-boundary spans as solid blue overlays.
 
 A white underlay makes door segments visible against the room boundary.
-Shared doors are deduplicated for plotting, so each physical opening appears
-once even though it is present in both room records.
+Shared doors and open boundaries are deduplicated for plotting, so each
+connection appears once even though it is present in both room records.
 
 The example also contains an optional shared-wall diagnostic helper. When
 enabled, it can display accepted midlines and rejected candidate overlaps.
