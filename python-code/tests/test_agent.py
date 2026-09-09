@@ -229,6 +229,39 @@ def test_attempt_task_insertion(
     assert len(agent.tasks) == 1
     task = agent.tasks[0]
     assert task.task_type.name == "OCCUPY_CONTENT"
+    assert isinstance(task, TaskOccupyContent)
+    assert task.preferred_content is chair_content
+
+
+def test_attempt_task_insertion_skips_reserved_chair(
+    setup_agent: Agent,
+    sample_room: Room,
+    engine: SpatialQuery,
+) -> None:
+    """Test that automatic task insertion does not select a reserved chair."""
+    agent = setup_agent
+    chair = Content(
+        content_type=ContentType.CHAIR,
+        location=Location(building="Test Building", floor=1, x=8.0, y=8.0),
+        reserver_id=(999, AgentType.HEALTHCARE_WORKER),
+    )
+    sample_room.contents.append(chair)
+    next_task = Task(
+        time_needed=1,
+        time_due=20,
+        location=Location(building="Test Building", floor=1, x=10.0, y=10.0),
+        task_type=TaskType.GOTO_LOCATION,
+    )
+
+    agent.attempt_task_insertion(
+        next_task=next_task,
+        next_task_move_time=15,
+        current_time=0,
+        engine=engine,
+        task_durations=sim_config.task_durations,
+    )
+
+    assert agent.tasks == []
 
 
 def test_task_insertion_stationary_agent(

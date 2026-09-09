@@ -203,7 +203,7 @@ def update_patient(  # noqa: PLR0913
         available_beds = [
             b
             for b in room.contents
-            if b.content_type == ContentType.BED and not b.occupied
+            if b.content_type == ContentType.BED and b.available
         ]
         if not available_beds:
             msg = (
@@ -278,7 +278,7 @@ def update_hcw(  # noqa: PLR0913
         available_chairs = [
             c
             for c in room.contents
-            if c.content_type == ContentType.CHAIR and not c.occupied
+            if c.content_type == ContentType.CHAIR and c.available
         ]
 
         if not available_chairs:
