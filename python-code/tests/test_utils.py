@@ -143,10 +143,11 @@ def test_add_agent_occupancy_marks_content_and_logs_room_name(
     target_content = sample_room.contents[1]
 
     with caplog.at_level(logging.INFO):
-        add_agent_occupancy(
+        added = add_agent_occupancy(
             sample_agent, target_content, current_time=25, engine=sample_engine
         )
 
+    assert added
     assert target_content.occupier_id == (sample_agent.idx, sample_agent.agent_type)
     assert sample_agent.stationary is True
     assert "added occupancy" in caplog.text
@@ -171,3 +172,37 @@ def test_add_agent_occupancy_logs_unknown_when_room_is_missing(
     assert target_content.occupier_id == (sample_agent.idx, sample_agent.agent_type)
     assert sample_agent.stationary is True
     assert "unknown" in caplog.text
+
+
+def test_add_agent_occupancy_does_not_overwrite_another_agent(
+    sample_agent: Agent,
+    sample_room: Room,
+    sample_engine: SpatialQuery,
+) -> None:
+    """Test that an existing occupancy cannot be overwritten."""
+    target_content = sample_room.contents[0]
+    existing_occupier = (999, AgentType.PATIENT)
+    target_content.occupier_id = existing_occupier
+
+    assert not add_agent_occupancy(
+        sample_agent, target_content, current_time=30, engine=sample_engine
+    )
+    assert target_content.occupier_id == existing_occupier
+    assert sample_agent.stationary is False
+
+
+def test_add_agent_occupancy_converts_matching_reservation(
+    sample_agent: Agent,
+    sample_room: Room,
+    sample_engine: SpatialQuery,
+) -> None:
+    """Test that occupancy consumes the same agent's reservation."""
+    target_content = sample_room.contents[0]
+    agent_id = (sample_agent.idx, sample_agent.agent_type)
+    assert target_content.try_reserve(agent_id)
+
+    assert add_agent_occupancy(
+        sample_agent, target_content, current_time=30, engine=sample_engine
+    )
+    assert target_content.occupier_id == agent_id
+    assert target_content.reserver_id is None
