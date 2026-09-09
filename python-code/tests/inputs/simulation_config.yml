@@ -1,5 +1,11 @@
 mode: data driven # Simulation mode: "data driven" or "rule based"
-location_timeseries_path: tests/inputs/location_timeseries.csv # Path to location timeseries data
+
+location_data:
+  format: duckdb
+  path: tests/inputs/location_timeseries.duckdb
+  table: location_timeseries
+  schema_version: 1
+
 buildings_path: tests/inputs/buildings.yml # Path to buildings geojson file
 
 agent_movement_speed: 0.001 # Agent movement speed in units per time step
