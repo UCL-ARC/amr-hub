@@ -185,10 +185,10 @@ def _load_room_maps(
             maps["Flowsheet"] = {
                 int(k): f"room:{std_code(r)}" for k, r in rows if k and r
             }
-        except duckdb.Error:
+        except duckdb.Error as exc:
             # Optional enrichment: if the lookup query fails, continue with
             # other mapping sources and return partial maps.
-            pass
+            print(f"Skipping optional Flowsheet room-map lookup: {exc}", file=sys.stderr)
 
     try:
         door_names = _load_key_to_name_map(conn, *FALLBACK_NAME_TABLES["Door Message"])
