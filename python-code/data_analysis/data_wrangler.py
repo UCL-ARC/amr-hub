@@ -186,6 +186,8 @@ def _load_room_maps(
                 int(k): f"room:{std_code(r)}" for k, r in rows if k and r
             }
         except duckdb.Error:
+            # Optional enrichment: if the lookup query fails, continue with
+            # other mapping sources and return partial maps.
             pass
 
     try:
@@ -199,6 +201,8 @@ def _load_room_maps(
                 edges[key] = f"door:{'|'.join(sorted(parts))}"
         maps.setdefault("Door Message", {}).update(edges)
     except duckdb.Error:
+        # Optional fallback mapping; ignore DB errors so wrangling can proceed
+        # without door-edge normalization.
         pass
 
     if room_mapping_csv:
