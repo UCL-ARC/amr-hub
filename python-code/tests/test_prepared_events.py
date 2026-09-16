@@ -176,3 +176,67 @@ def test_prepare_location_events_audits_unsupported_events() -> None:
         result.audit.loc[0, "resolution_status"]
         == EventPreparationStatus.UNSUPPORTED_INTERACTION_TYPE
     )
+
+
+def test_prepare_location_events_audits_unresolved_door_locations() -> None:
+    """Unparseable, missing, and ambiguous doors remain out of simulator input."""
+    ambiguous_doors = [
+        Door(
+            is_open=False,
+            access_control=(False, False),
+            start=(1.0, 0.0),
+            end=(2.0, 0.0),
+            connecting_rooms=(1, 2),
+            door_id=8,
+        ),
+        Door(
+            is_open=False,
+            access_control=(False, False),
+            start=(4.0, 0.5),
+            end=(4.0, 1.5),
+            connecting_rooms=(1, 3),
+            door_id=9,
+        ),
+    ]
+    events = pd.DataFrame(
+        {
+            "eventID": ["event-1", "event-2", "event-3"],
+            "locationID": [101, 102, 103],
+            "hcw_id": [4, 4, 4],
+            "timestamp": pd.to_datetime(
+                ["2024-01-01 09:00:00", "2024-01-01 09:05:00", "2024-01-01 09:10:00"]
+            ),
+            "event_type": ["door_access", "door_access", "door_access"],
+            "patient_id": [pd.NA, pd.NA, pd.NA],
+            "door_id": [pd.NA, pd.NA, pd.NA],
+            "content_type": [pd.NA, pd.NA, pd.NA],
+        }
+    )
+    door_references = pd.DataFrame(
+        {
+            "locationID": [101, 102, 103],
+            "descriptiveDoorName": [
+                "Unparseable door description",
+                "BETA 8TH FLR SERVICE XY777 DOOR",
+                "BETA 8TH FLR SERVICE XY778 DOOR",
+            ],
+        }
+    )
+
+    result = prepare_location_events(
+        events,
+        pd.DataFrame(columns=["locationID", "bedName"]),
+        pd.DataFrame(columns=["roomCode", "roomName", "bedName"]),
+        door_references,
+        [make_room("B08XY778", ambiguous_doors)],
+        patient_building="BETA",
+        patient_floor=8,
+    )
+
+    assert result.location_timeseries.empty
+    assert result.audit["resolution_status"].tolist() == [
+        EventLocationResolutionStatus.UNPARSEABLE_LOCATION,
+        EventLocationResolutionStatus.ROOM_NOT_IN_MODEL,
+        EventLocationResolutionStatus.AMBIGUOUS_DOORS,
+    ]
+    assert result.audit.loc[2, "candidate_door_count"] == 2
