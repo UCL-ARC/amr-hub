@@ -96,7 +96,15 @@ def perform_to_be_started_task(
     if task is None:
         return False
     if not task.prepare(agent=agent):
-        return True
+        agent.tasks[:] = [
+            candidate for candidate in agent.tasks if candidate is not task
+        ]
+        logger.info(
+            "Agent %s removed task %s because it could not be prepared.",
+            agent.idx,
+            task.task_type.name,
+        )
+        return False
     assert task.location is not None  # noqa: S101
 
     # Engine handles estimating travel distances!
