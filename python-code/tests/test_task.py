@@ -490,7 +490,7 @@ def test_occupy_content_task_waits_for_reserved_content(
     sample_agent: Agent,
     sample_engine: SpatialQuery,
 ) -> None:
-    """Test that a task waits and retries while all matching content is reserved."""
+    """Test that a task is removed when matching content is unavailable."""
     task = sample_occupy_content_task
     assert task.room is not None
     chair = task.room.contents[0]
@@ -499,15 +499,23 @@ def test_occupy_content_task_waits_for_reserved_content(
     sample_agent.location = Location(building="A", floor=0, x=1.0, y=1.0)
     sample_agent.tasks = [task]
 
-    assert perform_to_be_started_task(sample_agent, 30, sample_engine)
+    assert not perform_to_be_started_task(sample_agent, 30, sample_engine)
     assert task.progress == TaskProgress.NOT_STARTED
     assert task.content is None
     assert sample_agent.stationary is False
+    assert task not in sample_agent.tasks
+    assert chair.reserver_id == other_agent_id
 
-    assert chair.release_reservation(other_agent_id)
+    later_task = Task(
+        time_needed=1,
+        time_due=30,
+        location=sample_agent.location,
+        task_type=TaskType.GOTO_LOCATION,
+    )
+    sample_agent.tasks.append(later_task)
+
     assert perform_to_be_started_task(sample_agent, 30, sample_engine)
-    assert chair.reserver_id == (sample_agent.idx, sample_agent.agent_type)
-    assert task.progress == TaskProgress.MOVING_TO_LOCATION
+    assert later_task.progress == TaskProgress.IN_PROGRESS
 
 
 def test_occupy_content_task_selects_another_available_chair(
