@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import duckdb
 import pandas as pd
@@ -84,7 +84,7 @@ def _read_csv(file_path: Path) -> pd.DataFrame:
     if errors:
         raise LocationDataValidationError(tuple(errors))
 
-    data = data.loc[:, BASE_COLUMNS].copy()
+    data = data.loc[:, list(BASE_COLUMNS)].copy()
     data.insert(0, "event_sequence", range(1, len(data) + 1))
     return data
 
@@ -110,7 +110,7 @@ def _read_duckdb(source: LocationTimeseriesDataConfig) -> pd.DataFrame:
             selected_columns = ", ".join(CANONICAL_COLUMNS)
             query = (
                 f'SELECT {selected_columns} FROM "{source.table}" '  # noqa: S608
-                "ORDER BY hcw_id, timestamp, event_sequence"
+                "ORDER BY timestamp, event_sequence, hcw_id"
             )
             return connection.execute(query).fetch_df()
     except LocationDataValidationError:
@@ -159,7 +159,8 @@ def _validate_duckdb_columns(
     """Validate the exact columns and SQL types of the configured table."""
     rows = connection.execute(
         "SELECT column_name, data_type FROM information_schema.columns "
-        "WHERE table_schema = 'main' AND table_name = ? ORDER BY ordinal_position",
+        "WHERE table_schema = 'main' AND table_name = ? "
+        "ORDER BY ordinal_position",
         [table],
     ).fetchall()
     if not rows:
@@ -200,8 +201,8 @@ def _normalise_location_timeseries(data: pd.DataFrame) -> pd.DataFrame:
     result["timestamp"] = pd.to_datetime(result["timestamp"], errors="coerce")
     result["location"] = result["location"].astype("string")
     result["event_type"] = result["event_type"].astype("string")
-    return result.sort_values(
-        ["hcw_id", "timestamp", "event_sequence"],
+    return result.sort_values(  # pyright: ignore[reportCallIssue]
+        ["timestamp", "event_sequence", "hcw_id"],
         kind="stable",
         ignore_index=True,
     )
@@ -233,9 +234,9 @@ def validate_location_timeseries(  # noqa: PLR0912
     room_index = {(room.building, room.floor, room.name): room for room in rooms}
     allowed_events = set(task_durations.task_duration_mapping)
 
-    for index, row in data.iterrows():
+    for row_number, (_, row) in enumerate(data.iterrows(), start=1):
         sequence = row["event_sequence"]
-        row_label = int(sequence) if not _is_missing(sequence) else index + 1
+        row_label = int(sequence) if not _is_missing(sequence) else row_number
         prefix = f"Event {row_label}"
 
         hcw_id = row["hcw_id"]
@@ -369,4 +370,4 @@ def _validate_conditional_value(
 
 def _is_missing(value: object) -> bool:
     """Return whether a scalar pandas value represents missing data."""
-    return bool(pd.isna(value))
+    return bool(pd.isna(cast("Any", value)))

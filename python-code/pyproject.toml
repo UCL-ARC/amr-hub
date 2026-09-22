@@ -9,6 +9,7 @@ requires = [
 dev = [
   "build",
   "mypy",
+  "pandas-stubs",
   "pre-commit",
   "pytest-cov>=7.0.0",
   "pytest>=8.4.2",
