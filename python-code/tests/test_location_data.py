@@ -46,6 +46,52 @@ def test_duckdb_event_sequence_resolves_timestamp_ties() -> None:
     assert tied["event_type"].tolist() == ["attend_patient", "door_access"]
 
 
+def test_duckdb_accepts_location_event_view(tmp_path: Path) -> None:
+    """Test that a trusted view can provide the location-event relation."""
+    database_path = tmp_path / "view_source.duckdb"
+    with duckdb.connect(str(database_path)) as connection:
+        connection.execute(
+            "CREATE TABLE amr_hub_schema "
+            "(component VARCHAR PRIMARY KEY, schema_version INTEGER NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO amr_hub_schema VALUES ('location_timeseries', 1)"
+        )
+        connection.execute(
+            """
+            CREATE TABLE source_events (
+                event_sequence BIGINT,
+                hcw_id INTEGER,
+                timestamp TIMESTAMP,
+                location VARCHAR,
+                event_type VARCHAR,
+                patient_id INTEGER,
+                door_id INTEGER,
+                content_type INTEGER
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO source_events VALUES
+            (1, 1, '2024-01-01 00:00:00', 'A:0:Room 1',
+             'goto_location', NULL, NULL, NULL)
+            """
+        )
+        connection.execute(
+            "CREATE VIEW location_timeseries AS SELECT * FROM source_events"
+        )
+
+    source = LocationTimeseriesDataConfig(
+        format=LocationTimeseriesDataFormat.DUCKDB,
+        path=database_path,
+    )
+    data = read_location_timeseries(source)
+
+    assert len(data) == 1
+    assert data.loc[0, "hcw_id"] == 1
+
+
 def test_events_are_ordered_globally_by_timestamp() -> None:
     """Test that events retain deterministic global chronological order."""
     data = read_location_timeseries(sim_config.location_data)
