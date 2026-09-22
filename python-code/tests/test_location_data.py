@@ -46,6 +46,16 @@ def test_duckdb_event_sequence_resolves_timestamp_ties() -> None:
     assert tied["event_type"].tolist() == ["attend_patient", "door_access"]
 
 
+def test_events_are_ordered_globally_by_timestamp() -> None:
+    """Test that events retain deterministic global chronological order."""
+    data = read_location_timeseries(sim_config.location_data)
+    ordering = (
+        data[["timestamp", "event_sequence", "hcw_id"]].to_records(index=False).tolist()
+    )
+
+    assert ordering == sorted(ordering)
+
+
 def test_duckdb_schema_version_mismatch_is_rejected(tmp_path: Path) -> None:
     """Test that the configured and stored schema versions must agree."""
     database_path = tmp_path / "wrong_version.duckdb"
