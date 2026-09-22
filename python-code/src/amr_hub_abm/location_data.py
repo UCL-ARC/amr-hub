@@ -156,7 +156,7 @@ def _validate_duckdb_columns(
     table: str,
     errors: list[str],
 ) -> None:
-    """Validate the exact columns and SQL types of the configured table."""
+    """Validate the exact columns and SQL types of the configured relation."""
     rows = connection.execute(
         "SELECT column_name, data_type FROM information_schema.columns "
         "WHERE table_schema = 'main' AND table_name = ? "
@@ -164,7 +164,9 @@ def _validate_duckdb_columns(
         [table],
     ).fetchall()
     if not rows:
-        errors.append(f"DuckDB table '{table}' does not exist in schema 'main'.")
+        errors.append(
+            f"DuckDB table or view '{table}' does not exist in schema 'main'."
+        )
         return
 
     actual_types = {str(name): str(data_type) for name, data_type in rows}

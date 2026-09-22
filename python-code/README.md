@@ -110,9 +110,10 @@ version, event values, timestamps, and references to rooms, doors, and room cont
 must all pass validation.
 
 The expected DuckDB database contains an `amr_hub_schema` metadata table and a
-`location_timeseries` event table. Events are processed deterministically using the
-explicit `event_sequence` column. The synthetic test database at
-`tests/inputs/location_timeseries.duckdb` is an example of schema version 1.
+`location_timeseries` event table or trusted view. Events are processed
+deterministically using the explicit `event_sequence` column. The synthetic test
+database at `tests/inputs/location_timeseries.duckdb` is an example of schema
+version 1.
 
 Legacy CSV input remains available during the migration period:
 
