@@ -25,6 +25,7 @@ from floorplan_extractor.shared_walls import (
     rejection_overlap_lines,
 )
 from floorplan_extractor.yaml_construction import (
+    apply_door_cardinality_policy,
     build_yaml_structure,
     polygons_to_rooms,
     register_yaml_representers,
@@ -96,6 +97,15 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=DEFAULT_FLOOR_LEVEL,
         help="Floor level written to the model YAML (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--singleton-door-policy",
+        choices=("error", "wall"),
+        default="error",
+        help=(
+            "How to handle doors attached to one room: fail or restore the "
+            "segment as a wall (default: %(default)s)."
+        ),
     )
 
     return parser.parse_args()
@@ -353,6 +363,10 @@ def main() -> None:
         opening_tolerance=(
             pec.open_boundaries.tolerance if pec.open_boundaries else 1.0e-6
         ),
+    )
+    rooms = apply_door_cardinality_policy(
+        rooms,
+        singleton_policy=args.singleton_door_policy,
     )
 
     logger.info("Writing floorplan diagnostic plot to %s", args.diagnostic)
