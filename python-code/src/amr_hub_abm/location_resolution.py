@@ -248,7 +248,7 @@ def resolve_door_location(
             candidate_door_count=1,
         )
 
-    midpoint = door.line.interpolate(0.5, normalized=True)
+    door, midpoint = room.get_door_access_point()
     return DoorLocationResolution(
         status=DoorResolutionStatus.RESOLVED,
         room=room,
@@ -256,8 +256,8 @@ def resolve_door_location(
         location=Location(
             building=room.building,
             floor=room.floor,
-            x=midpoint.x,
-            y=midpoint.y,
+            x=midpoint[0],
+            y=midpoint[1],
         ),
         candidate_door_count=1,
     )
