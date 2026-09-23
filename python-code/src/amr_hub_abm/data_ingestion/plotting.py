@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
@@ -18,6 +19,8 @@ if TYPE_CHECKING:
         LocationEventPreparationReport,
     )
     from amr_hub_abm.spatial.room import Room
+
+_NN_ROOM_CODE = re.compile(r"^[A-Z]\d{2}NN\d{3}$", re.IGNORECASE)
 
 
 def _event_style(event_type: str) -> tuple[str, str, str]:
@@ -92,7 +95,7 @@ def plot_location_mapping(
             zorder=7,
         )
         room_code = str(event["model_room_code"])
-        if room_code not in labelled_rooms:
+        if _NN_ROOM_CODE.fullmatch(room_code) and room_code not in labelled_rooms:
             ax.annotate(
                 room_code,
                 (float(event["x"]), float(event["y"])),

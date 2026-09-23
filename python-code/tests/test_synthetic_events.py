@@ -51,8 +51,8 @@ def test_build_synthetic_location_inputs_covers_mapping_outcomes() -> None:
         building="BETA",
         floor=8,
         patient_room="B08NN012",
-        door_room="B08XY777",
-        ambiguous_door_room="B08XY778",
+        door_room="B08NN777",
+        ambiguous_door_room="B08NN778",
     )
 
     assert inputs.events["eventID"].tolist() == [
@@ -74,20 +74,45 @@ def test_build_synthetic_location_inputs_covers_mapping_outcomes() -> None:
         }
     ]
     assert inputs.door_references["descriptiveDoorName"].tolist() == [
-        "BETA 8TH FLR B08XY777 DOOR",
-        "BETA 8TH FLR B08ZZ999 DOOR",
-        "BETA 8TH FLR B08XY778 DOOR",
+        "BETA 8TH FLR B08NN777 DOOR",
+        "BETA 8TH FLR B08NN999 DOOR",
+        "BETA 8TH FLR B08NN778 DOOR",
     ]
 
 
-def test_build_synthetic_location_inputs_requires_supported_patient_room() -> None:
-    """The generated bed identifier must be compatible with the bed parser."""
-    with pytest.raises(InvalidDefinitionError, match="compatible with a synthetic bed"):
+def test_build_synthetic_location_inputs_requires_nn_patient_room() -> None:
+    """The generated bed identifier must use a canonical NN room code."""
+    with pytest.raises(InvalidDefinitionError, match="canonical NN room code"):
         build_synthetic_location_inputs(
             building="BETA",
             floor=8,
             patient_room="B08XY777",
-            door_room="B08XY777",
+            door_room="B08NN777",
+        )
+
+
+@pytest.mark.parametrize(
+    ("door_room", "additional_door_rooms", "ambiguous_door_room"),
+    [
+        ("B08XY777", (), None),
+        ("B08NN777", ("B08XY776",), None),
+        ("B08NN777", (), "B08XY778"),
+    ],
+)
+def test_build_synthetic_location_inputs_requires_nn_door_rooms(
+    door_room: str,
+    additional_door_rooms: tuple[str, ...],
+    ambiguous_door_room: str | None,
+) -> None:
+    """Every generated door reference must target a canonical NN room code."""
+    with pytest.raises(InvalidDefinitionError, match="canonical NN room code"):
+        build_synthetic_location_inputs(
+            building="BETA",
+            floor=8,
+            patient_room="B08NN012",
+            door_room=door_room,
+            additional_door_rooms=additional_door_rooms,
+            ambiguous_door_room=ambiguous_door_room,
         )
 
 
@@ -97,9 +122,9 @@ def test_build_synthetic_location_inputs_adds_resolved_examples() -> None:
         building="BETA",
         floor=8,
         patient_room="B08NN012",
-        door_room="B08XY777",
-        additional_patient_rooms=["B08CB013"],
-        additional_door_rooms=["B08XY776"],
+        door_room="B08NN777",
+        additional_patient_rooms=["B08NN013"],
+        additional_door_rooms=["B08NN776"],
     )
 
     assert inputs.events["eventID"].tolist()[:4] == [
@@ -110,11 +135,11 @@ def test_build_synthetic_location_inputs_adds_resolved_examples() -> None:
     ]
     assert inputs.bed_references.to_dict("records") == [
         {"locationID": "patient-reference", "bedName": "NN12-01"},
-        {"locationID": "patient-reference-2", "bedName": "CB13-02"},
+        {"locationID": "patient-reference-2", "bedName": "NN13-02"},
     ]
     assert inputs.door_references.iloc[1].to_dict() == {
         "locationID": "door-reference-2",
-        "descriptiveDoorName": "BETA 8TH FLR B08XY776 DOOR",
+        "descriptiveDoorName": "BETA 8TH FLR B08NN776 DOOR",
     }
 
 
@@ -150,8 +175,8 @@ def test_synthetic_inputs_run_through_preparation_pipeline() -> None:
         building="BETA",
         floor=8,
         patient_room="B08NN012",
-        door_room="B08XY777",
-        ambiguous_door_room="B08XY778",
+        door_room="B08NN777",
+        ambiguous_door_room="B08NN778",
     )
 
     report = prepare_location_events(
@@ -161,8 +186,8 @@ def test_synthetic_inputs_run_through_preparation_pipeline() -> None:
         inputs.door_references,
         [
             make_room("B08NN012"),
-            make_room("B08XY777", [unique_door]),
-            make_room("B08XY778", ambiguous_doors),
+            make_room("B08NN777", [unique_door]),
+            make_room("B08NN778", ambiguous_doors),
         ],
         patient_building="BETA",
         patient_floor=8,
@@ -189,12 +214,12 @@ def test_plot_location_mapping_writes_synthetic_overlay(tmp_path: Path) -> None:
         connecting_rooms=(1, 2),
         door_id=7,
     )
-    rooms = [make_room("B08NN012"), make_room("B08XY777", [door])]
+    rooms = [make_room("B08NN012"), make_room("B08NN777", [door])]
     inputs = build_synthetic_location_inputs(
         building="BETA",
         floor=8,
         patient_room="B08NN012",
-        door_room="B08XY777",
+        door_room="B08NN777",
     )
     report = prepare_location_events(
         inputs.events,
