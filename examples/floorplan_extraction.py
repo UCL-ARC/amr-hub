@@ -81,6 +81,22 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_DIAGNOSTIC_PATH,
         help="Diagnostic image path (default: %(default)s).",
     )
+    parser.add_argument(
+        "--building-name",
+        default=DEFAULT_BUILDING_NAME,
+        help="Building name written to the model YAML (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--building-address",
+        default=DEFAULT_BUILDING_ADDRESS,
+        help="Building address written to the model YAML (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--floor-level",
+        type=int,
+        default=DEFAULT_FLOOR_LEVEL,
+        help="Floor level written to the model YAML (default: %(default)s).",
+    )
 
     return parser.parse_args()
 
@@ -349,9 +365,9 @@ def main() -> None:
 
     logger.info("Converting rooms to yaml")
     data = build_yaml_structure(
-        building_name=DEFAULT_BUILDING_NAME,
-        building_address=DEFAULT_BUILDING_ADDRESS,
-        floor_level=DEFAULT_FLOOR_LEVEL,
+        building_name=args.building_name,
+        building_address=args.building_address,
+        floor_level=args.floor_level,
         rooms=rooms,
     )
 
