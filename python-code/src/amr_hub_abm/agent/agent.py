@@ -280,7 +280,7 @@ class Agent:
         empty_chairs = [
             content
             for content in room.contents
-            if content.content_type == ContentType.CHAIR and content.occupier_id is None
+            if content.content_type == ContentType.CHAIR and content.available
         ]
 
         logger.info(
@@ -305,6 +305,7 @@ class Agent:
                     additional_info={
                         "content_type": ContentType.CHAIR,
                         "room": room,
+                        "content": chair,
                     },
                 )
                 logger.info(

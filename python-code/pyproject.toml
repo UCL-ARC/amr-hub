@@ -9,6 +9,7 @@ requires = [
 dev = [
   "build",
   "mypy",
+  "pandas-stubs",
   "pre-commit",
   "pytest-cov>=7.0.0",
   "pytest>=8.4.2",
@@ -42,6 +43,7 @@ classifiers = [
 ]
 dependencies = [
   "dash>=4.1.0",
+  "duckdb>=1.5.5",
   "ezdxf>=1.4.4",
   "geopandas>=1.1.2",
   "matplotlib>=3.10.7",

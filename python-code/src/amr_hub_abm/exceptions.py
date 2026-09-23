@@ -150,3 +150,18 @@ class NonNegativeValueError(Exception):
     def __init__(self, message: str) -> None:
         """Initialize the NonNegativeValueError."""
         super().__init__(f"Non-negative value error: {message}.")
+
+
+class LocationDataValidationError(Exception):
+    """Exception raised when location-event input fails preflight validation."""
+
+    def __init__(
+        self,
+        errors: tuple[str, ...],
+        warnings: tuple[str, ...] = (),
+    ) -> None:
+        """Initialize the error with all collected validation findings."""
+        self.errors = errors
+        self.warnings = warnings
+        details = "\n".join(f"- {error}" for error in errors)
+        super().__init__(f"Location data validation failed:\n{details}")

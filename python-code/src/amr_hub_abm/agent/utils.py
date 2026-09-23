@@ -33,8 +33,7 @@ def remove_agent_occupancy(
     if room is None:
         return
     for content in room.contents:
-        if content.occupier_id == (agent.idx, agent.agent_type):
-            content.occupier_id = None
+        if content.release_occupancy((agent.idx, agent.agent_type)):
             agent.stationary = False
             logger.info(
                 """
@@ -52,7 +51,7 @@ def remove_agent_occupancy(
 
 def add_agent_occupancy(
     agent: Agent, content: Content, current_time: int, engine: SpatialQuery
-) -> None:
+) -> bool:
     """
     Add the agent's occupancy to the specified content.
 
@@ -67,8 +66,22 @@ def add_agent_occupancy(
     engine : SpatialQuery
         The engine instance used to resolve geometry queries.
 
+    Returns
+    -------
+    bool
+        Whether occupancy was acquired.
+
     """
-    content.occupier_id = (agent.idx, agent.agent_type)
+    agent_id = (agent.idx, agent.agent_type)
+    if not content.try_occupy(agent_id):
+        logger.warning(
+            "Agent id %s could not occupy content id %s because it is claimed "
+            "by another agent.",
+            agent.idx,
+            content.content_id,
+        )
+        return False
+
     agent.stationary = True
 
     room = engine.get_room(agent)
@@ -85,3 +98,4 @@ def add_agent_occupancy(
         room_name,
         current_time,
     )
+    return True
