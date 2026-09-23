@@ -8,7 +8,11 @@ from pathlib import Path
 
 import numpy as np
 
-from amr_hub_abm.data_ingestion import build_synthetic_location_inputs
+from amr_hub_abm.data_ingestion import (
+    LocationEventPreparationReport,
+    build_synthetic_location_inputs,
+    prepare_location_events,
+)
 from amr_hub_abm.location_resolution import (
     DoorLocationResolution,
     RoomLocationResolution,
@@ -124,6 +128,30 @@ def log_door_resolution(label: str, resolution: DoorLocationResolution) -> None:
     )
 
 
+def log_preparation_report(report: LocationEventPreparationReport) -> None:
+    """Log resolved simulator rows and the complete reconciliation audit."""
+    status_counts = report.audit["resolution_status"].value_counts(sort=False)
+    logger.info("Resolution summary:\n%s", status_counts.to_string())
+    logger.info(
+        "Simulator-facing events:\n%s",
+        report.location_timeseries.to_string(index=False),
+    )
+    audit_columns = [
+        "source_event_id",
+        "event_type",
+        "resolution_status",
+        "model_room_code",
+        "model_door_id",
+        "candidate_door_count",
+        "x",
+        "y",
+    ]
+    logger.info(
+        "Reconciliation audit:\n%s",
+        report.audit.loc[:, audit_columns].to_string(index=False),
+    )
+
+
 def main() -> None:
     """Load the configured model and report selected mapping targets."""
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -139,6 +167,16 @@ def main() -> None:
         ambiguous_door_room=args.ambiguous_door_room,
     )
     logger.info("Constructed %s synthetic source events", len(synthetic_inputs.events))
+    report = prepare_location_events(
+        synthetic_inputs.events,
+        synthetic_inputs.bed_references,
+        synthetic_inputs.room_code_mappings,
+        synthetic_inputs.door_references,
+        rooms,
+        patient_building=args.building,
+        patient_floor=args.floor,
+    )
+    log_preparation_report(report)
 
     patient_resolution = resolve_room_location(
         args.building,
