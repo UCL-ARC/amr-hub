@@ -8,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
+from amr_hub_abm.data_ingestion import build_synthetic_location_inputs
 from amr_hub_abm.location_resolution import (
     DoorLocationResolution,
     RoomLocationResolution,
@@ -130,6 +131,14 @@ def main() -> None:
     args = parse_args()
     rooms = load_model_rooms(args.space_yaml, args.seed)
     logger.info("Loaded %s model rooms from %s", len(rooms), args.space_yaml)
+    synthetic_inputs = build_synthetic_location_inputs(
+        building=args.building,
+        floor=args.floor,
+        patient_room=args.patient_room,
+        door_room=args.door_room,
+        ambiguous_door_room=args.ambiguous_door_room,
+    )
+    logger.info("Constructed %s synthetic source events", len(synthetic_inputs.events))
 
     patient_resolution = resolve_room_location(
         args.building,

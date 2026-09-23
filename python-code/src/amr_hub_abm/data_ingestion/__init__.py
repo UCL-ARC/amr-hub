@@ -14,6 +14,10 @@ from amr_hub_abm.data_ingestion.reference_locations import (
     resolve_door_location_events,
     resolve_patient_location_events,
 )
+from amr_hub_abm.data_ingestion.synthetic_events import (
+    SyntheticLocationInputs,
+    build_synthetic_location_inputs,
+)
 
 __all__ = [
     "BedLocation",
@@ -22,6 +26,8 @@ __all__ = [
     "EventPreparationStatus",
     "LocationEventPreparationReport",
     "LocationResolutionReport",
+    "SyntheticLocationInputs",
+    "build_synthetic_location_inputs",
     "extract_bed_location",
     "extract_door_location",
     "normalise_door_location_events",
