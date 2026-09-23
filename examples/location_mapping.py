@@ -54,28 +54,28 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--patient-room",
         required=True,
-        help="Room code used for representative patient-event placement.",
+        help="NN room code used for representative patient-event placement.",
     )
     parser.add_argument(
         "--door-room",
         required=True,
-        help="Room code used for door-event placement.",
+        help="NN room code used for door-event placement.",
     )
     parser.add_argument(
         "--additional-patient-room",
         action="append",
         default=[],
-        help="Additional patient room code; may be supplied more than once.",
+        help="Additional NN patient room code; may be supplied more than once.",
     )
     parser.add_argument(
         "--additional-door-room",
         action="append",
         default=[],
-        help="Additional unique-door room code; may be supplied more than once.",
+        help="Additional unique-door NN room code; may be supplied more than once.",
     )
     parser.add_argument(
         "--ambiguous-door-room",
-        help="Optional room code expected to contain multiple candidate doors.",
+        help="Optional NN room code expected to contain multiple candidate doors.",
     )
     parser.add_argument(
         "--seed",
