@@ -4,13 +4,16 @@ from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
+import pytest
 import yaml
 from shapely.geometry import Polygon
 
+from amr_hub_abm.exceptions import InvalidDoorError
 from amr_hub_abm.read_space_input import SpaceInputReader
 from floorplan_extractor.yaml_construction import (
     FlowList,
     _polygon_to_walls,
+    apply_door_cardinality_policy,
     build_yaml_structure,
     polygons_to_rooms,
     register_yaml_representers,
@@ -121,6 +124,53 @@ def test_polygons_to_rooms_with_doors() -> None:
     )
 
     assert rooms[0]["doors"] == [FlowList([0.0, 0.0, 1.0, 0.0])]
+
+
+def test_singleton_door_policy_errors_by_default() -> None:
+    """A one-room door is rejected unless an explicit policy handles it."""
+    rooms = [
+        {
+            "name": ROOM_NAME,
+            "walls": [FlowList([0.0, 0.0, 0.0, 1.0])],
+            "doors": [FlowList([0.0, 0.0, 1.0, 0.0])],
+        }
+    ]
+
+    with pytest.raises(InvalidDoorError, match="attached only to room"):
+        apply_door_cardinality_policy(rooms)
+
+
+def test_singleton_door_wall_policy_restores_boundary() -> None:
+    """A one-room door can become an impassable physical wall."""
+    door = FlowList([0.0, 0.0, 1.0, 0.0])
+    rooms = [
+        {
+            "name": ROOM_NAME,
+            "walls": [FlowList([0.0, 0.0, 0.0, 1.0])],
+            "doors": [door],
+        }
+    ]
+
+    prepared = apply_door_cardinality_policy(rooms, singleton_policy="wall")
+
+    assert prepared[0]["doors"] == []
+    assert prepared[0]["walls"] == [FlowList([0.0, 0.0, 0.0, 1.0]), door]
+    assert rooms[0]["doors"] == [door]
+
+
+def test_shared_door_policy_preserves_internal_door() -> None:
+    """A door shared by two rooms remains a model door."""
+    door = FlowList([1.0, 0.0, 1.0, 1.0])
+    reversed_door = FlowList([*door[2:], *door[:2]])
+    rooms = [
+        {"name": "Room A", "walls": [], "doors": [door]},
+        {"name": "Room B", "walls": [], "doors": [reversed_door]},
+    ]
+
+    prepared = apply_door_cardinality_policy(rooms)
+
+    assert prepared[0]["doors"] == [door]
+    assert prepared[1]["doors"] == [reversed_door]
 
 
 def test_open_boundary_round_trip_creates_shared_floor_connection(
