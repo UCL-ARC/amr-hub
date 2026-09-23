@@ -91,6 +91,33 @@ def test_build_synthetic_location_inputs_requires_supported_patient_room() -> No
         )
 
 
+def test_build_synthetic_location_inputs_adds_resolved_examples() -> None:
+    """Additional room selections produce distinct events and references."""
+    inputs = build_synthetic_location_inputs(
+        building="BETA",
+        floor=8,
+        patient_room="B08NN012",
+        door_room="B08XY777",
+        additional_patient_rooms=["B08CB013"],
+        additional_door_rooms=["B08XY776"],
+    )
+
+    assert inputs.events["eventID"].tolist()[:4] == [
+        "patient-resolved",
+        "patient-resolved-2",
+        "door-resolved",
+        "door-resolved-2",
+    ]
+    assert inputs.bed_references.to_dict("records") == [
+        {"locationID": "patient-reference", "bedName": "NN12-01"},
+        {"locationID": "patient-reference-2", "bedName": "CB13-02"},
+    ]
+    assert inputs.door_references.iloc[1].to_dict() == {
+        "locationID": "door-reference-2",
+        "descriptiveDoorName": "BETA 8TH FLR B08XY776 DOOR",
+    }
+
+
 def test_synthetic_inputs_run_through_preparation_pipeline() -> None:
     """Generated records exercise successful and unresolved preparation paths."""
     unique_door = Door(
