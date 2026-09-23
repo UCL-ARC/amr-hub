@@ -13,11 +13,10 @@ from amr_hub_abm.exceptions import InvalidDefinitionError
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-_PATIENT_ROOM_CODE = re.compile(
-    r"^[A-Z]\d{2}(?P<prefix>NU|NN|CB)(?P<room_number>\d{3})$",
+_NN_ROOM_CODE = re.compile(
+    r"^[A-Z]\d{2}NN(?P<room_number>\d{3})$",
     re.IGNORECASE,
 )
-_ROOM_NAMES = {"NU": "Nursery", "NN": "Nursery", "CB": "Cubicle"}
 
 
 @dataclass(frozen=True)
@@ -49,9 +48,9 @@ def _synthetic_bed_reference(
     bed_number: int,
 ) -> tuple[str, str, str]:
     """Return source bed, room name, and bed name for a canonical room code."""
-    patient_match = _PATIENT_ROOM_CODE.fullmatch(room_code)
+    patient_match = _NN_ROOM_CODE.fullmatch(room_code)
     if patient_match is None:
-        msg = f"Patient room is not compatible with a synthetic bed: {room_code}"
+        msg = f"Synthetic locations require a canonical NN room code: {room_code}"
         raise InvalidDefinitionError(msg)
 
     room_number = int(patient_match["room_number"])
@@ -59,12 +58,18 @@ def _synthetic_bed_reference(
         msg = f"Synthetic bed identifiers support room numbers up to 99: {room_code}"
         raise InvalidDefinitionError(msg)
 
-    prefix = patient_match["prefix"].upper()
     return (
-        f"{prefix}{room_number:02d}-{bed_number:02d}",
-        f"{_ROOM_NAMES[prefix]} {room_number}",
+        f"NN{room_number:02d}-{bed_number:02d}",
+        f"Nursery {room_number}",
         f"Cot {bed_number}",
     )
+
+
+def _validate_nn_room_code(room_code: str) -> None:
+    """Require a canonical NN room code for a synthetic location target."""
+    if _NN_ROOM_CODE.fullmatch(room_code) is None:
+        msg = f"Synthetic locations require a canonical NN room code: {room_code}"
+        raise InvalidDefinitionError(msg)
 
 
 def build_synthetic_location_inputs(  # noqa: PLR0913
@@ -87,15 +92,15 @@ def build_synthetic_location_inputs(  # noqa: PLR0913
     floor : int
         Canonical model floor used in generated source descriptions.
     patient_room : str
-        Canonical room code for the successfully resolved patient event.
+        Canonical NN room code for the successfully resolved patient event.
     door_room : str
-        Canonical room code for the successfully resolved unique-door event.
+        Canonical NN room code for the successfully resolved unique-door event.
     ambiguous_door_room : str or None, optional
-        Canonical room code for an event expected to have several model doors.
+        Canonical NN room code for an event expected to have several model doors.
     additional_patient_rooms : collections.abc.Sequence[str], optional
-        Further canonical rooms that should receive resolved patient events.
+        Further canonical NN rooms that should receive resolved patient events.
     additional_door_rooms : collections.abc.Sequence[str], optional
-        Further canonical rooms that should receive resolved door events.
+        Further canonical NN rooms that should receive resolved door events.
 
     Returns
     -------
@@ -115,6 +120,11 @@ def build_synthetic_location_inputs(  # noqa: PLR0913
 
     patient_rooms = (patient_room, *additional_patient_rooms)
     door_rooms = (door_room, *additional_door_rooms)
+    for room_code in (*patient_rooms, *door_rooms):
+        _validate_nn_room_code(room_code)
+    if ambiguous_door_room is not None:
+        _validate_nn_room_code(ambiguous_door_room)
+
     event_definitions = []
     bed_reference_definitions = []
     room_code_mapping_definitions = []
@@ -151,7 +161,7 @@ def build_synthetic_location_inputs(  # noqa: PLR0913
             _door_description(
                 building,
                 floor,
-                f"{building[0].upper()}{floor:02d}ZZ999",
+                f"{building[0].upper()}{floor:02d}NN999",
             ),
         )
     )
