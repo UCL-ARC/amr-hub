@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 from pathlib import Path
+
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 
 import numpy as np
 
 from amr_hub_abm.data_ingestion import (
     LocationEventPreparationReport,
     build_synthetic_location_inputs,
+    plot_location_mapping,
     prepare_location_events,
 )
 from amr_hub_abm.location_resolution import (
@@ -66,6 +70,12 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=0,
         help="Random seed supplied while loading model rooms (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="Destination for the generated mapping overlay PNG.",
     )
     return parser.parse_args()
 
@@ -177,6 +187,8 @@ def main() -> None:
         patient_floor=args.floor,
     )
     log_preparation_report(report)
+    plot_location_mapping(rooms, report, args.output)
+    logger.info("Wrote location-mapping overlay to %s", args.output)
 
     patient_resolution = resolve_room_location(
         args.building,
