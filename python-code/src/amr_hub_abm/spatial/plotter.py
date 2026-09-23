@@ -6,7 +6,13 @@ from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.spatial.room import Room
 
 
-def plot_room(room: Room, ax: Axes, **kwargs: dict) -> None:
+def plot_room(
+    room: Room,
+    ax: Axes,
+    *,
+    door_color: str = "brown",
+    door_width: float = 2.0,
+) -> None:
     """
     Plot a room on the given axes.
 
@@ -16,8 +22,10 @@ def plot_room(room: Room, ax: Axes, **kwargs: dict) -> None:
         The room to plot.
     ax : Axes
         The axes on which to plot the room.
-    **kwargs : dict
-        Additional keyword arguments to pass to the plotting functions.
+    door_color : str, optional
+        Colour used to plot doors. Defaults to ``"brown"``.
+    door_width : float, optional
+        Line width used to plot doors. Defaults to 2.0.
 
     """
     if not room.walls:
@@ -32,8 +40,8 @@ def plot_room(room: Room, ax: Axes, **kwargs: dict) -> None:
         ax.plot(
             x,
             y,
-            color=kwargs.get("door_color", "brown"),
-            linewidth=kwargs.get("door_width", 2),
+            color=door_color,
+            linewidth=door_width,
         )
 
     for content in room.contents:
