@@ -47,7 +47,12 @@ def plot_location_mapping(
         Destination for the generated PNG image.
 
     """
-    fig, ax = plt.subplots(figsize=(14, 10))
+    fig, (ax, audit_ax) = plt.subplots(
+        1,
+        2,
+        figsize=(17, 10),
+        gridspec_kw={"width_ratios": [4.5, 1.5]},
+    )
     for room in rooms:
         plot_room(
             room,
@@ -80,7 +85,7 @@ def plot_location_mapping(
         ax.annotate(
             str(event["source_event_id"]),
             (float(event["x"]), float(event["y"])),
-            xytext=(5, 5),
+            xytext=(5, 8),
             textcoords="offset points",
             fontsize=7,
             color=colour,
@@ -91,7 +96,7 @@ def plot_location_mapping(
             ax.annotate(
                 room_code,
                 (float(event["x"]), float(event["y"])),
-                xytext=(5, -10),
+                xytext=(5, -3),
                 textcoords="offset points",
                 fontsize=6,
                 color="#374151",
@@ -102,15 +107,45 @@ def plot_location_mapping(
     status_counts = report.audit["resolution_status"].value_counts()
     resolved_count = int(status_counts.get(EventLocationResolutionStatus.RESOLVED, 0))
     unresolved_count = len(report.audit) - resolved_count
-    ax.set_title(
+    fig.suptitle(
         f"Event location reconciliation: {resolved_count} resolved, "
-        f"{unresolved_count} unresolved"
+        f"{unresolved_count} unresolved",
+        fontsize=16,
     )
     ax.set_aspect("equal", adjustable="box")
+    ax.margins(x=0.03, y=0.05)
     ax.set_axis_off()
     handles, labels = ax.get_legend_handles_labels()
+
+    unresolved = report.audit.loc[
+        report.audit["resolution_status"] != EventLocationResolutionStatus.RESOLVED
+    ]
+    audit_ax.set_title("Unresolved events", loc="left", fontweight="bold")
+    audit_ax.set_axis_off()
+    y_position = 0.94
+    for _, event in unresolved.iterrows():
+        audit_ax.text(
+            0.0,
+            y_position,
+            str(event["source_event_id"]),
+            transform=audit_ax.transAxes,
+            fontsize=9,
+            fontweight="bold",
+            va="top",
+        )
+        audit_ax.text(
+            0.0,
+            y_position - 0.035,
+            str(event["resolution_status"]),
+            transform=audit_ax.transAxes,
+            fontsize=8,
+            color="#6b7280",
+            va="top",
+        )
+        y_position -= 0.13
     if handles:
-        ax.legend(handles, labels, loc="upper right")
+        audit_ax.legend(handles, labels, loc="lower left")
+
     fig.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200, bbox_inches="tight")

@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
 from amr_hub_abm.exceptions import InvalidDefinitionError
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 _PATIENT_ROOM_CODE = re.compile(
     r"^[A-Z]\d{2}(?P<prefix>NU|NN|CB)(?P<room_number>\d{3})$",
@@ -40,13 +44,38 @@ def _door_description(building: str, floor: int, room_code: str) -> str:
     return f"{building.upper()} {_ordinal_floor(floor)} FLR {room_code.upper()} DOOR"
 
 
-def build_synthetic_location_inputs(
+def _synthetic_bed_reference(
+    room_code: str,
+    bed_number: int,
+) -> tuple[str, str, str]:
+    """Return source bed, room name, and bed name for a canonical room code."""
+    patient_match = _PATIENT_ROOM_CODE.fullmatch(room_code)
+    if patient_match is None:
+        msg = f"Patient room is not compatible with a synthetic bed: {room_code}"
+        raise InvalidDefinitionError(msg)
+
+    room_number = int(patient_match["room_number"])
+    if room_number > 99:
+        msg = f"Synthetic bed identifiers support room numbers up to 99: {room_code}"
+        raise InvalidDefinitionError(msg)
+
+    prefix = patient_match["prefix"].upper()
+    return (
+        f"{prefix}{room_number:02d}-{bed_number:02d}",
+        f"{_ROOM_NAMES[prefix]} {room_number}",
+        f"Cot {bed_number}",
+    )
+
+
+def build_synthetic_location_inputs(  # noqa: PLR0913
     *,
     building: str,
     floor: int,
     patient_room: str,
     door_room: str,
     ambiguous_door_room: str | None = None,
+    additional_patient_rooms: Sequence[str] = (),
+    additional_door_rooms: Sequence[str] = (),
 ) -> SyntheticLocationInputs:
     """
     Build synthetic successful and unresolved event-location records.
@@ -63,6 +92,10 @@ def build_synthetic_location_inputs(
         Canonical room code for the successfully resolved unique-door event.
     ambiguous_door_room : str or None, optional
         Canonical room code for an event expected to have several model doors.
+    additional_patient_rooms : collections.abc.Sequence[str], optional
+        Further canonical rooms that should receive resolved patient events.
+    additional_door_rooms : collections.abc.Sequence[str], optional
+        Further canonical rooms that should receive resolved door events.
 
     Returns
     -------
@@ -80,31 +113,39 @@ def build_synthetic_location_inputs(
         msg = "Synthetic door descriptions require an alphanumeric building name"
         raise InvalidDefinitionError(msg)
 
-    patient_match = _PATIENT_ROOM_CODE.fullmatch(patient_room)
-    if patient_match is None:
-        msg = f"Patient room is not compatible with a synthetic bed: {patient_room}"
-        raise InvalidDefinitionError(msg)
+    patient_rooms = (patient_room, *additional_patient_rooms)
+    door_rooms = (door_room, *additional_door_rooms)
+    event_definitions = []
+    bed_reference_definitions = []
+    room_code_mapping_definitions = []
+    for index, room_code in enumerate(patient_rooms, start=1):
+        suffix = "" if index == 1 else f"-{index}"
+        reference_id = f"patient-reference{suffix}"
+        source_bed, room_name, bed_name = _synthetic_bed_reference(room_code, index)
+        event_definitions.append(
+            (f"patient-resolved{suffix}", reference_id, "attend_patient", index, pd.NA)
+        )
+        bed_reference_definitions.append((reference_id, source_bed))
+        room_code_mapping_definitions.append((room_code.upper(), room_name, bed_name))
 
-    room_number = int(patient_match["room_number"])
-    if room_number > 99:
-        msg = f"Synthetic bed identifiers support room numbers up to 99: {patient_room}"
-        raise InvalidDefinitionError(msg)
+    door_reference_definitions = []
+    for index, room_code in enumerate(door_rooms, start=1):
+        suffix = "" if index == 1 else f"-{index}"
+        reference_id = f"door-reference{suffix}"
+        event_definitions.append(
+            (f"door-resolved{suffix}", reference_id, "door_access", pd.NA, pd.NA)
+        )
+        door_reference_definitions.append(
+            (reference_id, _door_description(building, floor, room_code))
+        )
 
-    prefix = patient_match["prefix"].upper()
-    source_bed = f"{prefix}{room_number:02d}-01"
-    room_name = f"{_ROOM_NAMES[prefix]} {room_number}"
-
-    event_definitions = [
-        ("patient-resolved", "patient-reference", "attend_patient", 1, pd.NA),
-        ("door-resolved", "door-reference", "door_access", pd.NA, pd.NA),
-        ("reference-missing", "missing-reference", "door_access", pd.NA, pd.NA),
-        ("room-missing", "unknown-room-reference", "door_access", pd.NA, pd.NA),
-    ]
-    door_reference_definitions = [
-        (
-            "door-reference",
-            _door_description(building, floor, door_room),
-        ),
+    event_definitions.extend(
+        [
+            ("reference-missing", "missing-reference", "door_access", pd.NA, pd.NA),
+            ("room-missing", "unknown-room-reference", "door_access", pd.NA, pd.NA),
+        ]
+    )
+    door_reference_definitions.append(
         (
             "unknown-room-reference",
             _door_description(
@@ -112,8 +153,8 @@ def build_synthetic_location_inputs(
                 floor,
                 f"{building[0].upper()}{floor:02d}ZZ999",
             ),
-        ),
-    ]
+        )
+    )
     if ambiguous_door_room is not None:
         event_definitions.append(
             ("door-ambiguous", "ambiguous-door-reference", "door_access", pd.NA, pd.NA)
@@ -146,14 +187,12 @@ def build_synthetic_location_inputs(
         }
     )
     bed_references = pd.DataFrame(
-        {"locationID": ["patient-reference"], "bedName": [source_bed]}
+        bed_reference_definitions,
+        columns=["locationID", "bedName"],
     )
     room_code_mappings = pd.DataFrame(
-        {
-            "roomCode": [patient_room.upper()],
-            "roomName": [room_name],
-            "bedName": ["Cot 1"],
-        }
+        room_code_mapping_definitions,
+        columns=["roomCode", "roomName", "bedName"],
     )
     door_references = pd.DataFrame(
         door_reference_definitions,

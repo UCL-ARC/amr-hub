@@ -62,6 +62,18 @@ def parse_args() -> argparse.Namespace:
         help="Room code used for door-event placement.",
     )
     parser.add_argument(
+        "--additional-patient-room",
+        action="append",
+        default=[],
+        help="Additional patient room code; may be supplied more than once.",
+    )
+    parser.add_argument(
+        "--additional-door-room",
+        action="append",
+        default=[],
+        help="Additional unique-door room code; may be supplied more than once.",
+    )
+    parser.add_argument(
         "--ambiguous-door-room",
         help="Optional room code expected to contain multiple candidate doors.",
     )
@@ -175,6 +187,8 @@ def main() -> None:
         patient_room=args.patient_room,
         door_room=args.door_room,
         ambiguous_door_room=args.ambiguous_door_room,
+        additional_patient_rooms=args.additional_patient_room,
+        additional_door_rooms=args.additional_door_room,
     )
     logger.info("Constructed %s synthetic source events", len(synthetic_inputs.events))
     report = prepare_location_events(
