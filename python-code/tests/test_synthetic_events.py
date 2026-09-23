@@ -1,8 +1,11 @@
 """Tests for synthetic event-location inputs."""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
+from amr_hub_abm.data_ingestion.plotting import plot_location_mapping
 from amr_hub_abm.data_ingestion.prepared_events import (
     EventPreparationStatus,
     prepare_location_events,
@@ -147,3 +150,37 @@ def test_synthetic_inputs_run_through_preparation_pipeline() -> None:
         EventLocationResolutionStatus.AMBIGUOUS_DOORS,
         EventPreparationStatus.UNSUPPORTED_INTERACTION_TYPE,
     ]
+
+
+def test_plot_location_mapping_writes_synthetic_overlay(tmp_path: Path) -> None:
+    """Resolved synthetic events can be plotted without real floorplan data."""
+    door = Door(
+        is_open=False,
+        access_control=(False, False),
+        start=(1.0, 0.0),
+        end=(3.0, 0.0),
+        connecting_rooms=(1, 2),
+        door_id=7,
+    )
+    rooms = [make_room("B08NN012"), make_room("B08XY777", [door])]
+    inputs = build_synthetic_location_inputs(
+        building="BETA",
+        floor=8,
+        patient_room="B08NN012",
+        door_room="B08XY777",
+    )
+    report = prepare_location_events(
+        inputs.events,
+        inputs.bed_references,
+        inputs.room_code_mappings,
+        inputs.door_references,
+        rooms,
+        patient_building="BETA",
+        patient_floor=8,
+    )
+    output_path = tmp_path / "location-mapping.png"
+
+    plot_location_mapping(rooms, report, output_path)
+
+    assert output_path.is_file()
+    assert output_path.stat().st_size > 0

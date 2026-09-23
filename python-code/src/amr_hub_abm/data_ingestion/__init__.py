@@ -3,6 +3,7 @@
 from amr_hub_abm.data_ingestion.beds import BedLocation, extract_bed_location
 from amr_hub_abm.data_ingestion.doors import DoorLocation, extract_door_location
 from amr_hub_abm.data_ingestion.normalise import normalise_door_location_events
+from amr_hub_abm.data_ingestion.plotting import plot_location_mapping
 from amr_hub_abm.data_ingestion.prepared_events import (
     EventPreparationStatus,
     LocationEventPreparationReport,
@@ -31,6 +32,7 @@ __all__ = [
     "extract_bed_location",
     "extract_door_location",
     "normalise_door_location_events",
+    "plot_location_mapping",
     "prepare_location_events",
     "resolve_door_location_events",
     "resolve_patient_location_events",
