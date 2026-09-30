@@ -18,11 +18,11 @@ hcw_initial_hunger: 0.0
 hcw_initial_toilet_need: 0.0
 patient_initial_hunger: 0.0
 patient_initial_toilet_need: 0.0
-hcw_fatigue_rate: 0.001
-hcw_hunger_rate: 0.001
-hcw_toilet_rate: 0.001
-patient_hunger_rate: 0.001
-patient_toilet_rate: 0.001
+hcw_fatigue_rate: 0.000001
+hcw_hunger_rate: 0.000001
+hcw_toilet_rate: 0.000001
+patient_hunger_rate: 0.000001
+patient_toilet_rate: 0.000001
 
 time_needed_attend_patient: 15 # Timesteps needed for a healthcare worker to attend to a patient
 time_needed_door_access: 1 # Timesteps needed for a healthcare worker to access a door (e.g., open/close)
