@@ -1,18 +1,19 @@
 """Solara app for browser-based AMR Hub ABM visualization."""
 # ruff: noqa: N802
 
-from amr_hub_abm.agent.enums import AgentType
 import solara
 from matplotlib.figure import Figure
 from mesa.visualization import SolaraViz
 from mesa.visualization.utils import update_counter
 import qrcode
 
+from amr_hub_abm.agent.agent import Agent
 from amr_hub_abm.mesa_wrapper import HospitalABM
 
 STATUS_DICT = {
     "NOT_STARTED": "🔵",
     "MOVING_TO_LOCATION": "🚶",
+    "SUSPENDED": "⏸️",
     "IN_PROGRESS": "⏳",
     "COMPLETED": "✅",
 }
@@ -60,28 +61,65 @@ def FloorplanComponent(model: HospitalABM) -> None:
 
 @solara.component  # pyright: ignore[reportPrivateImportUsage]
 def AgentTaskTableComponent(model: HospitalABM) -> None:
-    """Render a table of tasks for one agent."""
+    """Render the task list for a selected agent."""
     update_counter.get()
 
-    agent = [
-        agent
-        for agent in model.simulation.agents
-        if agent.agent_type == AgentType.HEALTHCARE_WORKER
-    ][0]
-    tasks = agent.tasks
+    agents_by_label: dict[str, Agent] = {
+        f"{agent.agent_type.name.replace('_', ' ').title()} #{agent.idx}": agent
+        for agent in sorted(
+            model.simulation.agents,
+            key=lambda agent: (agent.agent_type.value, agent.idx),
+        )
+    }
+    agent_options = list(agents_by_label)
+    selected_agent_label, set_selected_agent_label = solara.use_state(
+        agent_options[0] if agent_options else None
+    )
 
-    rows: list[dict[str, str]] = [
-        {
-            "Task": str(task.task_type.name),
-            "Status": str(task.progress.name),
-            "Due Time": str(task.time_due),
-            "Start Time": str(task.time_started),
-            "End Time": str(task.time_completed),
-        }
-        for task in tasks
-    ]
+    selected_label = selected_agent_label
+    if selected_label not in agents_by_label and agent_options:
+        selected_label = agent_options[0]
 
     with solara.Card(title="Tasks", margin=0):
+        if not agent_options:
+            solara.Markdown("No agents available.")
+            return
+
+        solara.Select(
+            label="Agent",
+            values=agent_options,
+            value=selected_label,
+            on_value=set_selected_agent_label,
+            dense=True,
+        )
+
+        agent = agents_by_label[selected_label]
+        internal_state = agent.internal_state
+        state_levels = [
+            ("Hunger", internal_state.hunger),
+            ("Toilet need", internal_state.toilet_need),
+        ]
+        if internal_state.fatigue is not None:
+            state_levels.append(("Fatigue", internal_state.fatigue))
+
+        with solara.Card(title="Internal State", margin=0):
+            with solara.Column(gap="8px"):
+                for label, level in state_levels:
+                    with solara.Row(style={"align-items": "center", "gap": "12px"}):
+                        solara.Markdown(f"**{label}: {level:.0%}**")
+                        solara.ProgressLinear(value=level * 100, color="primary")
+
+        rows: list[dict[str, str]] = [
+            {
+                "Task": task.task_type.name,
+                "Status": task.progress.name,
+                "Due Time": str(task.time_due),
+                "Start Time": str(task.time_started),
+                "End Time": str(task.time_completed),
+            }
+            for task in agent.tasks
+        ]
+
         with solara.Card(margin=0):
             with solara.Column(gap="8px"):
                 solara.Markdown("""
@@ -89,6 +127,8 @@ def AgentTaskTableComponent(model: HospitalABM) -> None:
                     - 🔵 Not Started
 
                     - 🚶 Moving to Location
+
+                    - ⏸️ Suspended
 
                     - ⏳ In Progress
 
@@ -98,6 +138,8 @@ def AgentTaskTableComponent(model: HospitalABM) -> None:
             with solara.Column(
                 gap="8px", margin=0, style={"overflow": "auto", "max-height": "400px"}
             ):
+                if not rows:
+                    solara.Markdown("This agent has no tasks.")
                 for row in rows:
                     status = STATUS_DICT[row["Status"]]
 
