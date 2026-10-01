@@ -1,4 +1,4 @@
-.PHONY: help install install-dev install-docs install-all test test-cov lint format type-check docs docs-serve clean pre-commit pre-commit-install simple-example dashboard
+.PHONY: help install install-dev install-docs install-all test test-cov lint format type-check docs docs-serve clean pre-commit pre-commit-install simple simple-example contact-analysis dashboard
 
 # Determine if we're in the repo root or python-code directory
 PYTHON_CODE_DIR := $(shell if [ -d "python-code" ]; then echo "python-code"; else echo "."; fi)
@@ -20,6 +20,7 @@ help:
 	@echo "  make install-docs     Install with documentation dependencies"
 	@echo ""
 	@echo "Example Usage:"
+	@echo "  make simple           Run the simple example and contact analysis"
 	@echo "  make simple-example   Run the simple example script"
 	@echo "  make dashboard        Run the Solara dashboard example"
 	@echo ""
@@ -103,6 +104,13 @@ clean:
 
 simple-example:
 	$(CD) uv run python ../examples/simple.py
+
+contact-analysis:
+	$(CD) uv run python -m amr_hub_abm.contact_analysis
+
+simple:
+	$(MAKE) simple-example
+	$(MAKE) contact-analysis
 
 dashboard:
 	$(CD) uv run solara run ../examples/solara_app.py
