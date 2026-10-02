@@ -1,0 +1,148 @@
+"""Tests for recorded trajectory contact analysis."""
+
+import csv
+from pathlib import Path
+
+import pytest
+
+from amr_hub_abm.contact_analysis import (
+    analyze_contacts,
+    detect_contacts,
+    load_trajectories,
+)
+
+FIELDS = ["time", "building", "floor", "x", "y", "heading", "infection_status"]
+
+
+def write_track(
+    directory: Path,
+    filename: str,
+    positions: list[tuple[int, int, int, float, float]],
+) -> Path:
+    """Write a small trajectory fixture."""
+    path = directory / filename
+    with path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=FIELDS)
+        writer.writeheader()
+        for time, building, floor, x, y in positions:
+            writer.writerow(
+                {
+                    "time": time,
+                    "building": building,
+                    "floor": floor,
+                    "x": x,
+                    "y": y,
+                    "heading": 0,
+                    "infection_status": 0,
+                }
+            )
+    return path
+
+
+def test_detect_contacts_uses_threshold_and_requires_same_floor(
+    tmp_path: Path,
+) -> None:
+    """Only same-floor pairs within the inclusive distance threshold contact."""
+    first = write_track(
+        tmp_path,
+        "agent_healthcare_worker_1_trajectory.csv",
+        [(0, 1, 0, 0.0, 0.0)],
+    )
+    write_track(
+        tmp_path,
+        "agent_patient_2_trajectory.csv",
+        [(0, 1, 0, 0.1, 0.0)],
+    )
+    write_track(
+        tmp_path,
+        "agent_patient_3_trajectory.csv",
+        [(0, 1, 1, 0.0, 0.0)],
+    )
+
+    observations, interval = detect_contacts(load_trajectories(tmp_path), 0.1)
+
+    assert interval == 1
+    assert len(observations) == 1
+    assert observations[0].distance == pytest.approx(0.1)
+    assert observations[0].midpoint_x == pytest.approx(0.05)
+    assert observations[0].building == 1
+    assert observations[0].floor == 0
+    assert first.exists()
+
+
+def test_analyze_contacts_writes_episode_summaries_and_plots(tmp_path: Path) -> None:
+    """Write observations, episode durations, time series, and heatmaps."""
+    input_dir = tmp_path / "trajectories"
+    output_dir = tmp_path / "analysis"
+    input_dir.mkdir()
+    first = [(time, 1, 0, 0.0 if time != 2 else 1.0, 0.0) for time in range(5)]
+    second = [(time, 1, 0, 0.05, 0.0) for time in range(5)]
+    write_track(input_dir, "agent_healthcare_worker_1_trajectory.csv", first)
+    write_track(input_dir, "agent_patient_2_trajectory.csv", second)
+
+    observations, episodes = analyze_contacts(input_dir, output_dir)
+
+    assert len(observations) == 4
+    assert [
+        (episode.start_time, episode.end_time, episode.duration) for episode in episodes
+    ] == [(0, 1, 2), (3, 4, 2)]
+    with (output_dir / "contact_timeseries.csv").open(
+        newline="", encoding="utf-8"
+    ) as csv_file:
+        rows = list(csv.DictReader(csv_file))
+    assert [int(row["active_contacts"]) for row in rows] == [1, 1, 0, 1, 1]
+    assert [int(row["new_episodes"]) for row in rows] == [1, 0, 0, 1, 0]
+
+    with (output_dir / "contact_pair_summary.csv").open(
+        newline="", encoding="utf-8"
+    ) as csv_file:
+        pair_summary = list(csv.DictReader(csv_file))
+    assert pair_summary[0]["episodes"] == "2"
+    assert pair_summary[0]["total_duration"] == "4"
+    assert pair_summary[0]["observations"] == "4"
+    assert (output_dir / "contact_observations.csv").exists()
+    assert (output_dir / "contact_episodes.csv").exists()
+    assert (output_dir / "contact_timeseries.png").exists()
+    assert (output_dir / "contact_heatmap_building_1_floor_0.png").exists()
+
+
+def test_analyze_contacts_with_no_contacts_writes_zero_timeseries(
+    tmp_path: Path,
+) -> None:
+    """Write zero counts and a placeholder heatmap when no pairs contact."""
+    input_dir = tmp_path / "trajectories"
+    output_dir = tmp_path / "analysis"
+    input_dir.mkdir()
+    write_track(
+        input_dir,
+        "agent_healthcare_worker_1_trajectory.csv",
+        [(0, 1, 0, 0.0, 0.0), (1, 1, 0, 0.0, 0.0)],
+    )
+    write_track(
+        input_dir,
+        "agent_patient_2_trajectory.csv",
+        [(0, 1, 0, 1.0, 0.0), (1, 1, 0, 1.0, 0.0)],
+    )
+
+    observations, episodes = analyze_contacts(input_dir, output_dir)
+
+    assert observations == []
+    assert episodes == []
+    with (output_dir / "contact_timeseries.csv").open(
+        newline="", encoding="utf-8"
+    ) as csv_file:
+        rows = list(csv.DictReader(csv_file))
+    assert [row["active_contacts"] for row in rows] == ["0", "0"]
+    assert (output_dir / "contact_heatmap.png").exists()
+
+
+def test_detect_contacts_rejects_irregular_sample_times(tmp_path: Path) -> None:
+    """Reject irregular sample intervals to keep duration calculations valid."""
+    write_track(
+        tmp_path,
+        "agent_healthcare_worker_1_trajectory.csv",
+        [(0, 1, 0, 0.0, 0.0), (1, 1, 0, 0.0, 0.0), (3, 1, 0, 0.0, 0.0)],
+    )
+
+    with pytest.raises(ValueError, match="regularly spaced"):
+        detect_contacts(load_trajectories(tmp_path), 0.1)

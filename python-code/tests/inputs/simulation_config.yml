@@ -13,6 +13,17 @@ agent_stochasticity: 5.0 # Degrees of randomness applied to agent heading each s
 agent_interaction_radius: 0.01 # Distance within which an agent is considered to have reached a target
 agent_max_movement_attempts: 5 # Max attempts to find a movement step that avoids wall intersections
 
+hcw_initial_fatigue: 0.0
+hcw_initial_hunger: 0.0
+hcw_initial_toilet_need: 0.0
+patient_initial_hunger: 0.0
+patient_initial_toilet_need: 0.0
+hcw_fatigue_rate: 0.000001
+hcw_hunger_rate: 0.000001
+hcw_toilet_rate: 0.000001
+patient_hunger_rate: 0.000001
+patient_toilet_rate: 0.000001
+
 time_needed_attend_patient: 15 # Timesteps needed for a healthcare worker to attend to a patient
 time_needed_door_access: 1 # Timesteps needed for a healthcare worker to access a door (e.g., open/close)
 time_needed_workstation: 30 # Timesteps needed for a healthcare worker to use a workstation
