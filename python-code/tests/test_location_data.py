@@ -30,20 +30,55 @@ def test_duckdb_and_legacy_csv_have_equivalent_events() -> None:
     )
 
     assert tuple(duckdb_data.columns) == CANONICAL_COLUMNS
-    assert len(duckdb_data) == 42
+    assert len(duckdb_data) == 195
+    assert duckdb_data["hcw_id"].unique().tolist() == [1]
     pd.testing.assert_frame_equal(duckdb_data, csv_data)
 
 
-def test_duckdb_event_sequence_resolves_timestamp_ties() -> None:
+def test_duckdb_event_sequence_resolves_timestamp_ties(tmp_path: Path) -> None:
     """Test that tied events retain their explicit sequence order."""
-    data = read_location_timeseries(sim_config.location_data)
-    tied = data[
-        (data["hcw_id"] == 2)
-        & (data["timestamp"] == pd.Timestamp("2024-01-01 14:00:00"))
-    ]
+    database_path = tmp_path / "tied_events.duckdb"
+    with duckdb.connect(str(database_path)) as connection:
+        connection.execute(
+            "CREATE TABLE amr_hub_schema "
+            "(component VARCHAR PRIMARY KEY, schema_version INTEGER NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO amr_hub_schema VALUES ('location_timeseries', 1)"
+        )
+        connection.execute(
+            """
+            CREATE TABLE location_timeseries (
+                event_sequence BIGINT,
+                hcw_id INTEGER,
+                timestamp TIMESTAMP,
+                location VARCHAR,
+                event_type VARCHAR,
+                patient_id INTEGER,
+                door_id INTEGER,
+                content_type INTEGER
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO location_timeseries VALUES
+            (2, 1, '2024-01-01 14:00:00', 'Sample Hospital:0:Ward',
+             'door_access', NULL, 0, NULL),
+            (1, 1, '2024-01-01 14:00:00', 'Sample Hospital:0:Ward',
+             'attend_patient', 1, NULL, NULL)
+            """
+        )
 
-    assert tied["event_sequence"].tolist() == [32, 33]
-    assert tied["event_type"].tolist() == ["attend_patient", "door_access"]
+    data = read_location_timeseries(
+        LocationTimeseriesDataConfig(
+            format=LocationTimeseriesDataFormat.DUCKDB,
+            path=database_path,
+        )
+    )
+
+    assert data["event_sequence"].tolist() == [1, 2]
+    assert data["event_type"].tolist() == ["attend_patient", "door_access"]
 
 
 def test_duckdb_accepts_location_event_view(tmp_path: Path) -> None:
