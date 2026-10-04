@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 import yaml
 
-from amr_hub_abm.agent.internal_state import InternalStateConfig
 from amr_hub_abm.agent.kinematics import AgentKinematicsConfig
 from amr_hub_abm.exceptions import InvalidDefinitionError
 from amr_hub_abm.task.task_duration import TaskDurationConfig
@@ -114,7 +113,6 @@ class SimulationConfig:
 
     agent_kinematics: AgentKinematicsConfig
     task_durations: TaskDurationConfig
-    internal_state: InternalStateConfig
     location_data: LocationTimeseriesDataConfig
     config_data: Mapping[str, object]
 
@@ -139,13 +137,11 @@ class SimulationConfig:
 
         agent_kinematics = AgentKinematicsConfig.from_config(config_data)
         task_durations = TaskDurationConfig.from_config(config_data)
-        internal_state = InternalStateConfig.from_config(config_data)
         location_data = LocationTimeseriesDataConfig.from_config(config_data)
 
         return cls(
             agent_kinematics=agent_kinematics,
             task_durations=task_durations,
-            internal_state=internal_state,
             location_data=location_data,
             config_data=config_data,
         )

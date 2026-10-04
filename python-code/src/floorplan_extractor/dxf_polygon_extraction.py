@@ -18,7 +18,8 @@ Typical workflow:
 5. Apply configured polygon corrections.
 6. Spatially join labels to polygons and aggregate them deterministically.
 7. Normalise accepted shared walls to common midlines.
-8. Project door symbols onto the final room boundaries.
+8. Construct configured open-boundary spans from the final room boundaries.
+9. Project door symbols onto the final room boundaries.
 
 The module makes the following assumptions:
 - DXF layer names are stable and known in advance.
@@ -33,6 +34,7 @@ internal helpers and are not part of the public API.
 
 from dataclasses import dataclass, field
 from itertools import pairwise
+from math import isfinite
 from pathlib import Path
 from typing import Any
 
@@ -48,7 +50,7 @@ from shapely.geometry import (
     Polygon,
 )
 from shapely.geometry.base import BaseGeometry
-from shapely.ops import linemerge, polygonize, split, unary_union
+from shapely.ops import linemerge, nearest_points, polygonize, snap, split, unary_union
 
 from floorplan_extractor.shared_walls import SharedWallConfig, normalise_shared_walls
 
@@ -160,6 +162,44 @@ class PolygonMergeConfig:
 
 
 @dataclass(frozen=True)
+class OpenBoundaryPairConfig:
+    """Configuration identifying one wallless boundary between two rooms."""
+
+    rooms: tuple[str, str]
+    selector_point: XY | None = None
+    allow_multiple_spans: bool = False
+
+
+@dataclass(frozen=True)
+class OpenBoundaryConfig:
+    """Configuration for constructing explicit wallless room boundaries."""
+
+    tolerance: float = 1e-6
+    min_length: float = 0.0
+    pairs: list[OpenBoundaryPairConfig] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class OpenBoundarySpan:
+    """Canonical shared boundary span for one configured room pair."""
+
+    rooms: tuple[str, str]
+    geometry: LineString
+
+
+@dataclass(frozen=True)
+class _OpenBoundarySpanContext:
+    """Geometry and configuration used to validate constructed spans."""
+
+    labelled_polygons: gpd.GeoDataFrame
+    pair: OpenBoundaryPairConfig
+    config: OpenBoundaryConfig
+    polygon_label_target: str
+    first_boundary: BaseGeometry
+    second_boundary: BaseGeometry
+
+
+@dataclass(frozen=True)
 class ExtractionConfig:
     """
     Top-level configuration for DXF extraction.
@@ -175,6 +215,8 @@ class ExtractionConfig:
     shared_walls : SharedWallConfig or None
         If provided and enabled, shared-wall normalisation may be applied by
         downstream processing.
+    open_boundaries : OpenBoundaryConfig or None
+        Explicit wallless room pairs to construct from final room boundaries.
     polygon_splits : list[PolygonSplitConfig]
         Floorplan-specific polygon splits applied before label attachment.
     polygon_additions : list[PolygonAdditionConfig]
@@ -188,6 +230,7 @@ class ExtractionConfig:
     door_layer_name: str | None = None
     doors: DoorAttachmentConfig | None = None
     shared_walls: SharedWallConfig | None = None
+    open_boundaries: OpenBoundaryConfig | None = None
     polygon_splits: list[PolygonSplitConfig] = field(default_factory=list)
     polygon_additions: list[PolygonAdditionConfig] = field(default_factory=list)
     polygon_merges: list[PolygonMergeConfig] = field(default_factory=list)
@@ -224,6 +267,13 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
       min_overlap_ratio: 0.75
       min_overlap_length: 250
       canonical_line: midline
+
+    open_boundaries:             # optional
+      tolerance: 1.0e-6
+      min_length: 0.0
+      pairs:
+        - rooms: [ROOM_A, ROOM_B]
+          selector_point: [x, y] # optional
 
     polygon_splits:              # optional
       - selector_point: [x, y]
@@ -276,6 +326,7 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
     door_layer_name: str | None = None
     door_config: DoorAttachmentConfig | None = None
     shared_wall_config: SharedWallConfig | None = None
+    open_boundary_config: OpenBoundaryConfig | None = None
 
     if "doors" in data:
         door_block = data["doors"]
@@ -328,6 +379,9 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
             canonical_line=canonical_line,
         )
 
+    if "open_boundaries" in data:
+        open_boundary_config = _parse_open_boundaries(data["open_boundaries"])
+
     polygon_splits, polygon_additions, polygon_merges = _parse_polygon_corrections(data)
 
     return ExtractionConfig(
@@ -335,10 +389,594 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
         door_layer_name=door_layer_name,
         doors=door_config,
         shared_walls=shared_wall_config,
+        open_boundaries=open_boundary_config,
         polygon_splits=polygon_splits,
         polygon_additions=polygon_additions,
         polygon_merges=polygon_merges,
     )
+
+
+def _parse_open_boundaries(block: object) -> OpenBoundaryConfig:
+    """Parse and validate explicitly configured wallless room pairs."""
+    if not isinstance(block, dict):
+        msg = "'open_boundaries' block must be a mapping"
+        raise TypeError(msg)
+
+    tolerance = _parse_non_negative_float(
+        block.get("tolerance", 1e-6),
+        "open_boundaries.tolerance",
+    )
+    min_length = _parse_non_negative_float(
+        block.get("min_length", 0.0),
+        "open_boundaries.min_length",
+    )
+
+    pair_blocks = block.get("pairs")
+    if not isinstance(pair_blocks, list) or not pair_blocks:
+        msg = "'open_boundaries.pairs' must be a non-empty list"
+        raise ValueError(msg)
+
+    pairs = [_parse_open_boundary_pair(pair) for pair in pair_blocks]
+    pair_keys = [frozenset(pair.rooms) for pair in pairs]
+    if len(pair_keys) != len(set(pair_keys)):
+        msg = "'open_boundaries.pairs' must not contain duplicate room pairs"
+        raise ValueError(msg)
+
+    return OpenBoundaryConfig(
+        tolerance=tolerance,
+        min_length=min_length,
+        pairs=pairs,
+    )
+
+
+def _parse_open_boundary_pair(block: object) -> OpenBoundaryPairConfig:
+    """Parse one explicitly configured wallless room pair."""
+    if not isinstance(block, dict):
+        msg = "Each 'open_boundaries.pairs' entry must be a mapping"
+        raise TypeError(msg)
+
+    rooms = block.get("rooms")
+    if (
+        not isinstance(rooms, list)
+        or len(rooms) != 2
+        or not all(isinstance(room, str) and room.strip() for room in rooms)
+    ):
+        msg = "Open-boundary 'rooms' must contain exactly two non-empty strings"
+        raise ValueError(msg)
+
+    first_room, second_room = (room.strip() for room in rooms)
+    if first_room == second_room:
+        msg = "Open-boundary room labels must be distinct"
+        raise ValueError(msg)
+
+    selector_point = None
+    if "selector_point" in block:
+        selector_point = _parse_xy(
+            block["selector_point"],
+            "open_boundaries.pairs.selector_point",
+        )
+        if not all(isfinite(coordinate) for coordinate in selector_point):
+            msg = "Open-boundary 'selector_point' coordinates must be finite"
+            raise ValueError(msg)
+
+    allow_multiple_spans = block.get("allow_multiple_spans", False)
+    if not isinstance(allow_multiple_spans, bool):
+        msg = "Open-boundary 'allow_multiple_spans' must be a boolean"
+        raise TypeError(msg)
+    if allow_multiple_spans and selector_point is not None:
+        msg = "Open-boundary cannot combine 'allow_multiple_spans' and 'selector_point'"
+        raise ValueError(msg)
+
+    return OpenBoundaryPairConfig(
+        rooms=(first_room, second_room),
+        selector_point=selector_point,
+        allow_multiple_spans=allow_multiple_spans,
+    )
+
+
+def _parse_non_negative_float(value: object, field_name: str) -> float:
+    """Parse one finite, non-negative numeric configuration value."""
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        msg = f"'{field_name}' must be a number"
+        raise TypeError(msg)
+
+    parsed_value = float(value)
+    if not isfinite(parsed_value) or parsed_value < 0.0:
+        msg = f"'{field_name}' must be finite and non-negative"
+        raise ValueError(msg)
+
+    return parsed_value
+
+
+def _validate_open_boundary_room_labels(
+    labelled_polygons: gpd.GeoDataFrame,
+    config: OpenBoundaryConfig,
+    polygon_label_target: str,
+) -> None:
+    """Require every configured room label to identify exactly one final polygon."""
+    for pair in config.pairs:
+        for room_label in pair.rooms:
+            match_count = int(
+                (labelled_polygons[polygon_label_target] == room_label).sum()
+            )
+            if match_count != 1:
+                msg = (
+                    "Open-boundary room label must identify exactly one final "
+                    f"polygon; label {room_label!r} found {match_count}"
+                )
+                raise ValueError(msg)
+
+
+def _linear_components(geometry: BaseGeometry) -> list[LineString]:
+    """Return non-zero linear components from an intersection geometry."""
+    if isinstance(geometry, LineString):
+        return [geometry] if geometry.length > 0.0 else []
+    if isinstance(geometry, MultiLineString):
+        return [line for line in geometry.geoms if line.length > 0.0]
+    if isinstance(geometry, GeometryCollection):
+        return [
+            line
+            for component in geometry.geoms
+            for line in _linear_components(component)
+        ]
+    return []
+
+
+def _ordered_line(line: LineString) -> LineString:
+    """Return a line with lexicographically ordered endpoints."""
+    start = tuple(float(value) for value in line.coords[0][:2])
+    end = tuple(float(value) for value in line.coords[-1][:2])
+    ordered = sorted((start, end))
+    return LineString(ordered)
+
+
+def _line_is_straight(line: LineString, tolerance: float) -> bool:
+    """Return whether every line vertex lies on its endpoint chord."""
+    if len(line.coords) < MIN_DOOR_ENDPOINTS:
+        return False
+
+    start = Point(line.coords[0])
+    end = Point(line.coords[-1])
+    chord = LineString([start, end])
+    if chord.length == 0.0:
+        return False
+
+    return all(
+        Point(coordinate).distance(chord) <= tolerance for coordinate in line.coords
+    )
+
+
+def _line_lies_on_boundary(
+    line: LineString,
+    boundary: BaseGeometry,
+    tolerance: float,
+) -> bool:
+    """Return whether all points of a line lie on or near a boundary."""
+    if tolerance == 0.0:
+        return line.difference(boundary).is_empty
+
+    return line.difference(boundary.buffer(tolerance)).is_empty
+
+
+def _canonicalise_line_endpoints(
+    line: LineString,
+    boundary: BaseGeometry,
+) -> LineString:
+    """Project line endpoints onto the reference boundary."""
+    start, _ = nearest_points(boundary, Point(line.coords[0]))
+    end, _ = nearest_points(boundary, Point(line.coords[-1]))
+    return LineString([start, end])
+
+
+def _select_open_boundary_component(
+    components: list[LineString],
+    pair: OpenBoundaryPairConfig,
+    tolerance: float,
+) -> LineString:
+    """Select one component or reject an ambiguous/multipart intersection."""
+    if not components:
+        msg = (
+            "Open-boundary room pair "
+            f"{pair.rooms!r} must share a non-zero-length boundary span"
+        )
+        raise ValueError(msg)
+
+    if pair.selector_point is None:
+        if len(components) != 1:
+            msg = (
+                "Open-boundary room pair "
+                f"{pair.rooms!r} has ambiguous or multipart boundary spans; "
+                "provide selector_point"
+            )
+            raise ValueError(msg)
+        return components[0]
+
+    selector = Point(pair.selector_point)
+    matching = [
+        component
+        for component in components
+        if component.distance(selector) <= tolerance
+    ]
+    if len(matching) != 1:
+        msg = (
+            "Open-boundary selector_point for room pair "
+            f"{pair.rooms!r} must select exactly one boundary span; "
+            f"found {len(matching)}"
+        )
+        raise ValueError(msg)
+    return matching[0]
+
+
+def _canonicalise_open_boundary_spans(
+    spans: list[LineString],
+    context: _OpenBoundarySpanContext,
+) -> list[LineString]:
+    """Validate, canonicalise, and deterministically order boundary spans."""
+    canonical_spans: list[LineString] = []
+    for raw_span in spans:
+        if not _line_is_straight(raw_span, context.config.tolerance):
+            msg = (
+                "Open-boundary room pair "
+                f"{context.pair.rooms!r} must produce straight spans"
+            )
+            raise ValueError(msg)
+        span = _canonicalise_line_endpoints(raw_span, context.first_boundary)
+        if span.length == 0.0:
+            msg = (
+                "Open-boundary room pair "
+                f"{context.pair.rooms!r} must share a non-zero-length boundary span"
+            )
+            raise ValueError(msg)
+        span = _ordered_line(span)
+        if span.length < context.config.min_length:
+            msg = (
+                f"Open-boundary room pair {context.pair.rooms!r} span length "
+                f"{span.length} is below min_length {context.config.min_length}"
+            )
+            raise ValueError(msg)
+        if not _line_lies_on_boundary(
+            span,
+            context.first_boundary,
+            context.config.tolerance,
+        ) or not _line_lies_on_boundary(
+            span,
+            context.second_boundary,
+            context.config.tolerance,
+        ):
+            msg = (
+                "Open-boundary span must lie on both final room boundaries for "
+                f"room pair {context.pair.rooms!r}"
+            )
+            raise ValueError(msg)
+
+        for room_label, room_geometry in context.labelled_polygons[
+            [context.polygon_label_target, "geometry"]
+        ].itertuples(index=False, name=None):
+            if room_label in context.pair.rooms:
+                continue
+            if span.intersection(room_geometry).length > context.config.tolerance:
+                msg = (
+                    "Open-boundary span for room pair "
+                    f"{context.pair.rooms!r} participates in third room {room_label!r}"
+                )
+                raise ValueError(msg)
+        canonical_spans.append(span)
+
+    return sorted(
+        canonical_spans,
+        key=lambda span: (tuple(span.coords[0]), tuple(span.coords[-1])),
+    )
+
+
+def _construct_open_boundary_spans(
+    labelled_polygons: gpd.GeoDataFrame,
+    pair: OpenBoundaryPairConfig,
+    config: OpenBoundaryConfig,
+    polygon_label_target: str,
+) -> list[LineString]:
+    """Construct canonical spans from two final labelled polygons."""
+    room_geometries = {
+        label: labelled_polygons.loc[
+            labelled_polygons[polygon_label_target] == label,
+            "geometry",
+        ].iloc[0]
+        for label in pair.rooms
+    }
+    first_geometry = room_geometries[pair.rooms[0]]
+    second_geometry = room_geometries[pair.rooms[1]]
+    if not isinstance(first_geometry, Polygon) or not isinstance(
+        second_geometry, Polygon
+    ):
+        msg = f"Open-boundary room pair {pair.rooms!r} must contain Polygon geometries"
+        raise TypeError(msg)
+
+    first_boundary = first_geometry.boundary
+    second_boundary = second_geometry.boundary
+    snapped_second_boundary = snap(
+        second_boundary,
+        first_boundary,
+        config.tolerance,
+    )
+    intersection = first_boundary.intersection(snapped_second_boundary)
+    components = _linear_components(intersection)
+    unmerged_components = components
+    if components:
+        linework = unary_union(components)
+        merged = linework if isinstance(linework, LineString) else linemerge(linework)
+        components = _linear_components(merged)
+
+    if not components and config.tolerance > 0.0:
+        tolerant_intersection = first_boundary.buffer(
+            config.tolerance,
+            cap_style=2,
+            join_style=2,
+        ).intersection(snapped_second_boundary)
+        components = _linear_components(tolerant_intersection)
+        unmerged_components = components
+        if components:
+            linework = unary_union(components)
+            merged = (
+                linework if isinstance(linework, LineString) else linemerge(linework)
+            )
+            components = _linear_components(merged)
+            components = [
+                component
+                for component in components
+                if _line_lies_on_boundary(
+                    component,
+                    first_boundary,
+                    config.tolerance,
+                )
+                and _line_lies_on_boundary(
+                    component,
+                    second_boundary,
+                    config.tolerance,
+                )
+            ]
+            unmerged_components = components
+
+    spans = (
+        unmerged_components
+        if pair.allow_multiple_spans
+        else [_select_open_boundary_component(components, pair, config.tolerance)]
+    )
+    if not spans:
+        msg = (
+            "Open-boundary room pair "
+            f"{pair.rooms!r} must share a non-zero-length boundary span"
+        )
+        raise ValueError(msg)
+
+    return _canonicalise_open_boundary_spans(
+        spans,
+        _OpenBoundarySpanContext(
+            labelled_polygons=labelled_polygons,
+            pair=pair,
+            config=config,
+            polygon_label_target=polygon_label_target,
+            first_boundary=first_boundary,
+            second_boundary=second_boundary,
+        ),
+    )
+
+
+def construct_open_boundaries(
+    labelled_polygons: gpd.GeoDataFrame,
+    config: OpenBoundaryConfig,
+    polygon_label_target: str,
+) -> list[OpenBoundarySpan]:
+    """
+    Construct canonical spans for explicitly configured wallless boundaries.
+
+    The input polygons must be the final corrected and shared-wall-normalised
+    geometries. Each configured pair is snapped within ``config.tolerance``
+    before boundary intersection. Each pair accepts one non-zero, straight span
+    unless explicitly configured to retain multiple straight spans.
+
+    Parameters
+    ----------
+    labelled_polygons : geopandas.GeoDataFrame
+        Final labelled room polygons.
+    config : OpenBoundaryConfig
+        Explicit room pairs and geometric acceptance thresholds.
+    polygon_label_target : str
+        Column containing the unique room labels.
+
+    Returns
+    -------
+    list[OpenBoundarySpan]
+        Canonical spans in the same deterministic order as ``config.pairs``.
+
+    Raises
+    ------
+    ValueError
+        If a configured pair has no unique valid shared span, participates in
+        a third room, or fails the configured geometry checks.
+
+    """
+    _validate_open_boundary_room_labels(
+        labelled_polygons,
+        config,
+        polygon_label_target,
+    )
+
+    return [
+        OpenBoundarySpan(rooms=pair.rooms, geometry=span)
+        for pair in config.pairs
+        for span in _construct_open_boundary_spans(
+            labelled_polygons,
+            pair,
+            config,
+            polygon_label_target,
+        )
+    ]
+
+
+def _door_quad_to_line(door: DoorQuad) -> LineString:
+    """Convert a serialised door segment into a Shapely line."""
+    if len(door) != 4:
+        msg = "Door segments must contain exactly four coordinates"
+        raise ValueError(msg)
+
+    return LineString(
+        [(float(door[0]), float(door[1])), (float(door[2]), float(door[3]))]
+    )
+
+
+def _append_open_boundary_door(
+    room_doors: list[DoorQuad],
+    span: OpenBoundarySpan,
+    door_quad: DoorQuad,
+    span_key: tuple[XY, XY],
+    room_label: str,
+) -> bool:
+    """Append an open-boundary segment unless it duplicates or overlaps a door."""
+    exact_match = False
+    for existing_door in room_doors:
+        existing_line = _door_quad_to_line(existing_door)
+        if _canonical_line_key(existing_line) == span_key:
+            exact_match = True
+            continue
+        if existing_line.intersection(span.geometry).length > 0.0:
+            msg = (
+                "Open-boundary span for room pair "
+                f"{span.rooms!r} partially overlaps an existing CAD "
+                f"door in room {room_label!r}"
+            )
+            raise ValueError(msg)
+
+    if not exact_match:
+        room_doors.append(door_quad.copy())
+        return True
+
+    return False
+
+
+def attach_open_boundary_doors(
+    labelled_polygons: gpd.GeoDataFrame,
+    spans: list[OpenBoundarySpan],
+    polygon_label_target: str,
+    door_column: str = "doors",
+) -> gpd.GeoDataFrame:
+    """
+    Add configured open-boundary spans to the existing room door column.
+
+    Exact CAD-derived matches are deduplicated. A partial or enclosing overlap
+    with a CAD-derived segment is rejected because it would create ambiguous
+    connectivity on the same room interface.
+
+    Parameters
+    ----------
+    labelled_polygons : geopandas.GeoDataFrame
+        Final labelled room polygons, optionally containing attached doors.
+    spans : list[OpenBoundarySpan]
+        Canonical spans constructed from the final room boundaries.
+    polygon_label_target : str
+        Column containing the unique room labels.
+    door_column : str, default "doors"
+        Column containing serialised ``[x1, y1, x2, y2]`` door segments.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        Copy of ``labelled_polygons`` with open-boundary spans attached to
+        both configured rooms. The spans are also retained in an ``openings``
+        column for dedicated YAML serialisation. ``door_count`` and
+        ``open_boundary_count`` are recalculated for every room. Attachment
+        provenance is stored in ``result.attrs["open_boundary_attachment_report"]``.
+
+    Raises
+    ------
+    ValueError
+        If a span cannot be serialised or partially overlaps an existing
+        door segment.
+
+    """
+    if not spans:
+        return labelled_polygons
+
+    result = labelled_polygons.copy()
+    source_attrs = dict(result.attrs)
+    if door_column not in result.columns:
+        result[door_column] = [[] for _ in range(len(result))]
+    else:
+        result[door_column] = result[door_column].apply(
+            lambda value: (
+                [list(door) for door in value] if isinstance(value, list) else []
+            )
+        )
+    result["openings"] = result.get(
+        "openings",
+        pd.Series([[] for _ in range(len(result))], index=result.index),
+    ).apply(
+        lambda value: (
+            [list(opening) for opening in value] if isinstance(value, list) else []
+        )
+    )
+
+    room_indices: dict[str, object] = {}
+    for span in spans:
+        for room_label in span.rooms:
+            matches = result.index[result[polygon_label_target] == room_label]
+            if len(matches) != 1:
+                msg = (
+                    "Open-boundary room label must identify exactly one final "
+                    f"polygon; label {room_label!r} found {len(matches)}"
+                )
+                raise ValueError(msg)
+            room_indices[room_label] = matches[0]
+
+    open_boundary_counts = dict.fromkeys(result.index, 0)
+    attachment_report: list[dict[str, object]] = []
+    for span in spans:
+        door_quad = _line_to_xyxy(span.geometry)
+        if door_quad is None:
+            msg = f"Open-boundary span for room pair {span.rooms!r} is not linear"
+            raise ValueError(msg)
+        span_key = _canonical_line_key(span.geometry)
+
+        room_attachments: list[dict[str, str]] = []
+        for room_label in span.rooms:
+            room_index = room_indices[room_label]
+            room_doors = result.loc[room_index, door_column]
+            attached = _append_open_boundary_door(
+                room_doors,
+                span,
+                door_quad,
+                span_key,
+                room_label,
+            )
+            room_openings = result.loc[room_index, "openings"]
+            if door_quad not in room_openings:
+                room_openings.append(door_quad.copy())
+            open_boundary_counts[room_index] += 1
+            room_attachments.append(
+                {
+                    "room": room_label,
+                    "status": "attached" if attached else "deduplicated",
+                }
+            )
+
+        attachment_report.append(
+            {
+                "rooms": list(span.rooms),
+                "door_xyxy": door_quad.copy(),
+                "attached_room_count": len(span.rooms),
+                "deduplicated_room_count": sum(
+                    item["status"] == "deduplicated" for item in room_attachments
+                ),
+                "room_attachments": room_attachments,
+            }
+        )
+
+    result["open_boundary_count"] = [
+        open_boundary_counts.get(room_index, 0) for room_index in result.index
+    ]
+    result["door_count"] = result[door_column].apply(len)
+    result.attrs.update(source_attrs)
+    result.attrs["open_boundary_spans"] = spans
+    result.attrs["open_boundary_attachment_report"] = attachment_report
+    return result
 
 
 def _parse_polygon_corrections(
@@ -564,12 +1202,27 @@ def _polygon_boundary_segments(geometry: BaseGeometry) -> list[LineString]:
     return [LineString([start, end]) for start, end in pairwise(coords) if start != end]
 
 
+def _is_rectangular_door_marker(geometry: BaseGeometry) -> bool:
+    """Return whether geometry is a closed four-sided CAD door marker."""
+    if not isinstance(geometry, LineString) or not geometry.is_ring:
+        return False
+
+    coordinates = list(geometry.coords)
+    if len(coordinates) != 5:
+        return False
+
+    return Polygon(coordinates).is_valid and Polygon(coordinates).area > 0.0
+
+
 def _project_geometry_onto_segment(
     geometry: BaseGeometry,
     segment: LineString,
     tolerance: float,
     min_length: float,
 ) -> LineString | None:
+    if geometry.distance(segment) > tolerance:
+        return None
+
     nearby_geometry = geometry.intersection(
         segment.buffer(tolerance, cap_style="square")
     )
@@ -598,6 +1251,72 @@ def _canonical_line_key(line: LineString) -> tuple[XY, XY]:
     end = (round(line.coords[-1][0], 8), round(line.coords[-1][1], 8))
     ordered = sorted((start, end))
     return ordered[0], ordered[1]
+
+
+def _merge_paired_door_markers(
+    projected_doors: gpd.GeoDataFrame,
+    config: DoorAttachmentConfig,
+) -> gpd.GeoDataFrame:
+    """Merge two collinear rectangular door markers into one opening span."""
+    if projected_doors.empty:
+        return projected_doors
+
+    rows = []
+    for _, group in projected_doors.groupby("projected_room_ids", sort=False):
+        markers = group.loc[group["is_rectangular_marker"]]
+        if len(group) != 2 or len(markers) != 2:
+            rows.extend(group.to_dict("records"))
+            continue
+
+        first, second = markers.geometry.iloc[0], markers.geometry.iloc[1]
+        origin = first.coords[0]
+        direction = (
+            first.coords[-1][0] - origin[0],
+            first.coords[-1][1] - origin[1],
+        )
+        direction_length = (direction[0] ** 2 + direction[1] ** 2) ** 0.5
+        if direction_length == 0.0:
+            rows.extend(group.to_dict("records"))
+            continue
+        if any(
+            abs(
+                direction[0] * (coordinate[1] - origin[1])
+                - direction[1] * (coordinate[0] - origin[0])
+            )
+            / direction_length
+            > config.boundary_tolerance
+            for coordinate in second.coords
+        ):
+            rows.extend(group.to_dict("records"))
+            continue
+
+        coordinates = [*first.coords, *second.coords]
+        distances = [
+            direction[0] * (coordinate[0] - origin[0])
+            + direction[1] * (coordinate[1] - origin[1])
+            for coordinate in coordinates
+        ]
+        opening = LineString(
+            [
+                coordinates[distances.index(min(distances))],
+                coordinates[distances.index(max(distances))],
+            ]
+        )
+        door_quad = _line_to_xyxy(opening)
+        if door_quad is None:
+            rows.extend(group.to_dict("records"))
+            continue
+        rows.append(
+            {
+                config.entity_col: tuple(markers[config.entity_col]),
+                "geometry": opening,
+                "door_xyxy": door_quad,
+                "projected_room_ids": markers["projected_room_ids"].iloc[0],
+                "is_rectangular_marker": True,
+            }
+        )
+
+    return gpd.GeoDataFrame(rows, geometry="geometry", crs=projected_doors.crs)
 
 
 def _project_doors_onto_room_boundaries(
@@ -653,7 +1372,8 @@ def _project_doors_onto_room_boundaries(
                 config.entity_col: door[config.entity_col],
                 "geometry": projection,
                 "door_xyxy": door_quad,
-                "projected_room_ids": room_ids,
+                "projected_room_ids": frozenset(room_ids),
+                "is_rectangular_marker": _is_rectangular_door_marker(door.geometry),
             }
         )
 
@@ -669,7 +1389,8 @@ def _project_doors_onto_room_boundaries(
             crs=rooms.crs,
         )
 
-    return gpd.GeoDataFrame(rows, geometry="geometry", crs=rooms.crs)
+    projected_doors = gpd.GeoDataFrame(rows, geometry="geometry", crs=rooms.crs)
+    return _merge_paired_door_markers(projected_doors, config)
 
 
 def attach_room_doors(
@@ -1389,12 +2110,30 @@ def extract_polygons(
             config.shared_walls,
         )
 
+    open_boundary_spans: list[OpenBoundarySpan] = []
+    if config.open_boundaries:
+        open_boundary_spans = construct_open_boundaries(
+            labelled_polygons,
+            config.open_boundaries,
+            config.polygons.polygon_label_target,
+        )
+        labelled_polygons.attrs["open_boundary_spans"] = open_boundary_spans
+
     if config.door_layer_name and config.doors:
         doors = _generate_doors(gdf, config.door_layer_name)
         labelled_polygons = attach_room_doors(
             labelled_polygons,
             doors,
             config.doors,
+        )
+
+    if open_boundary_spans:
+        door_column = config.doors.out_col if config.doors else "doors"
+        labelled_polygons = attach_open_boundary_doors(
+            labelled_polygons,
+            open_boundary_spans,
+            config.polygons.polygon_label_target,
+            door_column,
         )
 
     labelled_polygons["has_label"] = labelled_polygons[

@@ -23,6 +23,7 @@ help:
 	@echo "  make simple           Run the simple example and contact analysis"
 	@echo "  make simple-example   Run the simple example script"
 	@echo "  make dashboard        Run the Solara dashboard example"
+	@echo "  make floorplan-extraction  Extract the configured floorplan to YAML and a diagnostic image"
 	@echo ""
 	@echo "Development:"
 	@echo "  make test             Run tests with pytest"
@@ -114,3 +115,6 @@ simple:
 
 dashboard:
 	$(CD) uv run solara run ../examples/solara_app.py
+
+floorplan-extraction:
+	$(CD) uv run python ../examples/floorplan_extraction.py

@@ -12,6 +12,9 @@ from shapely.geometry import LineString, Point, Polygon
 from floorplan_extractor.dxf_polygon_extraction import (
     DoorAttachmentConfig,
     ExtractionConfig,
+    OpenBoundaryConfig,
+    OpenBoundaryPairConfig,
+    OpenBoundarySpan,
     PolygonAdditionConfig,
     PolygonExtractionConfig,
     PolygonMergeConfig,
@@ -27,8 +30,11 @@ from floorplan_extractor.dxf_polygon_extraction import (
     _flatten_z_points,
     _generate_polygons,
     _generate_room_numbers,
+    _validate_open_boundary_room_labels,
+    attach_open_boundary_doors,
     attach_room_doors,
     config_from_yaml,
+    construct_open_boundaries,
     extract_polygons,
 )
 
@@ -152,6 +158,40 @@ def _shared_wall_extraction_gdf() -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(rows, geometry=GEOMETRY_COLUMN)
 
 
+def _labelled_rooms(
+    labels: list[str],
+    geometries: list[Polygon],
+) -> gpd.GeoDataFrame:
+    return gpd.GeoDataFrame(
+        {
+            POLYGON_LABEL_TARGET: labels,
+            GEOMETRY_COLUMN: geometries,
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+
+
+def _open_boundary_config(
+    rooms: tuple[str, str],
+    *,
+    tolerance: float = 1e-6,
+    min_length: float = 0.0,
+    selector_point: tuple[float, float] | None = None,
+    allow_multiple_spans: bool = False,
+) -> OpenBoundaryConfig:
+    return OpenBoundaryConfig(
+        tolerance=tolerance,
+        min_length=min_length,
+        pairs=[
+            OpenBoundaryPairConfig(
+                rooms=rooms,
+                selector_point=selector_point,
+                allow_multiple_spans=allow_multiple_spans,
+            )
+        ],
+    )
+
+
 def _canonical_segments(polygon: Polygon) -> set[tuple[tuple[float, float], ...]]:
     coords = list(polygon.exterior.coords)
 
@@ -202,6 +242,610 @@ def test_config_from_yaml(tmp_path: Path) -> None:
     assert config.door_layer_name is None
     assert config.doors is None
     assert config.shared_walls is None
+    assert config.open_boundaries is None
+
+
+def test_config_from_yaml_loads_open_boundary_config(tmp_path: Path) -> None:
+    """Open-boundary settings and room pairs are parsed when present."""
+    config_data = _base_config_data()
+    config_data["open_boundaries"] = {
+        "tolerance": 1e-6,
+        "min_length": 2.5,
+        "pairs": [
+            {"rooms": ["101", "CORRIDOR"]},
+            {
+                "rooms": ["102", "ANTE-ROOM"],
+                "selector_point": [5.0, 10.0],
+            },
+            {
+                "rooms": ["103", "L-SHAPED-CORRIDOR"],
+                "allow_multiple_spans": True,
+            },
+        ],
+    }
+
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
+
+    config = config_from_yaml(config_path)
+
+    assert config.open_boundaries == OpenBoundaryConfig(
+        tolerance=1e-6,
+        min_length=2.5,
+        pairs=[
+            OpenBoundaryPairConfig(rooms=("101", "CORRIDOR")),
+            OpenBoundaryPairConfig(
+                rooms=("102", "ANTE-ROOM"),
+                selector_point=(5.0, 10.0),
+            ),
+            OpenBoundaryPairConfig(
+                rooms=("103", "L-SHAPED-CORRIDOR"),
+                allow_multiple_spans=True,
+            ),
+        ],
+    )
+
+
+@pytest.mark.parametrize(
+    ("open_boundaries", "exception", "expected_message"),
+    [
+        ([], TypeError, "block must be a mapping"),
+        ({}, ValueError, "pairs.*non-empty list"),
+        ({"pairs": [{}]}, ValueError, "exactly two non-empty strings"),
+        (
+            {"pairs": [{"rooms": ["101", "101"]}]},
+            ValueError,
+            "room labels must be distinct",
+        ),
+        (
+            {
+                "pairs": [
+                    {"rooms": ["101", "CORRIDOR"]},
+                    {"rooms": ["CORRIDOR", "101"]},
+                ]
+            },
+            ValueError,
+            "must not contain duplicate room pairs",
+        ),
+        (
+            {
+                "tolerance": -1.0,
+                "pairs": [{"rooms": ["101", "CORRIDOR"]}],
+            },
+            ValueError,
+            "tolerance.*finite and non-negative",
+        ),
+        (
+            {
+                "min_length": float("inf"),
+                "pairs": [{"rooms": ["101", "CORRIDOR"]}],
+            },
+            ValueError,
+            "min_length.*finite and non-negative",
+        ),
+        (
+            {
+                "pairs": [
+                    {
+                        "rooms": ["101", "CORRIDOR"],
+                        "selector_point": [0.0],
+                    }
+                ]
+            },
+            ValueError,
+            "selector_point.*exactly two coordinates",
+        ),
+        (
+            {
+                "pairs": [
+                    {
+                        "rooms": ["101", "CORRIDOR"],
+                        "allow_multiple_spans": "yes",
+                    }
+                ]
+            },
+            TypeError,
+            "allow_multiple_spans.*boolean",
+        ),
+        (
+            {
+                "pairs": [
+                    {
+                        "rooms": ["101", "CORRIDOR"],
+                        "selector_point": [0.0, 0.0],
+                        "allow_multiple_spans": True,
+                    }
+                ]
+            },
+            ValueError,
+            "cannot combine.*allow_multiple_spans.*selector_point",
+        ),
+    ],
+)
+def test_config_from_yaml_rejects_invalid_open_boundary_config(
+    tmp_path: Path,
+    open_boundaries: object,
+    exception: type[Exception],
+    expected_message: str,
+) -> None:
+    """Invalid open-boundary configuration fails with actionable errors."""
+    config_data = _base_config_data()
+    config_data["open_boundaries"] = open_boundaries
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
+
+    with pytest.raises(exception, match=expected_message):
+        config_from_yaml(config_path)
+
+
+@pytest.mark.parametrize(
+    ("labels", "room_label", "expected_count"),
+    [
+        (["101"], "CORRIDOR", 0),
+        (["101", "CORRIDOR", "CORRIDOR"], "CORRIDOR", 2),
+    ],
+)
+def test_open_boundary_config_requires_unique_final_room_labels(
+    labels: list[str],
+    room_label: str,
+    expected_count: int,
+) -> None:
+    """Each configured label must resolve to exactly one final room polygon."""
+    labelled_polygons = gpd.GeoDataFrame(
+        {
+            POLYGON_LABEL_TARGET: labels,
+            GEOMETRY_COLUMN: [Point(index, index) for index in range(len(labels))],
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+    config = OpenBoundaryConfig(
+        pairs=[OpenBoundaryPairConfig(rooms=("101", room_label))]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=rf"label {room_label!r} found {expected_count}",
+    ):
+        _validate_open_boundary_room_labels(
+            labelled_polygons,
+            config,
+            POLYGON_LABEL_TARGET,
+        )
+
+
+def test_construct_open_boundary_uses_coincident_room_boundaries() -> None:
+    """A coincident boundary becomes one deterministically ordered span."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+        ],
+    )
+
+    result = construct_open_boundaries(
+        rooms,
+        _open_boundary_config(("101", "CORRIDOR"), min_length=10.0),
+        POLYGON_LABEL_TARGET,
+    )
+
+    assert result == [
+        OpenBoundarySpan(
+            rooms=("101", "CORRIDOR"),
+            geometry=LineString([(5.0, 0.0), (5.0, 10.0)]),
+        )
+    ]
+
+
+def test_construct_open_boundaries_covers_configured_room_pairs() -> None:
+    """Both configured wallless-boundary pairs produce isolated spans."""
+    first_length = 2600.0001147631556
+    second_length = 1918.2363968233985
+    rooms = _labelled_rooms(
+        ["E02NN045", "E02NN023", "E02NN046", "E02NN050a"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, first_length), (0.0, first_length)]),
+            Polygon(
+                [(5.0, 0.0), (10.0, 0.0), (10.0, first_length), (5.0, first_length)]
+            ),
+            Polygon(
+                [
+                    (20.0, 0.0),
+                    (25.0, 0.0),
+                    (25.0, second_length),
+                    (20.0, second_length),
+                ]
+            ),
+            Polygon(
+                [
+                    (25.0, 0.0),
+                    (30.0, 0.0),
+                    (30.0, second_length),
+                    (25.0, second_length),
+                ]
+            ),
+        ],
+    )
+    config = OpenBoundaryConfig(
+        tolerance=1e-6,
+        pairs=[
+            OpenBoundaryPairConfig(rooms=("E02NN045", "E02NN023")),
+            OpenBoundaryPairConfig(rooms=("E02NN046", "E02NN050a")),
+        ],
+    )
+
+    spans = construct_open_boundaries(rooms, config, POLYGON_LABEL_TARGET)
+
+    assert [span.rooms for span in spans] == [
+        ("E02NN045", "E02NN023"),
+        ("E02NN046", "E02NN050a"),
+    ]
+    assert [span.geometry.length for span in spans] == pytest.approx(
+        [first_length, second_length]
+    )
+    assert all(span.geometry.coords[0] < span.geometry.coords[-1] for span in spans)
+
+
+def test_construct_open_boundary_snaps_numerical_coordinate_drift() -> None:
+    """Boundary endpoints within tolerance are canonicalised to one line."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon(
+                [
+                    (5.0 + 5e-7, 0.0),
+                    (10.0, 0.0),
+                    (10.0, 10.0),
+                    (5.0 + 5e-7, 10.0),
+                ]
+            ),
+        ],
+    )
+
+    [span] = construct_open_boundaries(
+        rooms,
+        _open_boundary_config(("101", "CORRIDOR")),
+        POLYGON_LABEL_TARGET,
+    )
+
+    assert span.geometry.equals(LineString([(5.0, 0.0), (5.0, 10.0)]))
+
+
+def test_construct_open_boundary_handles_drift_along_segment_interior() -> None:
+    """Interior points on a long boundary are matched within tolerance."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 100.0), (0.0, 100.0)]),
+            Polygon(
+                [
+                    (5.0 + 5e-7, 10.0),
+                    (10.0, 10.0),
+                    (10.0, 90.0),
+                    (5.0 + 5e-7, 90.0),
+                ]
+            ),
+        ],
+    )
+
+    [span] = construct_open_boundaries(
+        rooms,
+        _open_boundary_config(("101", "CORRIDOR")),
+        POLYGON_LABEL_TARGET,
+    )
+
+    assert span.geometry.equals(LineString([(5.0, 10.0), (5.0, 90.0)]))
+
+
+@pytest.mark.parametrize(
+    ("geometry", "expected_message"),
+    [
+        (
+            Polygon([(20.0, 0.0), (25.0, 0.0), (25.0, 10.0), (20.0, 10.0)]),
+            "non-zero-length boundary span",
+        ),
+        (
+            Polygon([(5.0, 10.0), (10.0, 10.0), (10.0, 15.0), (5.0, 15.0)]),
+            "non-zero-length boundary span",
+        ),
+    ],
+)
+def test_construct_open_boundary_rejects_disjoint_or_point_only_contact(
+    geometry: Polygon,
+    expected_message: str,
+) -> None:
+    """Separated rooms and point-only contact are not open boundaries."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            geometry,
+        ],
+    )
+
+    with pytest.raises(ValueError, match=expected_message):
+        construct_open_boundaries(
+            rooms,
+            _open_boundary_config(("101", "CORRIDOR")),
+            POLYGON_LABEL_TARGET,
+        )
+
+
+def test_construct_open_boundary_rejects_multipart_span_without_selector() -> None:
+    """Two disconnected shared spans require an explicit selector point."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon(
+                [
+                    (5.0, 0.0),
+                    (10.0, 0.0),
+                    (10.0, 10.0),
+                    (5.0, 10.0),
+                    (5.0, 7.0),
+                    (7.0, 7.0),
+                    (7.0, 3.0),
+                    (5.0, 3.0),
+                ]
+            ),
+        ],
+    )
+
+    with pytest.raises(ValueError, match="ambiguous or multipart"):
+        construct_open_boundaries(
+            rooms,
+            _open_boundary_config(("101", "CORRIDOR")),
+            POLYGON_LABEL_TARGET,
+        )
+
+
+def test_construct_open_boundary_selector_selects_one_multipart_span() -> None:
+    """A selector point chooses one disconnected shared span."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon(
+                [
+                    (5.0, 0.0),
+                    (10.0, 0.0),
+                    (10.0, 10.0),
+                    (5.0, 10.0),
+                    (5.0, 7.0),
+                    (7.0, 7.0),
+                    (7.0, 3.0),
+                    (5.0, 3.0),
+                ]
+            ),
+        ],
+    )
+
+    [span] = construct_open_boundaries(
+        rooms,
+        _open_boundary_config(
+            ("101", "CORRIDOR"),
+            selector_point=(5.0, 1.0),
+        ),
+        POLYGON_LABEL_TARGET,
+    )
+
+    assert span.geometry.equals(LineString([(5.0, 0.0), (5.0, 3.0)]))
+
+
+def test_construct_open_boundary_rejects_non_straight_span() -> None:
+    """A contiguous but bent shared boundary is not a canonical span."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 5.0), (0.0, 5.0)]),
+            Polygon(
+                [
+                    (5.0, 0.0),
+                    (10.0, 0.0),
+                    (10.0, 10.0),
+                    (0.0, 10.0),
+                    (0.0, 5.0),
+                    (5.0, 5.0),
+                ]
+            ),
+        ],
+    )
+
+    with pytest.raises(ValueError, match="straight span"):
+        construct_open_boundaries(
+            rooms,
+            _open_boundary_config(("101", "CORRIDOR")),
+            POLYGON_LABEL_TARGET,
+        )
+
+
+def test_construct_open_boundary_allows_configured_multiple_straight_spans() -> None:
+    """An explicitly configured L-shaped opening retains both straight segments."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon(
+                [
+                    (0.0, 0.0),
+                    (10.0, 0.0),
+                    (10.0, 10.0),
+                    (5.0, 10.0),
+                    (5.0, 5.0),
+                    (0.0, 5.0),
+                ]
+            ),
+            Polygon(
+                [
+                    (0.0, 5.0),
+                    (5.0, 5.0),
+                    (5.0, 10.0),
+                    (10.0, 10.0),
+                    (10.0, 15.0),
+                    (0.0, 15.0),
+                ]
+            ),
+        ],
+    )
+
+    spans = construct_open_boundaries(
+        rooms,
+        _open_boundary_config(("101", "CORRIDOR"), allow_multiple_spans=True),
+        POLYGON_LABEL_TARGET,
+    )
+
+    assert [span.geometry for span in spans] == [
+        LineString([(0.0, 5.0), (5.0, 5.0)]),
+        LineString([(5.0, 5.0), (5.0, 10.0)]),
+        LineString([(5.0, 10.0), (10.0, 10.0)]),
+    ]
+
+
+def test_construct_open_boundary_rejects_third_room_participation() -> None:
+    """A third polygon sharing the span causes an actionable rejection."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR", "THIRD"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+            Polygon([(4.0, 2.0), (5.0, 2.0), (5.0, 4.0), (4.0, 4.0)]),
+        ],
+    )
+
+    with pytest.raises(ValueError, match="third room 'THIRD'"):
+        construct_open_boundaries(
+            rooms,
+            _open_boundary_config(("101", "CORRIDOR")),
+            POLYGON_LABEL_TARGET,
+        )
+
+
+def test_extract_polygons_constructs_open_boundary_after_shared_wall_normalisation(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Open boundaries use the geometry returned by shared-wall normalisation."""
+    monkeypatch.setattr(
+        gpd,
+        "read_file",
+        lambda _: _shared_wall_extraction_gdf(),
+    )
+    config = ExtractionConfig(
+        polygons=_polygon_config(),
+        shared_walls=_shared_wall_config(enabled=True),
+        open_boundaries=_open_boundary_config(("101", "102")),
+    )
+
+    result = extract_polygons(tmp_path / "floorplan.dxf", config)
+
+    [span] = result.attrs["open_boundary_spans"]
+    assert isinstance(span, OpenBoundarySpan)
+    assert span.rooms == ("101", "102")
+    assert span.geometry.coords[0][0] == pytest.approx(450.0)
+    assert span.geometry.coords[0][1] == pytest.approx(0.0)
+    assert span.geometry.coords[1][0] == pytest.approx(450.0)
+    assert span.geometry.coords[1][1] == pytest.approx(400.0)
+    assert result["doors"].apply(len).to_list() == [1, 1]
+    assert result["open_boundary_count"].to_list() == [1, 1]
+    assert result["door_count"].to_list() == [1, 1]
+
+
+def test_attach_open_boundary_doors_creates_door_column_without_cad_doors() -> None:
+    """Configured spans create a shared serialised door segment."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+        ],
+    )
+    [span] = construct_open_boundaries(
+        rooms,
+        _open_boundary_config(("101", "CORRIDOR")),
+        POLYGON_LABEL_TARGET,
+    )
+
+    result = attach_open_boundary_doors(rooms, [span], POLYGON_LABEL_TARGET)
+
+    assert result["doors"].to_list() == [
+        [[5.0, 0.0, 5.0, 10.0]],
+        [[5.0, 0.0, 5.0, 10.0]],
+    ]
+    assert result["openings"].to_list() == [
+        [[5.0, 0.0, 5.0, 10.0]],
+        [[5.0, 0.0, 5.0, 10.0]],
+    ]
+    assert result["door_count"].to_list() == [1, 1]
+    assert result["open_boundary_count"].to_list() == [1, 1]
+    assert result.attrs["open_boundary_attachment_report"] == [
+        {
+            "rooms": ["101", "CORRIDOR"],
+            "door_xyxy": [5.0, 0.0, 5.0, 10.0],
+            "attached_room_count": 2,
+            "deduplicated_room_count": 0,
+            "room_attachments": [
+                {"room": "101", "status": "attached"},
+                {"room": "CORRIDOR", "status": "attached"},
+            ],
+        }
+    ]
+
+
+def test_attach_open_boundary_doors_deduplicates_exact_cad_match() -> None:
+    """An exact CAD match is retained once in each connected room."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+        ],
+    )
+    rooms["doors"] = [
+        [[5.0, 10.0, 5.0, 0.0]],
+        [[5.0, 0.0, 5.0, 10.0]],
+    ]
+    span = OpenBoundarySpan(
+        rooms=("101", "CORRIDOR"),
+        geometry=LineString([(5.0, 0.0), (5.0, 10.0)]),
+    )
+
+    result = attach_open_boundary_doors(rooms, [span], POLYGON_LABEL_TARGET)
+
+    assert result["doors"].apply(len).to_list() == [1, 1]
+    assert result["open_boundary_count"].to_list() == [1, 1]
+    assert (
+        result.attrs["open_boundary_attachment_report"][0]["deduplicated_room_count"]
+        == 2
+    )
+    assert [
+        attachment["status"]
+        for attachment in result.attrs["open_boundary_attachment_report"][0][
+            "room_attachments"
+        ]
+    ] == ["deduplicated", "deduplicated"]
+
+
+def test_attach_open_boundary_doors_rejects_partial_cad_overlap() -> None:
+    """A partial CAD overlap cannot be silently combined with an open span."""
+    rooms = _labelled_rooms(
+        ["101", "CORRIDOR"],
+        [
+            Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+            Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+        ],
+    )
+    rooms["doors"] = [
+        [[5.0, 2.0, 5.0, 4.0]],
+        [[5.0, 2.0, 5.0, 4.0]],
+    ]
+    span = OpenBoundarySpan(
+        rooms=("101", "CORRIDOR"),
+        geometry=LineString([(5.0, 0.0), (5.0, 10.0)]),
+    )
+
+    with pytest.raises(ValueError, match="partially overlaps"):
+        attach_open_boundary_doors(rooms, [span], POLYGON_LABEL_TARGET)
 
 
 def test_config_from_yaml_loads_shared_wall_config(tmp_path: Path) -> None:
@@ -457,6 +1101,38 @@ def test_attach_room_doors_projects_door_symbol_onto_shared_wall() -> None:
             [(door_values[0][0], door_values[0][1]), door_values[0][2:]]
         )
         assert door_line.difference(result.geometry.iloc[room_id].boundary).is_empty
+
+
+def test_attach_room_doors_merges_paired_rectangular_markers() -> None:
+    """Two rectangular jamb markers become one opening between their outer edges."""
+    rooms = gpd.GeoDataFrame(
+        {
+            GEOMETRY_COLUMN: [
+                Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
+                Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+            ]
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+    doors = gpd.GeoDataFrame(
+        {
+            "EntityHandle": ["JAMB-A", "JAMB-B"],
+            GEOMETRY_COLUMN: [
+                LineString(
+                    [(4.0, 1.5), (6.0, 1.5), (6.0, 2.5), (4.0, 2.5), (4.0, 1.5)]
+                ),
+                LineString(
+                    [(4.0, 7.5), (6.0, 7.5), (6.0, 8.5), (4.0, 8.5), (4.0, 7.5)]
+                ),
+            ],
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+
+    result = attach_room_doors(rooms, doors)
+
+    expected_door = [5.0, 1.5, 5.0, 8.5]
+    assert result["doors"].to_list() == [[expected_door], [expected_door]]
 
 
 def test_flatten_z_points_removes_z_dimension() -> None:
