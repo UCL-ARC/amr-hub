@@ -30,8 +30,8 @@ def test_duckdb_and_legacy_csv_have_equivalent_events() -> None:
     )
 
     assert tuple(duckdb_data.columns) == CANONICAL_COLUMNS
-    assert len(duckdb_data) == 195
-    assert duckdb_data["hcw_id"].unique().tolist() == [1]
+    assert len(duckdb_data) == 322
+    assert sorted(duckdb_data["hcw_id"].unique().tolist()) == [1, 2]
     pd.testing.assert_frame_equal(duckdb_data, csv_data)
 
 
