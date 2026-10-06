@@ -1,3 +1,7 @@
+spatial_units:
+  source_unit: millimetres
+  units_per_metre: 1000.0
+
 polygons:
   polygon_layer_name: "ROOM_BOUNDARIES"
   label_layer_name: "ROOM_LABELS"
