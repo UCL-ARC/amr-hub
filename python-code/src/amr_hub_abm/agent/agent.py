@@ -63,7 +63,7 @@ class Agent:
     infection_status: InfectionStatus = field(default=InfectionStatus.SUSCEPTIBLE)
     infection_details: dict = field(default_factory=dict)
 
-    movement_speed: float = field(default=0.001)  # units per time step
+    movement_speed: float = field(default=0.001)  # metres per simulation time step
     stochasticity: float = field(default=5.0)  # degrees of randomness in movement
 
     trajectory_length: int = field(default=0)
