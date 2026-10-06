@@ -249,18 +249,57 @@ def _agent_type_label(agent_name: str) -> str:
         return type_part
 
 
+def top_slices(
+    totals: dict[str, float], max_slices: int = MAX_PIE_SLICES
+) -> list[tuple[str, float]]:
+    """Rank categories by size, grouping the smallest into ``Other``."""
+    ranked = sorted(totals.items(), key=lambda item: (-item[1], item[0]))
+    if len(ranked) > max_slices:
+        other = sum(value for _, value in ranked[max_slices - 1 :])
+        ranked = [*ranked[: max_slices - 1], ("Other", other)]
+    return ranked
+
+
+def contact_breakdowns(
+    episodes: list[ContactEpisode],
+) -> dict[str, tuple[str, dict[str, float], dict[str, float]]]:
+    """
+    Group contact episodes by agent pair and by agent type pair.
+
+    Returns a mapping of grouping key to ``(label, episode_counts, durations)``.
+    """
+
+    def pair(item: ContactEpisode) -> str:
+        return f"{item.agent_a} & {item.agent_b}"
+
+    def type_pair(item: ContactEpisode) -> str:
+        return " & ".join(
+            sorted((_agent_type_label(item.agent_a), _agent_type_label(item.agent_b)))
+        )
+
+    groupings = {
+        "agent_pair": ("agent pair", pair),
+        "agent_type_pair": ("agent type pair", type_pair),
+    }
+    result: dict[str, tuple[str, dict[str, float], dict[str, float]]] = {}
+    for key, (label, group) in groupings.items():
+        episode_counts: dict[str, float] = defaultdict(float)
+        durations: dict[str, float] = defaultdict(float)
+        for episode in episodes:
+            episode_counts[group(episode)] += 1
+            durations[group(episode)] += episode.duration
+        result[key] = (label, dict(episode_counts), dict(durations))
+    return result
+
+
 def _write_pie(
     path: Path,
     totals: dict[str, float],
     *,
     title: str,
-    max_slices: int = MAX_PIE_SLICES,
 ) -> None:
     """Save a pie chart, grouping the smallest categories into ``Other``."""
-    ranked = sorted(totals.items(), key=lambda item: (-item[1], item[0]))
-    if len(ranked) > max_slices:
-        other = sum(value for _, value in ranked[max_slices - 1 :])
-        ranked = [*ranked[: max_slices - 1], ("Other", other)]
+    ranked = top_slices(totals)
 
     figure, axis = plt.subplots(figsize=(7, 6))
     if ranked and sum(value for _, value in ranked) > 0:
@@ -283,29 +322,7 @@ def _write_pie(
 
 def _write_pie_charts(episodes: list[ContactEpisode], output_dir: Path) -> None:
     """Write pies of episode counts and contact time by agent and type pair."""
-    groupings = {
-        "agent_pair": (
-            "agent pair",
-            lambda item: f"{item.agent_a} & {item.agent_b}",
-        ),
-        "agent_type_pair": (
-            "agent type pair",
-            lambda item: " & ".join(
-                sorted(
-                    (
-                        _agent_type_label(item.agent_a),
-                        _agent_type_label(item.agent_b),
-                    )
-                )
-            ),
-        ),
-    }
-    for key, (label, group) in groupings.items():
-        episode_counts: dict[str, float] = defaultdict(float)
-        durations: dict[str, float] = defaultdict(float)
-        for episode in episodes:
-            episode_counts[group(episode)] += 1
-            durations[group(episode)] += episode.duration
+    for key, (label, episode_counts, durations) in contact_breakdowns(episodes).items():
         _write_pie(
             output_dir / f"contact_pie_episodes_by_{key}.png",
             episode_counts,
@@ -334,6 +351,7 @@ def _write_outputs(  # noqa: PLR0913
     output_dir: Path,
     bins: int,
     buildings: list[Building] | None = None,
+    heatmap_format: str = "png",
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     _write_csv(
@@ -446,7 +464,7 @@ def _write_outputs(  # noqa: PLR0913
             ylabel="Y position",
         )
         figure.tight_layout()
-        figure.savefig(output_dir / "contact_heatmap.png")
+        figure.savefig(output_dir / f"contact_heatmap.{heatmap_format}")
         plt.close(figure)
     find_floor = _floor_finder(buildings)
     for (building, floor), items in sorted(by_space.items()):
@@ -481,24 +499,27 @@ def _write_outputs(  # noqa: PLR0913
         )
         figure.tight_layout()
         figure.savefig(
-            output_dir / f"contact_heatmap_building_{building}_floor_{floor}.png",
+            output_dir
+            / f"contact_heatmap_building_{building}_floor_{floor}.{heatmap_format}",
             dpi=150,
         )
         plt.close(figure)
 
 
-def analyze_contacts(
+def analyze_contacts(  # noqa: PLR0913
     input_path: Path,
     output_dir: Path,
     *,
     distance_threshold: float = 0.1,
     bins: int = 50,
     buildings: list[Building] | None = None,
+    heatmap_format: str = "png",
 ) -> tuple[list[ContactObservation], list[ContactEpisode]]:
     """
     Analyse recorded trajectories and write contact data and plots.
 
     If ``buildings`` is given, heatmaps are overlaid on the matching floorplans.
+    ``heatmap_format`` is the matplotlib image format of the heatmaps (e.g. ``svg``).
     """
     if bins < 1:
         msg = "Heatmap bins must be a positive integer"
@@ -515,7 +536,15 @@ def analyze_contacts(
     logger.info("Grouped into %s contact episodes", len(episodes))
     all_times = sorted({time for track in tracks for time in track.positions_by_time})
     logger.info("Writing outputs to %s", output_dir)
-    _write_outputs(observations, episodes, all_times, output_dir, bins, buildings)
+    _write_outputs(
+        observations,
+        episodes,
+        all_times,
+        output_dir,
+        bins,
+        buildings,
+        heatmap_format,
+    )
     logger.info("Contact analysis complete")
     return observations, episodes
 

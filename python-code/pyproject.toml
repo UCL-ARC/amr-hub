@@ -42,6 +42,7 @@ classifiers = [
   "Typing :: Typed"
 ]
 dependencies = [
+  "anywidget>=0.9.0",
   "dash>=4.1.0",
   "duckdb>=1.5.5",
   "ezdxf>=1.4.4",

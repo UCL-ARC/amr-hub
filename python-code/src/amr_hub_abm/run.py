@@ -159,6 +159,7 @@ def run_and_analyse_contacts(
     distance_threshold: float = 0.1,
     bins: int = 50,
     use_gpu: bool = False,
+    heatmap_format: str = "png",
 ) -> tuple[list[ContactObservation], list[ContactEpisode]]:
     """
     Run one complete simulation without plotting and analyse agent contacts.
@@ -175,6 +176,9 @@ def run_and_analyse_contacts(
         Number of spatial bins per axis in the heatmaps, by default 50
     use_gpu : bool, optional
         Whether to use GPU acceleration, by default False
+    heatmap_format : str, optional
+        Image format of the heatmaps, by default ``"png"``; the dashboard uses
+        ``"svg"``.
 
     Returns
     -------
@@ -196,6 +200,7 @@ def run_and_analyse_contacts(
         distance_threshold=distance_threshold,
         bins=bins,
         buildings=simulation.space,
+        heatmap_format=heatmap_format,
     )
 
 
