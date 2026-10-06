@@ -2,7 +2,8 @@
 
 The floorplan extractor converts labelled DXF geometry into the YAML room
 format used by the simulation. It is intended for local Cartesian floorplans;
-no coordinate reference system is required.
+no coordinate reference system is required. Source coordinates may use any
+explicitly configured unit, while generated simulation YAML always uses metres.
 
 The extraction pipeline:
 
@@ -15,9 +16,9 @@ The extraction pipeline:
 7. combines both kinds of connection in the existing door column and
    serialises labelled rooms as wall and door line segments.
 
-The resulting geometry represents walls and doors as zero-thickness lines.
-Physical wall thickness can be applied when the YAML is loaded into another
-model.
+The resulting YAML represents walls and doors as centre lines in metres. The
+AMR-Hub runtime applies its current default wall thickness of 0.2 metres when
+constructing collision geometry.
 
 ## Running the example
 
@@ -45,15 +46,19 @@ uv run python ../examples/floorplan_extraction.py \
 ```
 
 The example writes parent directories for the output files when required.
-Building name, address, and floor level are example constants in the script
-and should be adapted for production use.
+Set the canonical model identity with `--building-name`, `--building-address`,
+and `--floor-level` when generating production input.
 
 ## Configuration
 
-The configuration is a YAML mapping. The `polygons` block is required; all
-other blocks are optional.
+The configuration is a YAML mapping. The `spatial_units` and `polygons` blocks
+are required; all other blocks are optional.
 
 ```yaml
+spatial_units:
+  source_unit: millimetres
+  units_per_metre: 1000.0
+
 polygons:
   polygon_layer_name: "ROOM_BOUNDARIES"
   label_layer_name: "ROOM_LABELS"
@@ -87,6 +92,12 @@ open_boundaries:
     - rooms: ["ROOM_C", "L_SHAPED_CORRIDOR"]
       allow_multiple_spans: true
 ```
+
+`source_unit` is retained as provenance and `units_per_metre` is the
+authoritative conversion factor. Extraction tolerances, correction points, and
+the diagnostic image remain in source units. Walls, doors, openings, content
+positions, and areas are converted when the model YAML is constructed. Unitless
+configuration is rejected rather than inferred from coordinate magnitudes.
 
 ### Room polygons and labels
 
@@ -200,18 +211,28 @@ configured maximum.
 
 ## Output YAML
 
-Each room contains a name, ordered wall segments, and door segments:
+The output declares schema version 1 and canonical metre coordinates. It also
+records the source conversion used to produce the model. Each room contains a
+name, ordered wall segments, and door segments:
 
 ```yaml
-rooms:
-  - name: E02NN012
-    walls:
-      - [x1, y1, x2, y2]
-    doors:
-      - [x1, y1, x2, y2]
+schema_version: 1
+coordinate_unit: m
+coordinate_provenance:
+  source_unit: millimetres
+  units_per_metre: 1000.0
+building:
+  floors:
+    - rooms:
+        - name: ROOM_CODE
+          walls:
+            - [x1, y1, x2, y2]
+          doors:
+            - [x1, y1, x2, y2]
 ```
 
-Door coordinates overlay subsections of the corresponding wall boundaries.
+All shown coordinates are metres. Door coordinates overlay subsections of the
+corresponding wall boundaries.
 Shared doors are repeated in each connected room because room construction
 uses those coordinates to identify connectivity.
 
