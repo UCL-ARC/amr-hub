@@ -195,6 +195,7 @@ def run_and_analyse_contacts(
         output_dir / "contact_analysis",
         distance_threshold=distance_threshold,
         bins=bins,
+        buildings=simulation.space,
     )
 
 

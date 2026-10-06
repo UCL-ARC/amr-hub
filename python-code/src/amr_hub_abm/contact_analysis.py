@@ -9,14 +9,22 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import matplotlib as mpl
 
 mpl.use("Agg")
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.colors import LogNorm
 
 from amr_hub_abm.agent.enums import AgentType
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from amr_hub_abm.spatial.building import Building
+    from amr_hub_abm.spatial.floor import Floor
 
 logger = logging.getLogger(__name__)
 TRAJECTORY_FILENAME = re.compile(
@@ -197,6 +205,39 @@ def _build_episodes(
 
 
 MAX_PIE_SLICES = 8
+HEATMAP_CMAP = "plasma"
+HEATMAP_ALPHA = 0.6
+
+
+def _floor_finder(
+    buildings: list[Building] | None,
+) -> Callable[[int, int], Floor | None]:
+    """
+    Return a lookup from recorded (building, floor) identifiers to a ``Floor``.
+
+    Recorded building identifiers are ``hash(name) % 128`` (see
+    ``agent.output``), which is only stable within one Python process. When the
+    hash does not match and there is a single building, fall back to matching
+    on the floor number alone.
+    """
+    if not buildings:
+        return lambda _building, _floor: None
+
+    def find(building_id: int, floor_number: int) -> Floor | None:
+        candidates = [
+            building
+            for building in buildings
+            if hash(building.name) % 128 == building_id
+        ]
+        if not candidates and len(buildings) == 1:
+            candidates = buildings
+        for building in candidates:
+            for floor in building.floors:
+                if floor.floor_number == floor_number:
+                    return floor
+        return None
+
+    return find
 
 
 def _agent_type_label(agent_name: str) -> str:
@@ -286,12 +327,13 @@ def _write_csv(
         writer.writerows(rows)
 
 
-def _write_outputs(
+def _write_outputs(  # noqa: PLR0913
     observations: list[ContactObservation],
     episodes: list[ContactEpisode],
     times: list[int],
     output_dir: Path,
     bins: int,
+    buildings: list[Building] | None = None,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     _write_csv(
@@ -406,15 +448,31 @@ def _write_outputs(
         figure.tight_layout()
         figure.savefig(output_dir / "contact_heatmap.png")
         plt.close(figure)
+    find_floor = _floor_finder(buildings)
     for (building, floor), items in sorted(by_space.items()):
         figure, axis = plt.subplots()
-        histogram = axis.hist2d(
+        floor_plan = find_floor(building, floor)
+        if floor_plan is not None:
+            floor_plan.plot(ax=axis)
+        # Bin over the whole floorplan so cells are comparable and aligned with it.
+        bounds = [axis.get_xlim(), axis.get_ylim()] if floor_plan is not None else None
+        counts, x_edges, y_edges = np.histogram2d(
             [item.midpoint_x for item in items],
             [item.midpoint_y for item in items],
             bins=bins,
-            cmap="hot",
+            range=bounds,
         )
-        figure.colorbar(histogram[3], ax=axis, label="Contact observations")
+        # Empty cells are masked so the floorplan stays visible beneath them.
+        mesh = axis.pcolormesh(
+            x_edges,
+            y_edges,
+            np.ma.masked_equal(counts.T, 0),
+            cmap=HEATMAP_CMAP,
+            alpha=HEATMAP_ALPHA,
+            norm=LogNorm(vmin=1, vmax=max(float(counts.max()), 2.0)),
+            zorder=3,
+        )
+        figure.colorbar(mesh, ax=axis, label="Contact observations")
         axis.set(
             xlabel="X position",
             ylabel="Y position",
@@ -423,7 +481,8 @@ def _write_outputs(
         )
         figure.tight_layout()
         figure.savefig(
-            output_dir / f"contact_heatmap_building_{building}_floor_{floor}.png"
+            output_dir / f"contact_heatmap_building_{building}_floor_{floor}.png",
+            dpi=150,
         )
         plt.close(figure)
 
@@ -434,8 +493,13 @@ def analyze_contacts(
     *,
     distance_threshold: float = 0.1,
     bins: int = 50,
+    buildings: list[Building] | None = None,
 ) -> tuple[list[ContactObservation], list[ContactEpisode]]:
-    """Analyse recorded trajectories and write contact data and plots."""
+    """
+    Analyse recorded trajectories and write contact data and plots.
+
+    If ``buildings`` is given, heatmaps are overlaid on the matching floorplans.
+    """
     if bins < 1:
         msg = "Heatmap bins must be a positive integer"
         raise ValueError(msg)
@@ -451,7 +515,7 @@ def analyze_contacts(
     logger.info("Grouped into %s contact episodes", len(episodes))
     all_times = sorted({time for track in tracks for time in track.positions_by_time})
     logger.info("Writing outputs to %s", output_dir)
-    _write_outputs(observations, episodes, all_times, output_dir, bins)
+    _write_outputs(observations, episodes, all_times, output_dir, bins, buildings)
     logger.info("Contact analysis complete")
     return observations, episodes
 
