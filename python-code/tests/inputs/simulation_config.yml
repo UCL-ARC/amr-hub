@@ -8,10 +8,10 @@ location_data:
 
 buildings_path: tests/inputs/buildings.yml # Path to buildings geojson file
 
-agent_movement_speed: 0.01 # Agent movement speed in units per time step
+agent_movement_speed: 0.01 # Agent movement speed in metres per simulation time step
 agent_movement_strategy: deadline_paced # fixed or deadline_paced
 agent_stochasticity: 0.5 # Degrees of randomness applied to agent heading each step
-agent_interaction_radius: 0.01 # Distance within which an agent is considered to have reached a target
+agent_interaction_radius: 0.01 # Target and CPU wall-clearance distance in metres
 agent_max_movement_attempts: 5 # Max attempts to find a movement step that avoids wall intersections
 
 hcw_initial_fatigue: 0.0

@@ -66,7 +66,7 @@ class Agent:
     infection_details: dict = field(default_factory=dict)
     internal_state: InternalState = field(default_factory=InternalState)
 
-    movement_speed: float = field(default=0.001)  # effective units per time step
+    movement_speed: float = field(default=0.001)  # metres per simulation time step
     movement_strategy: MovementStrategy = field(default=MovementStrategy.FIXED)
     base_movement_speed: float = field(init=False)
     stochasticity: float = field(default=5.0)  # degrees of randomness in movement
