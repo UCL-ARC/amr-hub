@@ -108,3 +108,61 @@ Validate the generated YAML before preparing event data:
 
 The generated YAML is the spatial-model input for event reconciliation and the
 simulation. It remains in the TRE under `derived/`.
+
+## Configure The Simulation
+
+Create a TRE-side simulation configuration after validating the metre-based
+floorplan. This configuration defines the simulation window and movement
+assumptions, and identifies the derived event database created in the next
+step.
+
+```yaml
+mode: data driven
+
+buildings_path: /project/derived/building.yml
+
+location_data:
+  format: duckdb
+  path: /project/derived/location-events.duckdb
+  table: location_timeseries
+  schema_version: 1
+
+start_time: 2024-01-01 00:00:00
+end_time: 2024-01-02 00:00:00
+length_of_timestep_in_seconds: 1
+
+# Metres per simulation timestep.
+agent_movement_speed: 1.2
+agent_stochasticity: 5.0
+agent_interaction_radius: 0.2
+agent_max_movement_attempts: 5
+
+# Simulation timesteps.
+time_needed_attend_patient: 900
+time_needed_door_access: 1
+time_needed_workstation: 1800
+time_needed_occupy_content: 10
+```
+
+`buildings_path` must reference the validated generated floorplan YAML. Its
+`coordinate_unit` must be `m`; movement speed and interaction radius are
+therefore specified in metres.
+
+`location_data.path` is the intended destination of the simulator-ready
+DuckDB database. It does not need to exist when this configuration is created;
+the location-event preparation step creates it later in the TRE.
+
+Use UTC for `start_time` and `end_time`. The location-event preparation step
+excludes source records outside this window.
+
+The one-second timestep shown above resolves movement at room and door scale.
+With this timestep, `agent_movement_speed: 1.2` represents an initial walking
+speed assumption of 1.2 metres per second. A 60-second timestep would require
+an approximately 72-metre movement step to represent the same walking speed,
+which is not suitable for indoor movement or door traversal.
+
+Task durations are specified as timestep counts. The example represents 15
+minutes for patient attendance and 30 minutes for workstation use. These,
+along with walking speed, interaction radius, and the simulation window, are
+explicit modelling assumptions that must be calibrated and recorded in the TRE
+study documentation before analysis.
