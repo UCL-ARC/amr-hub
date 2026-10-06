@@ -383,6 +383,7 @@ def main() -> None:
         building_address=args.building_address,
         floor_level=args.floor_level,
         rooms=rooms,
+        spatial_units=pec.spatial_units,
     )
 
     logger.info("Writing building yaml to %s", args.output)
