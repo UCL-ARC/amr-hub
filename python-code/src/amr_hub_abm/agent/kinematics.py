@@ -24,11 +24,12 @@ class AgentKinematicsConfig:
     Parameters
     ----------
     movement_speed : float
-        Agent movement speed, in units per time step.
+        Agent movement speed, in metres per simulation time step.
     stochasticity : float
         Degrees of randomness applied to an agent's heading at each step.
     interaction_radius : float
-        Distance within which an agent is considered to have reached a target.
+        Distance in metres within which an agent is considered to have reached
+        a target. The CPU movement path also uses it as wall clearance.
     max_movement_attempts : int
         Maximum number of attempts to find a movement step that avoids wall
         intersections.
