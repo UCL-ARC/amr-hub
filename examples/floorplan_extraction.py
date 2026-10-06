@@ -204,13 +204,18 @@ def plot_extracted_floorplan(
 
     for _, row in production_gdf.iterrows():
         label_point = row.geometry.representative_point()
+        label_candidates = row.get("label_candidates", [])
+        label = "\n".join(str(candidate) for candidate in label_candidates)
+        if not label:
+            label = str(row[room_name_column])
         ax.text(
             label_point.x,
             label_point.y,
-            str(row[room_name_column]),
+            label,
             fontsize=4,
             ha="center",
             va="center",
+            color="#dc2626" if row.get("needs_review", False) else "#111827",
         )
 
     min_x, min_y, max_x, max_y = production_gdf.total_bounds
@@ -355,6 +360,14 @@ def main() -> None:
         logger.warning("Identified %s rooms for review", len(review_gdf))
         logger.warning(review_gdf.head())
 
+    logger.info("Writing floorplan diagnostic plot to %s", args.diagnostic)
+    plot_extracted_floorplan(
+        production_gdf,
+        room_name_column=pec.polygons.polygon_label_target,
+        door_column=door_column,
+        output_path=args.diagnostic,
+    )
+
     rooms = polygons_to_rooms(
         production_gdf,
         room_name_column=pec.polygons.polygon_label_target,
@@ -367,14 +380,6 @@ def main() -> None:
     rooms = apply_door_cardinality_policy(
         rooms,
         singleton_policy=args.singleton_door_policy,
-    )
-
-    logger.info("Writing floorplan diagnostic plot to %s", args.diagnostic)
-    plot_extracted_floorplan(
-        production_gdf,
-        room_name_column=pec.polygons.polygon_label_target,
-        door_column=door_column,
-        output_path=args.diagnostic,
     )
 
     logger.info("Converting rooms to yaml")

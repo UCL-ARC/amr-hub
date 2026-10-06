@@ -29,6 +29,7 @@ from floorplan_extractor.dxf_polygon_extraction import (
     _apply_split_region_labels,
     _attach_polygon_labels,
     _flatten_z_points,
+    _generate_doors,
     _generate_polygons,
     _generate_room_numbers,
     _validate_open_boundary_room_labels,
@@ -1223,6 +1224,25 @@ def test_flatten_z_points_removes_z_dimension() -> None:
     assert geom.has_z is False
 
 
+def test_generate_doors_excludes_configured_entities() -> None:
+    """Excluded CAD entities do not produce model door candidates."""
+    gdf: gpd.GeoDataFrame = gpd.GeoDataFrame(
+        {
+            LAYER_COLUMN: ["DOORS", "DOORS"],
+            "EntityHandle": ["KEEP", "OMIT"],
+            GEOMETRY_COLUMN: [
+                LineString([(0.0, 0.0), (1.0, 0.0)]),
+                LineString([(2.0, 0.0), (3.0, 0.0)]),
+            ],
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+
+    doors = _generate_doors(gdf, "DOORS", ["OMIT"])
+
+    assert doors["EntityHandle"].to_list() == ["KEEP"]
+
+
 def test_generate_polygons_from_linework() -> None:
     """Closed linework is polygonised into a single polygon."""
     lines: list[LineString] = [LineString(coords) for coords in LINE_COORDINATES]
@@ -1239,6 +1259,55 @@ def test_generate_polygons_from_linework() -> None:
 
     assert len(polygons) == 1
     assert isinstance(polygons.geometry.iloc[0], Polygon)
+
+
+def test_generate_polygons_preserves_closed_source_rings() -> None:
+    """Closed DXF rings are not split by overlapping boundary linework."""
+    closed_ring = LineString(
+        [(0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 4.0), (0.0, 0.0)]
+    )
+    overlapping_ring = LineString(
+        [(2.0, 2.0), (6.0, 2.0), (6.0, 6.0), (2.0, 6.0), (2.0, 2.0)]
+    )
+    gdf: gpd.GeoDataFrame = gpd.GeoDataFrame(
+        {
+            LAYER_COLUMN: [POLYGON_LAYER_NAME, POLYGON_LAYER_NAME],
+            GEOMETRY_COLUMN: [closed_ring, overlapping_ring],
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+
+    polygons = _generate_polygons(gdf, POLYGON_LAYER_NAME)
+
+    assert len(polygons) == 2
+    assert {geometry.area for geometry in polygons.geometry} == {16.0}
+
+
+def test_generate_polygons_preserves_non_simple_closed_source_ring() -> None:
+    """Closed DXF polylines with duplicate segments remain room polygons."""
+    non_simple_ring = LineString(
+        [
+            (0.0, 0.0),
+            (4.0, 0.0),
+            (4.0, 4.0),
+            (0.0, 4.0),
+            (0.0, 0.0),
+            (4.0, 0.0),
+            (0.0, 0.0),
+        ]
+    )
+    gdf: gpd.GeoDataFrame = gpd.GeoDataFrame(
+        {
+            LAYER_COLUMN: [POLYGON_LAYER_NAME],
+            GEOMETRY_COLUMN: [non_simple_ring],
+        },
+        geometry=GEOMETRY_COLUMN,
+    )
+
+    polygons = _generate_polygons(gdf, POLYGON_LAYER_NAME)
+
+    assert len(polygons) == 1
+    assert polygons.geometry.iloc[0].contains(Point(2.0, 2.0))
 
 
 def test_polygon_split_creates_and_labels_configured_regions() -> None:

@@ -116,6 +116,8 @@ class DoorAttachmentConfig:
         Minimum projected door length to retain.
     max_attached_rooms : int
         Maximum expected number of rooms connected by one door.
+    excluded_entity_handles : list[str]
+        CAD door entities excluded from the extracted model.
 
     """
 
@@ -127,6 +129,7 @@ class DoorAttachmentConfig:
     boundary_tolerance: float = 0.1
     min_door_length: float = 0.2
     max_attached_rooms: int = 2
+    excluded_entity_handles: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -359,6 +362,9 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
             y_col=door_block.get("y_col", "y"),
             out_col=door_block.get("out_col", "doors"),
             predicate=door_block.get("predicate", "intersects"),
+            excluded_entity_handles=[
+                str(handle) for handle in door_block.get("excluded_entity_handles", [])
+            ],
         )
 
     if "shared_walls" in data:
@@ -1579,8 +1585,10 @@ def _repair_polygon_geometry(geom: BaseGeometry) -> BaseGeometry:
     if not geom.is_valid:
         geom = shapely.make_valid(geom)
 
-    if geom.geom_type == "MultiPolygon":
-        return max(geom.geoms, key=lambda g: g.area)
+    if geom.geom_type in {"GeometryCollection", "MultiPolygon"}:
+        polygon_parts = [part for part in geom.geoms if isinstance(part, Polygon)]
+        if polygon_parts:
+            return max(polygon_parts, key=lambda polygon: polygon.area)
 
     return geom
 
@@ -1619,7 +1627,17 @@ def _generate_polygons(
         :,
     ]
 
-    raw_polygons = list(polygonize(polygon_layer.geometry))
+    # A closed DXF polyline is already an authored room boundary. Polygonising
+    # it with overlapping room linework can replace it with unrelated planar faces.
+    # CAD exports may include duplicate boundary segments, making a closed
+    # polyline non-simple and therefore not a Shapely ring.
+    closed_rings = polygon_layer.loc[polygon_layer.geometry.is_closed, "geometry"]
+    open_linework = polygon_layer.loc[
+        ~polygon_layer.geometry.is_closed,
+        "geometry",
+    ]
+    raw_polygons = [Polygon(ring) for ring in closed_rings]
+    raw_polygons.extend(polygonize(open_linework))
     repaired = [_repair_polygon_geometry(geom) for geom in raw_polygons]
 
     polygons = gpd.GeoDataFrame(geometry=repaired, crs=gdf.crs)
@@ -1895,7 +1913,11 @@ def _extract_floor_label(value: object, floor_filter: str) -> str | None:
     )
 
 
-def _generate_doors(gdf: gpd.GeoDataFrame, target_layer: str) -> gpd.GeoDataFrame:
+def _generate_doors(
+    gdf: gpd.GeoDataFrame,
+    target_layer: str,
+    excluded_entity_handles: list[str],
+) -> gpd.GeoDataFrame:
     """
     Extract door boundary geometries from a DXF GeoDataFrame.
 
@@ -1910,6 +1932,8 @@ def _generate_doors(gdf: gpd.GeoDataFrame, target_layer: str) -> gpd.GeoDataFram
         Input GeoDataFrame containing DXF-derived geometries.
     target_layer : str
         Name of the DXF layer containing door geometries.
+    excluded_entity_handles : list[str]
+        CAD entity handles to omit from the model.
 
     Returns
     -------
@@ -1922,6 +1946,7 @@ def _generate_doors(gdf: gpd.GeoDataFrame, target_layer: str) -> gpd.GeoDataFram
         gdf["Layer"] == target_layer,
         ["EntityHandle", "geometry"],
     ].copy()
+    doors = doors.loc[~doors["EntityHandle"].isin(excluded_entity_handles), :]
 
     doors = pd.DataFrame(doors)
 
@@ -2150,7 +2175,11 @@ def extract_polygons(
         labelled_polygons.attrs["open_boundary_spans"] = open_boundary_spans
 
     if config.door_layer_name and config.doors:
-        doors = _generate_doors(gdf, config.door_layer_name)
+        doors = _generate_doors(
+            gdf,
+            config.door_layer_name,
+            config.doors.excluded_entity_handles,
+        )
         labelled_polygons = attach_room_doors(
             labelled_polygons,
             doors,
