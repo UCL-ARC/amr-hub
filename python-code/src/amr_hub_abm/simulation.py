@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
     from amr_hub_abm.agent.agent import Agent
+    from amr_hub_abm.agent.internal_state import InternalStateConfig
     from amr_hub_abm.spatial.building import Building
     from amr_hub_abm.spatial.room import Room
 
@@ -80,6 +81,7 @@ class Simulation:
     # Unified engine property (handles both CPU and GPU cleanly)
     spatial_engine: Any = field(default=None, init=False)
     agent_max_movement_attempts: int = field(default=5)
+    internal_state_config: InternalStateConfig | None = field(default=None)
     # ------------------------------------------------------------------------------
 
     def __post_init__(self) -> None:
@@ -116,6 +118,10 @@ class Simulation:
         # Always run the task state machine so agents transition correctly.
         # If engine is type gpu then polymorphic move_one_step does nothing
         for agent in self.agents:
+            if self.internal_state_config is not None:
+                self.internal_state_config.update_state(
+                    agent.internal_state, agent.agent_type
+                )
             agent.perform_task(
                 current_time=self.time, engine=self.spatial_engine, record=record
             )
