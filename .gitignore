@@ -1,2 +1,5 @@
 # Docker images
 *.tar
+
+# Python bytecode
+*.pyc
