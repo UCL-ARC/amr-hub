@@ -1,14 +1,20 @@
 """Module to run the AMR Hub ABM simulation."""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from matplotlib import pyplot as plt
 
 from amr_hub_abm.agent.agent import InfectionStatus
 from amr_hub_abm.config import sim_config
-from amr_hub_abm.simulation import Simulation
 from amr_hub_abm.simulation_factory import create_simulation
+
+if TYPE_CHECKING:
+    from amr_hub_abm.contact_analysis import ContactEpisode, ContactObservation
+    from amr_hub_abm.simulation import Simulation
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +151,52 @@ def run_steps(
 
 
 # =============================================================================
+
+
+def run_and_analyse_contacts(
+    output_dir: Path,
+    *,
+    distance_threshold: float = 0.1,
+    bins: int = 50,
+    use_gpu: bool = False,
+) -> tuple[list[ContactObservation], list[ContactEpisode]]:
+    """
+    Run one complete simulation without plotting and analyse agent contacts.
+
+    Trajectories and contact analysis outputs are written to ``output_dir``.
+
+    Parameters
+    ----------
+    output_dir : Path
+        Directory for trajectory CSVs and the ``contact_analysis`` outputs.
+    distance_threshold : float, optional
+        Maximum distance for two agents to be in contact, by default 0.1
+    bins : int, optional
+        Number of spatial bins per axis in the heatmaps, by default 50
+    use_gpu : bool, optional
+        Whether to use GPU acceleration, by default False
+
+    Returns
+    -------
+    tuple[list[ContactObservation], list[ContactEpisode]]
+        The detected contact observations and the grouped contact episodes.
+
+    """
+    # Imported lazily because contact_analysis forces the non-interactive Agg
+    # matplotlib backend, which would break live plotting elsewhere in this module.
+    from amr_hub_abm.contact_analysis import analyze_contacts  # noqa: PLC0415
+
+    simulation = create_simulation(sim_config, use_gpu=use_gpu)
+    run_steps(simulation, None, record=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    simulation.record_agent_states(output_dir / "agent_states.csv")
+    return analyze_contacts(
+        output_dir,
+        output_dir / "contact_analysis",
+        distance_threshold=distance_threshold,
+        bins=bins,
+    )
+
 
 # =============================================================================
 # Make True for GPU

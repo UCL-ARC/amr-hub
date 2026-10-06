@@ -1,7 +1,11 @@
 """Solara app for browser-based AMR Hub ABM visualization."""
 # ruff: noqa: N802
 
+import tempfile
+from pathlib import Path
+
 import solara
+import solara.lab
 from matplotlib.figure import Figure
 from mesa.visualization import SolaraViz
 from mesa.visualization.utils import update_counter
@@ -9,6 +13,7 @@ import qrcode
 
 from amr_hub_abm.agent.agent import Agent
 from amr_hub_abm.mesa_wrapper import HospitalABM
+from amr_hub_abm.run import run_and_analyse_contacts
 
 STATUS_DICT = {
     "NOT_STARTED": "🔵",
@@ -165,18 +170,80 @@ def AgentTaskTableComponent(model: HospitalABM) -> None:
                         solara.Markdown(f"End: `{row['End Time']}`")
 
 
-page = SolaraViz(
-    HospitalABM(),
-    components=[
-        FloorplanComponent,
-        AgentTaskTableComponent,
-    ],  # pyright: ignore[reportArgumentType]
-    name="AMR-HUB Hospital Simulation",
-    play_interval=100,
-    render_interval=100,
-    measures=[
-        "Current hospital state",
-        lambda m: f"Simulation time: {m.simulation.time}",
-        lambda m: f"Agents: {len(m.simulation.agents)}",
-    ],
-)
+@solara.lab.task
+def run_contact_analysis(distance_threshold: float, bins: int) -> Path:
+    """Run a full headless simulation and return the contact analysis directory."""
+    output_dir = Path(tempfile.mkdtemp(prefix="amr_hub_contacts_"))
+    run_and_analyse_contacts(
+        output_dir, distance_threshold=distance_threshold, bins=bins
+    )
+    return output_dir / "contact_analysis"
+
+
+@solara.component  # pyright: ignore[reportPrivateImportUsage]
+def ContactAnalysisComponent() -> None:
+    """Run the simulation once without animation and show the contact analysis."""
+    threshold = solara.use_reactive(0.1)
+    bins = solara.use_reactive(50)
+
+    with solara.Card(title="Contact analysis", margin=0):
+        solara.InputFloat(label="Contact distance threshold", value=threshold)
+        solara.InputInt(label="Heatmap bins", value=bins)
+        solara.Button(
+            "Run simulation & analyse contacts",
+            on_click=lambda: run_contact_analysis(threshold.value, bins.value),
+            color="primary",
+            disabled=run_contact_analysis.pending,
+        )
+        if run_contact_analysis.pending:
+            solara.Markdown("Running the full simulation, this may take a while...")
+            solara.ProgressLinear(True)
+        elif run_contact_analysis.error:
+            solara.Error(f"Contact analysis failed: {run_contact_analysis.exception}")
+        elif run_contact_analysis.finished:
+            analysis_dir: Path = run_contact_analysis.value
+            for image in [
+                analysis_dir / "contact_timeseries.png",
+                *sorted(analysis_dir.glob("contact_heatmap*.png")),
+            ]:
+                solara.Image(str(image), width="100%")
+
+
+model = HospitalABM()
+
+
+@solara.component  # pyright: ignore[reportPrivateImportUsage]
+def SimulationPage() -> None:
+    """Animated, step-by-step simulation view."""
+    SolaraViz(
+        model,
+        components=[
+            FloorplanComponent,
+            AgentTaskTableComponent,
+        ],  # pyright: ignore[reportArgumentType]
+        name="AMR-HUB Hospital Simulation",
+        play_interval=100,
+        render_interval=100,
+        measures=[
+            "Current hospital state",
+            lambda m: f"Simulation time: {m.simulation.time}",
+            lambda m: f"Agents: {len(m.simulation.agents)}",
+        ],
+    )
+
+
+@solara.component  # pyright: ignore[reportPrivateImportUsage]
+def ContactAnalysisPage() -> None:
+    """Separate tab: single headless run with contact analysis."""
+    with solara.Column(style={"padding": "16px"}):
+        ContactAnalysisComponent()
+
+
+routes = [
+    solara.Route(path="/", component=SimulationPage, label="Simulation"),
+    solara.Route(
+        path="contact-analysis",
+        component=ContactAnalysisPage,
+        label="Contact analysis",
+    ),
+]
