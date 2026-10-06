@@ -16,6 +16,8 @@ mpl.use("Agg")
 import numpy as np
 from matplotlib import pyplot as plt
 
+from amr_hub_abm.agent.enums import AgentType
+
 logger = logging.getLogger(__name__)
 TRAJECTORY_FILENAME = re.compile(
     r"agent_(?P<agent_type>.+)_(?P<agent_id>\d+)_trajectory\.csv$"
@@ -194,6 +196,87 @@ def _build_episodes(
     return episodes
 
 
+MAX_PIE_SLICES = 8
+
+
+def _agent_type_label(agent_name: str) -> str:
+    """Return a readable agent type from a track name like ``2_3``."""
+    type_part = agent_name.rsplit("_", 1)[0]
+    try:
+        return AgentType(int(type_part)).name.replace("_", " ").title()
+    except ValueError:
+        return type_part
+
+
+def _write_pie(
+    path: Path,
+    totals: dict[str, float],
+    *,
+    title: str,
+    max_slices: int = MAX_PIE_SLICES,
+) -> None:
+    """Save a pie chart, grouping the smallest categories into ``Other``."""
+    ranked = sorted(totals.items(), key=lambda item: (-item[1], item[0]))
+    if len(ranked) > max_slices:
+        other = sum(value for _, value in ranked[max_slices - 1 :])
+        ranked = [*ranked[: max_slices - 1], ("Other", other)]
+
+    figure, axis = plt.subplots(figsize=(7, 6))
+    if ranked and sum(value for _, value in ranked) > 0:
+        axis.pie(
+            [value for _, value in ranked],
+            labels=[label for label, _ in ranked],
+            autopct="%1.1f%%",
+            startangle=90,
+            counterclock=False,
+        )
+        axis.axis("equal")
+    else:
+        axis.text(0.5, 0.5, "No contacts detected", ha="center", va="center")
+        axis.axis("off")
+    axis.set_title(title)
+    figure.tight_layout()
+    figure.savefig(path)
+    plt.close(figure)
+
+
+def _write_pie_charts(episodes: list[ContactEpisode], output_dir: Path) -> None:
+    """Write pies of episode counts and contact time by agent and type pair."""
+    groupings = {
+        "agent_pair": (
+            "agent pair",
+            lambda item: f"{item.agent_a} & {item.agent_b}",
+        ),
+        "agent_type_pair": (
+            "agent type pair",
+            lambda item: " & ".join(
+                sorted(
+                    (
+                        _agent_type_label(item.agent_a),
+                        _agent_type_label(item.agent_b),
+                    )
+                )
+            ),
+        ),
+    }
+    for key, (label, group) in groupings.items():
+        episode_counts: dict[str, float] = defaultdict(float)
+        durations: dict[str, float] = defaultdict(float)
+        for episode in episodes:
+            episode_counts[group(episode)] += 1
+            durations[group(episode)] += episode.duration
+        _write_pie(
+            output_dir / f"contact_pie_episodes_by_{key}.png",
+            episode_counts,
+            title=f"Share of contact episodes by {label}",
+        )
+        _write_pie(
+            output_dir / f"contact_pie_time_by_{key}.png",
+            durations,
+            title=f"Share of contact time by {label}",
+        )
+
+
 def _write_csv(
     path: Path, fieldnames: list[str], rows: list[dict[str, object]]
 ) -> None:
@@ -286,6 +369,8 @@ def _write_outputs(
             for (agent_a, agent_b), pair_episodes in sorted(pair_totals.items())
         ],
     )
+
+    _write_pie_charts(episodes, output_dir)
 
     figure, axis = plt.subplots()
     if times:

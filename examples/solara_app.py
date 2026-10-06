@@ -204,6 +204,7 @@ def ContactAnalysisComponent() -> None:
             analysis_dir: Path = run_contact_analysis.value
             for image in [
                 analysis_dir / "contact_timeseries.png",
+                *sorted(analysis_dir.glob("contact_pie_*.png")),
                 *sorted(analysis_dir.glob("contact_heatmap*.png")),
             ]:
                 solara.Image(str(image), width="100%")
