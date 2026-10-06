@@ -166,3 +166,89 @@ minutes for patient attendance and 30 minutes for workstation use. These,
 along with walking speed, interaction radius, and the simulation window, are
 explicit modelling assumptions that must be calibrated and recorded in the TRE
 study documentation before analysis.
+
+## Prepare Location Event Data
+
+Prepare a separate simulator-ready DuckDB database from approved TRE source
+views. The raw source DuckDB remains unchanged. The derived database is written
+to the `location_data.path` configured in the previous section.
+
+Create TRE-only DataFrames or views for the following inputs:
+
+| Input | Required fields | Purpose |
+| --- | --- | --- |
+| Interaction events | `locationID`, `hcw_id`, `timestamp`, `event_type`, `patient_id`, `door_id`, `content_type` | Source observations to reconcile against the model. |
+| Roster | `hcw_id`, `shift_start`, `shift_end` | Retains only events occurring during an eligible HCW shift. |
+| Bed references | `locationID`, `bedName` | Resolves patient-attendance event locations. |
+| Room-code mappings | `roomCode`, `roomName`, `bedName` | Maps source bed references to floorplan room names. |
+| Door references | `locationID`, `descriptiveDoorName` | Resolves door-access event locations. |
+
+Use stable pseudonymised identifiers for `hcw_id` and `patient_id`. Source
+timestamps may include timezone information; the preparation pipeline
+normalises them to UTC before writing the derived DuckDB database.
+
+Set `event_type` as follows:
+
+- `attend_patient` for flowsheet or patient-attendance records.
+- `door_access` for door-message records.
+- `workstation` for workstation records. These are retained in the audit as
+  `workstation_deferred` and are not yet supplied to the simulation.
+
+Use the existing Python API from an approved TRE-side analysis script or
+notebook. Loading the source tables into the input DataFrames is
+site-specific; pass the resulting DataFrames to
+`build_simulation_location_database()`.
+
+```python
+from pathlib import Path
+
+import numpy as np
+
+from amr_hub_abm.config import SimulationConfig
+from amr_hub_abm.data_ingestion.pipeline import (
+    build_simulation_location_database,
+)
+
+report = build_simulation_location_database(
+    events=events,
+    bed_references=bed_references,
+    room_code_mappings=room_code_mappings,
+    door_references=door_references,
+    roster=roster,
+    config=SimulationConfig.from_file(Path("/project/config/simulation.yml")),
+    output_path=Path("/project/derived/location-events.duckdb"),
+    patient_building="MODEL_BUILDING_NAME",
+    patient_floor=2,
+    rng_generator=np.random.default_rng(0),
+)
+```
+
+`output_path` must be a new file. The function writes:
+
+```text
+/project/derived/location-events.duckdb
+  location_timeseries
+  amr_hub_schema
+  location_reconciliation_audit
+```
+
+`location_timeseries` contains only resolved, rostered events within the
+configured simulation window. It is the only relation read by the simulator.
+
+`location_reconciliation_audit` contains every source event and its outcome.
+It remains in the TRE and must not be exported. Review all statuses other than
+`resolved`, including `reference_not_found`, `ambiguous_reference`,
+`unparseable_location`, `room_code_not_found`, `room_not_in_model`,
+`room_has_no_doors`, `ambiguous_doors`, `hcw_not_rostered`,
+`outside_rostered_shift`, `outside_simulation_window`, and
+`workstation_deferred`.
+
+Do not guess a room or door for unresolved records. Correct the TRE-side
+reference mappings or floorplan configuration, then rerun preparation.
+
+Before running the simulation, confirm that:
+
+- The derived database was written to the configured `location_data.path`.
+- `location_timeseries` is non-empty and passes schema validation.
+- All retained events fall within the configured UTC simulation window.
+- The reconciliation audit has been reviewed and retained in the TRE.

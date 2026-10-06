@@ -68,6 +68,43 @@ Events are never assigned a guessed location. Unsupported interaction types are
 retained in the audit with `unsupported_interaction_type` until they have an
 explicit mapping rule.
 
+## Location Event Data Contract
+
+The simulator reads a versioned DuckDB `location_timeseries` table or trusted
+view. `amr_hub_schema` must register the `location_timeseries` component at the
+configured schema version. All timestamps are normalised to UTC before storage
+in the timezone-naive DuckDB `TIMESTAMP` column.
+
+| Column           | DuckDB type | Meaning and validation                                                                                                                                                                      |
+| ---------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `event_sequence` | `BIGINT`    | Positive unique sequence preserving the deterministic source-event order. Events sharing a timestamp are ordered by their generated source-event key.                                       |
+| `hcw_id`         | `INTEGER`   | Positive pseudonymised healthcare-worker key, stable across approved TRE database tables and available for later linkage to a model digital twin.                                           |
+| `timestamp`      | `TIMESTAMP` | Observed event time, normalised to UTC. It must fall within the configured simulation window.                                                                                               |
+| `location`       | `VARCHAR`   | Canonical model room identity: `building:floor:room_code`. It is room-level currently, not an observed coordinate. Finer placement may be added when model content and evidence support it. |
+| `event_type`     | `VARCHAR`   | Currently `attend_patient` or `door_access`.                                                                                                                                                |
+| `patient_id`     | `INTEGER`   | Positive pseudonymised patient key, stable across approved TRE database tables. Required for `attend_patient`; null for `door_access`.                                                      |
+| `door_id`        | `INTEGER`   | Non-sensitive ID assigned by the loaded floorplan model after reconciliation. Required for `door_access`; null for `attend_patient`. Source door identifiers remain in the TRE only.        |
+| `content_type`   | `INTEGER`   | Reserved for future content and workstation tasks. It is null for the currently supported event types.                                                                                      |
+
+The source event categories currently have the following treatment:
+
+- Flowsheet records are reconciled to `attend_patient` events.
+- Door-message records are reconciled to `door_access` events.
+- Roster records determine HCW shift eligibility and are not simulation events.
+- Workstation records are retained as `workstation_deferred` in the audit until
+  their mapping is implemented.
+
+The TRE-only `location_reconciliation_audit` relation records source-event
+provenance, reconciliation outcomes, model mapping details, and collapsed
+duplicate counts. It may contain pseudonymised identifiers and must not be
+committed to the repository or exported outside the TRE.
+
+Source tables are not required to provide an event ID. Ingestion creates a
+deterministic provenance key from event category, pseudonymised HCW key,
+UTC-normalised timestamp, source location key, patient key, door key, and
+content type. Exact duplicate composite records are treated as duplicate source
+events: one is prepared and the audit retains the number collapsed.
+
 ## Reconciliation Statuses
 
 The audit distinguishes missing or duplicate references

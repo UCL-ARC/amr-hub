@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from enum import StrEnum
+from hashlib import sha256
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -117,12 +118,12 @@ def prepare_simulation_location_data(  # noqa: PLR0913
 
     """
     start_time, end_time = _simulation_window(config)
-    _validate_event_values(events)
+    source_events = _normalise_source_events(events)
     roster_intervals = _normalise_roster(roster, roster_columns)
     reader = SpaceInputReader(_buildings_path(config), rng_generator)
 
     report = prepare_location_events(
-        events,
+        source_events,
         bed_references,
         room_code_mappings,
         door_references,
@@ -286,9 +287,17 @@ def _buildings_path(config: SimulationConfig) -> Path:
     return Path(buildings_path)
 
 
-def _validate_event_values(events: pd.DataFrame) -> None:
-    """Reject malformed event identifiers and timestamps before reconciliation."""
-    required_columns = {"hcw_id", "timestamp"}
+def _normalise_source_events(events: pd.DataFrame) -> pd.DataFrame:
+    """Generate provenance keys and collapse exact duplicate source events."""
+    required_columns = {
+        "locationID",
+        "hcw_id",
+        "timestamp",
+        "event_type",
+        "patient_id",
+        "door_id",
+        "content_type",
+    }
     missing_columns = required_columns.difference(events.columns)
     if missing_columns:
         msg = f"Missing event columns: {', '.join(sorted(missing_columns))}"
@@ -300,13 +309,56 @@ def _validate_event_values(events: pd.DataFrame) -> None:
         msg = "Event hcw_id values must be positive integers."
         raise InvalidDefinitionError(msg)
 
-    timestamps = pd.to_datetime(events["timestamp"], errors="coerce")
+    timestamps = _normalise_utc_timestamps(events["timestamp"])
     if timestamps.isna().any():
         msg = "Event timestamps must be valid."
         raise InvalidDefinitionError(msg)
-    if getattr(timestamps.dt, "tz", None) is not None:
-        msg = "Event timestamps must be timezone-naive."
-        raise InvalidDefinitionError(msg)
+
+    result = events.copy()
+    result["timestamp"] = timestamps
+    source_key_columns = (
+        "event_type",
+        "hcw_id",
+        "locationID",
+        "patient_id",
+        "door_id",
+        "content_type",
+    )
+    result["eventID"] = [
+        _source_event_key(values)
+        for values in zip(
+            *(result[column] for column in source_key_columns),
+            timestamps,
+            strict=True,
+        )
+    ]
+    source_record_counts = result["eventID"].value_counts()
+    result["source_record_count"] = result["eventID"].map(source_record_counts)
+    duplicate_count = int((result["source_record_count"] - 1).sum())
+    if duplicate_count:
+        logger.warning("Collapsed %d exact duplicate source events", duplicate_count)
+    return result.drop_duplicates(subset="eventID").sort_values(
+        ["timestamp", "eventID"], kind="stable", ignore_index=True
+    )
+
+
+def _source_event_key(values: tuple[object, ...]) -> str:
+    """Return a deterministic TRE-only key for one canonical source event."""
+    normalized_values = "\x1f".join(_source_key_value(value) for value in values)
+    return sha256(normalized_values.encode("utf-8")).hexdigest()
+
+
+def _source_key_value(value: object) -> str:
+    """Normalize nullable scalar values for source-event key generation."""
+    if pd.isna(value):
+        return "<missing>"
+    return str(value)
+
+
+def _normalise_utc_timestamps(values: pd.Series) -> pd.Series:
+    """Normalize source timestamps to UTC-naive values for DuckDB storage."""
+    timestamps = pd.to_datetime(values, errors="coerce", utc=True)
+    return timestamps.dt.tz_localize(None)
 
 
 def _normalise_roster(
@@ -325,8 +377,8 @@ def _normalise_roster(
     ].copy()
     result.columns = ["hcw_id", "shift_start", "shift_end"]
     result["hcw_id"] = pd.to_numeric(result["hcw_id"], errors="coerce")
-    result["shift_start"] = pd.to_datetime(result["shift_start"], errors="coerce")
-    result["shift_end"] = pd.to_datetime(result["shift_end"], errors="coerce")
+    result["shift_start"] = _normalise_utc_timestamps(result["shift_start"])
+    result["shift_end"] = _normalise_utc_timestamps(result["shift_end"])
     invalid_hcw_ids = (
         result["hcw_id"].isna() | result["hcw_id"].mod(1).ne(0) | result["hcw_id"].le(0)
     )
@@ -337,9 +389,6 @@ def _normalise_roster(
     )
     if invalid_hcw_ids.any() or invalid_intervals.any():
         msg = "Roster rows require a positive hcw_id and increasing shift interval."
-        raise InvalidDefinitionError(msg)
-    if getattr(result["shift_start"].dt, "tz", None) is not None:
-        msg = "Roster shift timestamps must be timezone-naive."
         raise InvalidDefinitionError(msg)
     result["hcw_id"] = result["hcw_id"].astype("Int64")
     return result

@@ -84,7 +84,7 @@ def location_inputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Data
         ignore_index=True,
     )
     return (
-        events,
+        events.drop(columns="eventID"),
         inputs.bed_references,
         inputs.room_code_mappings,
         inputs.door_references,
@@ -121,16 +121,19 @@ def test_pipeline_filters_events_and_writes_simulator_database(tmp_path: Path) -
     )
 
     assert report.location_timeseries["event_sequence"].tolist() == [1, 2]
-    assert report.audit["resolution_status"].tolist() == [
-        "resolved",
-        "resolved",
-        "reference_not_found",
-        "room_not_in_model",
-        EventPreparationStatus.WORKSTATION_DEFERRED,
-        RosterFilterStatus.OUTSIDE_ROSTERED_SHIFT,
-        RosterFilterStatus.HCW_NOT_ROSTERED,
-        RosterFilterStatus.OUTSIDE_SIMULATION_WINDOW,
-    ]
+    ordering = (
+        report.audit[["timestamp", "source_event_id"]].to_records(index=False).tolist()
+    )
+    assert ordering == sorted(ordering)
+    assert report.audit["resolution_status"].value_counts().to_dict() == {
+        "resolved": 2,
+        "reference_not_found": 1,
+        "room_not_in_model": 1,
+        EventPreparationStatus.WORKSTATION_DEFERRED: 1,
+        RosterFilterStatus.OUTSIDE_ROSTERED_SHIFT: 1,
+        RosterFilterStatus.HCW_NOT_ROSTERED: 1,
+        RosterFilterStatus.OUTSIDE_SIMULATION_WINDOW: 1,
+    }
     database_events = read_location_timeseries(
         LocationTimeseriesDataConfig(
             format=LocationTimeseriesDataFormat.DUCKDB,
@@ -194,3 +197,25 @@ def test_pipeline_rejects_invalid_roster_intervals() -> None:
             patient_floor=8,
             rng_generator=np.random.default_rng(0),
         )
+
+
+def test_pipeline_collapses_exact_duplicate_source_events() -> None:
+    """Repeated records use one generated provenance key and retain their count."""
+    events, bed_references, room_code_mappings, door_references = location_inputs()
+    events = pd.concat([events, events.iloc[[0]]], ignore_index=True)
+
+    report = prepare_simulation_location_data(
+        events,
+        bed_references,
+        room_code_mappings,
+        door_references,
+        roster(),
+        location_pipeline_config(),
+        patient_building="BETA",
+        patient_floor=8,
+        rng_generator=np.random.default_rng(0),
+    )
+
+    assert len(report.audit) == 8
+    assert report.audit.loc[0, "source_record_count"] == 2
+    assert len(report.audit.loc[0, "source_event_id"]) == 64

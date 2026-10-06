@@ -97,7 +97,8 @@ def prepare_location_events(  # noqa: PLR0913
     patient_floor : int
         Model floor containing the patient bed references.
     source_event_id_column : str, default="eventID"
-        Unique source event identifier retained in the audit output.
+        Unique event provenance key retained in the audit output. Operational
+        ingestion generates this key when a source table has no event ID.
     location_id_column : str, default="locationID"
         Event and reference-table location-key column.
 
