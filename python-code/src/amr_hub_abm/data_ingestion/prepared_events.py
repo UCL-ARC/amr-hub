@@ -35,6 +35,7 @@ class EventPreparationStatus(StrEnum):
     """Preparation outcomes that are not location-resolution outcomes."""
 
     UNSUPPORTED_INTERACTION_TYPE = "unsupported_interaction_type"
+    WORKSTATION_DEFERRED = "workstation_deferred"
 
 
 @dataclass(frozen=True)
@@ -141,8 +142,13 @@ def prepare_location_events(  # noqa: PLR0913
 
     patient_events = source_events.loc[source_events["event_type"] == "attend_patient"]
     door_events = source_events.loc[source_events["event_type"] == "door_access"]
+    workstation_events = source_events.loc[
+        source_events["event_type"] == "workstation"
+    ].copy()
     unsupported_events = source_events.loc[
-        ~source_events["event_type"].isin({"attend_patient", "door_access"})
+        ~source_events["event_type"].isin(
+            {"attend_patient", "door_access", "workstation"}
+        )
     ].copy()
 
     resolved_reports = []
@@ -165,6 +171,11 @@ def prepare_location_events(  # noqa: PLR0913
             location_id_column=location_id_column,
         )
         resolved_reports.extend([door_report.prepared, door_report.excluded])
+    if not workstation_events.empty:
+        workstation_events["resolution_status"] = (
+            EventPreparationStatus.WORKSTATION_DEFERRED
+        )
+        resolved_reports.append(workstation_events)
 
     if not unsupported_events.empty:
         unsupported_events["resolution_status"] = (

@@ -1,0 +1,33 @@
+schema_version: 1
+coordinate_unit: m
+building:
+  name: BETA
+  address: Synthetic test hospital
+  floors:
+    - level: 8
+      rooms:
+        - name: B08NN001
+          walls:
+            - [0, 0, 2, 0]
+            - [2, 0, 2, 2]
+            - [2, 2, 0, 2]
+            - [0, 2, 0, 0]
+          doors:
+            - [2, 0.5, 2, 1.5]
+        - name: B08NN002
+          walls:
+            - [3, 0, 5, 0]
+            - [5, 0, 5, 2]
+            - [5, 2, 3, 2]
+            - [3, 2, 3, 0]
+          doors:
+            - [3, 0.5, 3, 1.5]
+        - name: B08COR001
+          walls:
+            - [2, 0, 3, 0]
+            - [3, 0, 3, 2]
+            - [3, 2, 2, 2]
+            - [2, 2, 2, 0]
+          doors:
+            - [2, 0.5, 2, 1.5]
+            - [3, 0.5, 3, 1.5]

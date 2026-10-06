@@ -3,6 +3,14 @@
 from amr_hub_abm.data_ingestion.beds import BedLocation, extract_bed_location
 from amr_hub_abm.data_ingestion.doors import DoorLocation, extract_door_location
 from amr_hub_abm.data_ingestion.normalise import normalise_door_location_events
+from amr_hub_abm.data_ingestion.pipeline import (
+    AUDIT_TABLE_NAME,
+    RosterColumns,
+    RosterFilterStatus,
+    build_simulation_location_database,
+    prepare_simulation_location_data,
+    write_location_event_database,
+)
 from amr_hub_abm.data_ingestion.plotting import plot_location_mapping
 from amr_hub_abm.data_ingestion.prepared_events import (
     EventPreparationStatus,
@@ -21,19 +29,25 @@ from amr_hub_abm.data_ingestion.synthetic_events import (
 )
 
 __all__ = [
+    "AUDIT_TABLE_NAME",
     "BedLocation",
     "DoorLocation",
     "EventLocationResolutionStatus",
     "EventPreparationStatus",
     "LocationEventPreparationReport",
     "LocationResolutionReport",
+    "RosterColumns",
+    "RosterFilterStatus",
     "SyntheticLocationInputs",
+    "build_simulation_location_database",
     "build_synthetic_location_inputs",
     "extract_bed_location",
     "extract_door_location",
     "normalise_door_location_events",
     "plot_location_mapping",
     "prepare_location_events",
+    "prepare_simulation_location_data",
     "resolve_door_location_events",
     "resolve_patient_location_events",
+    "write_location_event_database",
 ]
