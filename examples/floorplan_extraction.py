@@ -25,6 +25,7 @@ from floorplan_extractor.shared_walls import (
     rejection_overlap_lines,
 )
 from floorplan_extractor.yaml_construction import (
+    apply_door_cardinality_policy,
     build_yaml_structure,
     polygons_to_rooms,
     register_yaml_representers,
@@ -80,6 +81,31 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_DIAGNOSTIC_PATH,
         help="Diagnostic image path (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--building-name",
+        default=DEFAULT_BUILDING_NAME,
+        help="Building name written to the model YAML (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--building-address",
+        default=DEFAULT_BUILDING_ADDRESS,
+        help="Building address written to the model YAML (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--floor-level",
+        type=int,
+        default=DEFAULT_FLOOR_LEVEL,
+        help="Floor level written to the model YAML (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--singleton-door-policy",
+        choices=("error", "wall"),
+        default="error",
+        help=(
+            "How to handle doors attached to one room: fail or restore the "
+            "segment as a wall (default: %(default)s)."
+        ),
     )
 
     return parser.parse_args()
@@ -338,6 +364,10 @@ def main() -> None:
             pec.open_boundaries.tolerance if pec.open_boundaries else 1.0e-6
         ),
     )
+    rooms = apply_door_cardinality_policy(
+        rooms,
+        singleton_policy=args.singleton_door_policy,
+    )
 
     logger.info("Writing floorplan diagnostic plot to %s", args.diagnostic)
     plot_extracted_floorplan(
@@ -349,9 +379,9 @@ def main() -> None:
 
     logger.info("Converting rooms to yaml")
     data = build_yaml_structure(
-        building_name=DEFAULT_BUILDING_NAME,
-        building_address=DEFAULT_BUILDING_ADDRESS,
-        floor_level=DEFAULT_FLOOR_LEVEL,
+        building_name=args.building_name,
+        building_address=args.building_address,
+        floor_level=args.floor_level,
         rooms=rooms,
     )
 
