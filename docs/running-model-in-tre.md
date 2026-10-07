@@ -175,13 +175,13 @@ to the `location_data.path` configured in the previous section.
 
 Create TRE-only DataFrames or views for the following inputs:
 
-| Input | Required fields | Purpose |
-| --- | --- | --- |
-| Interaction events | `locationID`, `hcw_id`, `timestamp`, `event_type`, `patient_id`, `door_id`, `content_type` | Source observations to reconcile against the model. |
-| Roster | `hcw_id`, `shift_start`, `shift_end` | Retains only events occurring during an eligible HCW shift. |
-| Bed references | `locationID`, `bedName` | Resolves patient-attendance event locations. |
-| Room-code mappings | `roomCode`, `roomName`, `bedName` | Maps source bed references to floorplan room names. |
-| Door references | `locationID`, `descriptiveDoorName` | Resolves door-access event locations. |
+| Input              | Required fields                                                                            | Purpose                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| Interaction events | `locationID`, `hcw_id`, `timestamp`, `event_type`, `patient_id`, `door_id`, `content_type` | Source observations to reconcile against the model.         |
+| Roster             | `hcw_id`, `shift_start`, `shift_end`                                                       | Retains only events occurring during an eligible HCW shift. |
+| Bed references     | `locationID`, `bedName`                                                                    | Resolves patient-attendance event locations.                |
+| Room-code mappings | `roomCode`, `roomName`, `bedName`                                                          | Maps source bed references to floorplan room names.         |
+| Door references    | `locationID`, `descriptiveDoorName`                                                        | Resolves door-access event locations.                       |
 
 Use stable pseudonymised identifiers for `hcw_id` and `patient_id`. Source
 timestamps may include timezone information; the preparation pipeline
