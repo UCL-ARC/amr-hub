@@ -3,6 +3,7 @@
 import csv
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from amr_hub_abm.contact_analysis import (
@@ -10,6 +11,10 @@ from amr_hub_abm.contact_analysis import (
     detect_contacts,
     load_trajectories,
 )
+from amr_hub_abm.spatial.building import Building
+from amr_hub_abm.spatial.floor import Floor
+from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.spatial.wall import Wall
 
 FIELDS = ["time", "building", "floor", "x", "y", "heading", "infection_status"]
 
@@ -68,6 +73,56 @@ def test_detect_contacts_uses_threshold_and_requires_same_floor(
     assert observations[0].building == 1
     assert observations[0].floor == 0
     assert first.exists()
+
+
+def test_detect_contacts_excludes_agents_in_different_rooms(tmp_path: Path) -> None:
+    """Nearby agents in separate rooms are not considered to be in contact."""
+    left = Room(
+        room_id=1,
+        name="Left",
+        building="Building A",
+        floor=0,
+        walls=[
+            Wall((0, 0), (1, 0)),
+            Wall((1, 0), (1, 1)),
+            Wall((1, 1), (0, 1)),
+            Wall((0, 1), (0, 0)),
+        ],
+        contents=[],
+        doors=[],
+        rng_generator=np.random.default_rng(),
+    )
+    right = Room(
+        room_id=2,
+        name="Right",
+        building="Building A",
+        floor=0,
+        walls=[
+            Wall((1, 0), (2, 0)),
+            Wall((2, 0), (2, 1)),
+            Wall((2, 1), (1, 1)),
+            Wall((1, 1), (1, 0)),
+        ],
+        contents=[],
+        doors=[],
+        rng_generator=np.random.default_rng(),
+    )
+    buildings = [Building(name="Building A", floors=[Floor(0, [left, right])])]
+    building_id = hash("Building A") % 128
+    write_track(
+        tmp_path,
+        "agent_healthcare_worker_1_trajectory.csv",
+        [(0, building_id, 0, 0.95, 0.5), (1, building_id, 0, 0.8, 0.5)],
+    )
+    write_track(
+        tmp_path,
+        "agent_patient_2_trajectory.csv",
+        [(0, building_id, 0, 1.05, 0.5), (1, building_id, 0, 0.85, 0.5)],
+    )
+
+    observations, _ = detect_contacts(load_trajectories(tmp_path), 0.2, buildings)
+
+    assert [observation.time for observation in observations] == [1]
 
 
 def test_analyze_contacts_writes_episode_summaries_and_plots(tmp_path: Path) -> None:

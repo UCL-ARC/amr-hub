@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
     from amr_hub_abm.spatial.building import Building
     from amr_hub_abm.spatial.floor import Floor
+    from amr_hub_abm.spatial.room import Room
 
 logger = logging.getLogger(__name__)
 TRAJECTORY_FILENAME = re.compile(
@@ -136,12 +137,24 @@ def _sampling_interval(times: list[int]) -> int:
 
 
 def detect_contacts(
-    tracks: list[AgentTrack], distance_threshold: float
+    tracks: list[AgentTrack],
+    distance_threshold: float,
+    buildings: list[Building] | None = None,
 ) -> tuple[list[ContactObservation], int]:
-    """Find contacts between agents sharing a building and floor."""
+    """Find nearby contacts, excluding pairs located in different known rooms."""
     if distance_threshold < 0 or not np.isfinite(distance_threshold):
         msg = "Distance threshold must be a finite, non-negative value"
         raise ValueError(msg)
+
+    rooms_by_agent_time: dict[tuple[str, int], Room | None] = {}
+    if buildings:
+        find_floor = _floor_finder(buildings)
+        for track in tracks:
+            for time, (building, floor, x, y) in track.positions_by_time.items():
+                floor_model = find_floor(building, floor)
+                rooms_by_agent_time[(track.name, time)] = (
+                    floor_model.find_room_by_location((x, y)) if floor_model else None
+                )
 
     all_times = sorted({time for track in tracks for time in track.positions_by_time})
     interval = _sampling_interval(all_times)
@@ -155,6 +168,11 @@ def detect_contacts(
                 building_b, floor_b, x_b, y_b = track_b.positions_by_time[time]
                 if (building_a, floor_a) != (building_b, floor_b):
                     continue
+                if buildings:
+                    room_a = rooms_by_agent_time[(track_a.name, time)]
+                    room_b = rooms_by_agent_time[(track_b.name, time)]
+                    if room_a is not None and room_b is not None and room_a != room_b:
+                        continue
                 distance = float(np.hypot(x_a - x_b, y_a - y_b))
                 if distance <= distance_threshold:
                     agent_a, agent_b = sorted((track_a.name, track_b.name))
@@ -518,15 +536,16 @@ def analyze_contacts(  # noqa: PLR0913
     """
     Analyse recorded trajectories and write contact data and plots.
 
-    If ``buildings`` is given, heatmaps are overlaid on the matching floorplans.
-    ``heatmap_format`` is the matplotlib image format of the heatmaps (e.g. ``svg``).
+    If ``buildings`` is given, contacts across different rooms are excluded and
+    heatmaps are overlaid on the matching floorplans. ``heatmap_format`` is the
+    matplotlib image format of the heatmaps (e.g. ``svg``).
     """
     if bins < 1:
         msg = "Heatmap bins must be a positive integer"
         raise ValueError(msg)
     tracks = load_trajectories(input_path)
     logger.info("Loaded %s agent trajectories from %s", len(tracks), input_path)
-    observations, interval = detect_contacts(tracks, distance_threshold)
+    observations, interval = detect_contacts(tracks, distance_threshold, buildings)
     logger.info(
         "Detected %s contact observations with distance threshold %.3f",
         len(observations),
