@@ -403,6 +403,7 @@ class ContactData:
     timeseries: pd.DataFrame
     pairs: pd.DataFrame
     heatmaps: list[str]
+    network: str
 
 
 def load_contact_data(directory: Path) -> ContactData:
@@ -420,6 +421,9 @@ def load_contact_data(directory: Path) -> ContactData:
             responsive_svg(path.read_text(encoding="utf-8"))
             for path in sorted(directory.glob("contact_heatmap*.svg"))
         ],
+        network=responsive_svg(
+            (directory / "contact_network.svg").read_text(encoding="utf-8")
+        ),
     )
 
 
@@ -493,6 +497,8 @@ def ContactResults(directory: Path) -> None:
             )
             + "</div>"
         )
+        with solara.Div(classes=["amr-card"]):
+            html_block(data.network, classes=["amr-paper"])
         return
 
     html_block(f'<div class="amr-kpis">{contact_kpis(data)}</div>')
@@ -534,6 +540,13 @@ def ContactResults(directory: Path) -> None:
                                 dark=dark,
                             )
                         )
+            with solara.lab.Tab("Network", icon_name="mdi-graph"):
+                html_block(
+                    '<div class="amr-hint" style="margin-top:12px">Agents are nodes; '
+                    "links show observed contacts, with thicker links indicating "
+                    "more contact observations.</div>"
+                )
+                html_block(data.network, classes=["amr-paper"])
             with solara.lab.Tab("Where", icon_name="mdi-map-marker-radius"):
                 html_block(
                     '<div class="amr-hint" style="margin-top:12px">Contact hotspots '

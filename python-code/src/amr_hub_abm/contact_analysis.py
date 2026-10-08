@@ -17,9 +17,11 @@ from typing import TYPE_CHECKING
 import matplotlib as mpl
 
 mpl.use("Agg")
+import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
+from matplotlib.lines import Line2D
 
 from amr_hub_abm.agent.enums import AgentType
 
@@ -415,6 +417,106 @@ def _write_pie_charts(episodes: list[ContactEpisode], output_dir: Path) -> None:
         )
 
 
+def _write_contact_network(
+    observations: list[ContactObservation],
+    output_dir: Path,
+    image_format: str,
+) -> None:
+    """Save a network of agents connected by observed contacts."""
+    graph = nx.Graph()
+    observations_by_pair: dict[tuple[str, str], int] = defaultdict(int)
+    for observation in observations:
+        observations_by_pair[(observation.agent_a, observation.agent_b)] += 1
+    for (agent_a, agent_b), count in sorted(observations_by_pair.items()):
+        graph.add_edge(agent_a, agent_b, observations=count)
+
+    figure, axis = plt.subplots(figsize=(10, 8))
+    if graph.number_of_nodes() == 0:
+        axis.text(0.5, 0.5, "No contacts detected", ha="center", va="center")
+        axis.set_axis_off()
+    else:
+        positions = (
+            nx.spring_layout(graph, seed=42, weight="observations")
+            if graph.number_of_nodes() <= 150
+            else nx.circular_layout(graph)
+        )
+        node_types = {node: _agent_type_label(node) for node in sorted(graph.nodes)}
+        type_names = sorted(set(node_types.values()))
+        color_map = plt.get_cmap("tab10")
+        type_colors = {
+            name: color_map(index % color_map.N)
+            for index, name in enumerate(type_names)
+        }
+        weighted_degrees = dict(graph.degree(weight="observations"))
+        max_degree = max(weighted_degrees.values(), default=1)
+        node_sizes = [
+            180 + 420 * weighted_degrees[node] / max_degree for node in graph.nodes
+        ]
+        max_weight = max(
+            int(data["observations"]) for _, _, data in graph.edges(data=True)
+        )
+        edge_widths = [
+            0.5 + 3 * int(data["observations"]) / max_weight
+            for _, _, data in graph.edges(data=True)
+        ]
+        nx.draw_networkx_edges(
+            graph,
+            positions,
+            ax=axis,
+            width=edge_widths,
+            alpha=0.45,
+            edge_color="#526273",
+        )
+        nx.draw_networkx_nodes(
+            graph,
+            positions,
+            ax=axis,
+            node_size=node_sizes,
+            node_color=[type_colors[node_types[node]] for node in graph.nodes],
+            edgecolors="white",
+            linewidths=0.8,
+        )
+        if graph.number_of_nodes() <= 40:
+            nx.draw_networkx_labels(
+                graph,
+                positions,
+                ax=axis,
+                font_size=7,
+                font_color="#17212b",
+            )
+        axis.legend(
+            handles=[
+                Line2D(
+                    [0],
+                    [0],
+                    marker="o",
+                    color="w",
+                    markerfacecolor=type_colors[name],
+                    label=name,
+                    markersize=8,
+                )
+                for name in type_names
+            ],
+            title="Agent type",
+            loc="best",
+            frameon=False,
+        )
+        axis.set_title("Agent contact network")
+        axis.text(
+            0.01,
+            0.01,
+            "Edge width represents contact observations; node size represents "
+            "weighted contacts.",
+            transform=axis.transAxes,
+            fontsize=8,
+            color="#526273",
+        )
+        axis.set_axis_off()
+    figure.tight_layout()
+    figure.savefig(output_dir / f"contact_network.{image_format}", dpi=150)
+    plt.close(figure)
+
+
 def _write_csv(
     path: Path, fieldnames: list[str], rows: list[dict[str, object]]
 ) -> None:
@@ -514,6 +616,7 @@ def _write_outputs(  # noqa: PLR0913
     )
 
     _write_pie_charts(episodes, output_dir)
+    _write_contact_network(observations, output_dir, heatmap_format)
 
     figure, axis = plt.subplots()
     if times:

@@ -209,7 +209,11 @@ def test_analyze_contacts_writes_episode_summaries_and_plots(tmp_path: Path) -> 
     write_track(input_dir, "agent_healthcare_worker_1_trajectory.csv", first)
     write_track(input_dir, "agent_patient_2_trajectory.csv", second)
 
-    observations, episodes = analyze_contacts(input_dir, output_dir)
+    observations, episodes = analyze_contacts(
+        input_dir,
+        output_dir,
+        heatmap_format="svg",
+    )
 
     assert len(observations) == 4
     assert [
@@ -231,8 +235,9 @@ def test_analyze_contacts_writes_episode_summaries_and_plots(tmp_path: Path) -> 
     assert pair_summary[0]["observations"] == "4"
     assert (output_dir / "contact_observations.csv").exists()
     assert (output_dir / "contact_episodes.csv").exists()
+    assert (output_dir / "contact_network.svg").exists()
     assert (output_dir / "contact_timeseries.png").exists()
-    assert (output_dir / "contact_heatmap_building_1_floor_0.png").exists()
+    assert (output_dir / "contact_heatmap_building_1_floor_0.svg").exists()
     for kind in ("episodes", "time"):
         for grouping in ("agent_pair", "agent_type_pair"):
             assert (output_dir / f"contact_pie_{kind}_by_{grouping}.png").exists()
@@ -266,6 +271,7 @@ def test_analyze_contacts_with_no_contacts_writes_zero_timeseries(
         rows = list(csv.DictReader(csv_file))
     assert [row["active_contacts"] for row in rows] == ["0", "0"]
     assert (output_dir / "contact_heatmap.png").exists()
+    assert (output_dir / "contact_network.png").exists()
     assert (output_dir / "contact_pie_time_by_agent_type_pair.png").exists()
 
 
