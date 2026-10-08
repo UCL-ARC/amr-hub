@@ -1,0 +1,80 @@
+# Shareable template for the TRE location-event preparation example. Copy this
+# file to tre-location-events.yml inside the TRE, then fill every blank value.
+# The example rejects blank values so incomplete configurations cannot run.
+# Table and column values must be simple DuckDB identifiers (letters, digits,
+# and underscores only); use a view in the source database for more complex SQL.
+paths:
+  # Read-only DuckDB database containing the approved source tables below.
+  source_db: ""
+  # Simulation YAML whose building/floorplan data is used to resolve locations.
+  simulation_config: ""
+  # New DuckDB database to create with simulator events and reconciliation audit.
+  output_db: ""
+
+model:
+  # Building and positive floor number in the simulation model containing the
+  # patient bed locations.
+  patient_building: ""
+  patient_floor: ""
+
+tables:
+  # Source tables containing staff interaction events, their type definitions,
+  # bed references, and door references, respectively.
+  staffevents: ""
+  interactiontypes: ""
+  department: ""
+  doors: ""
+
+columns:
+  staffevents:
+    # Patient identifier. Required for flowsheet (patient-attendance) events.
+    patient_id: ""
+    # Healthcare-worker identifier. Values must be castable to integers.
+    staff_id: ""
+    # Event timestamp, in a DuckDB-supported timestamp format.
+    timestamp: ""
+    # Foreign key joining this event to interactiontypes.interaction_type_id.
+    interaction_type_id: ""
+    # Foreign key joining this event to department/doors location_id.
+    location_id: ""
+    # Shift identifier pairing roster start and end events for one worker.
+    shift_id: ""
+  interactiontypes:
+    # Primary key joined to staffevents.interaction_type_id.
+    interaction_type_id: ""
+    # Label identifying flowsheet, door-message, roster, or workstation events.
+    interaction_class: ""
+    # Specific interaction label, used to identify roster start and end records.
+    interaction_name: ""
+  department:
+    # Location identifier joined to staffevents.location_id for bed events.
+    location_id: ""
+    # Bed reference matching the bedName values returned by the mapping query.
+    bed_name: ""
+  doors:
+    # Location identifier joined to staffevents.location_id for door events.
+    location_id: ""
+    # Door description matching the simulation floorplan door description.
+    description: ""
+
+interaction_classes:
+  # Exact, site-specific values in interactiontypes.interaction_class.
+  # Comparisons are case-insensitive; flowsheet, doormessage, and workstation
+  # are exported.
+  flowsheet: ""
+  doormessage: ""
+  roster: ""
+  workstation: ""
+
+roster:
+  # Exact interactiontypes.interaction_name values marking a shift boundary.
+  # Each worker/shift pair must contain exactly two roster records: one start
+  # and one end. The example rejects incomplete or duplicate pairs.
+  start_interaction_type: ""
+  end_interaction_type: ""
+
+# Approved read-only SQL executed against source_db. It must return exactly the
+# named columns roomCode, roomName, and bedName, with one mapping per bed
+# reference. roomCode/roomName must match the simulation floorplan. Keep this
+# query and any identifiable data inside the TRE configuration.
+room_code_mappings_query: ""

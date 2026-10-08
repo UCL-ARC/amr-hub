@@ -1,2 +1,8 @@
 # Docker images
 *.tar
+
+# Python bytecode caches
+__pycache__/
+
+# TRE-specific table mappings, paths, and approved queries
+config/tre-location-events.yml
