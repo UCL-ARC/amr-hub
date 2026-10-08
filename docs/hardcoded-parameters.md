@@ -37,7 +37,7 @@ config parameter.
 
 | Variable                        | Current Value | File                                       | Notes                                      |
 | ------------------------------- | ------------- | ------------------------------------------ | ------------------------------------------ |
-| `buffer_distance` (door offset) | `0.05`        | `python-code/src/amr_hub_abm/task/task.py` | Intentionally hardcoded internal parameter |
+| `buffer_distance` (door offset) | `0.05` metres | `python-code/src/amr_hub_abm/task/task.py` | Intentionally hardcoded internal parameter |
 
 ## Room / spatial geometry
 
@@ -48,7 +48,7 @@ config parameter.
 | `CONTENT_SIZES[WORKSTATION]`    | `(0.1, 0.05)` metres       | `python-code/src/amr_hub_abm/spatial/furniture.py` |
 | `CONTENT_SIZES[CHAIR]`          | `(0.05, 0.05)` metres      | `python-code/src/amr_hub_abm/spatial/furniture.py` |
 | `get_random_point.max_attempts` | `1000`                     | `python-code/src/amr_hub_abm/spatial/room.py`      |
-| wall-clearance radius (inline)  | `0.1`                      | `python-code/src/amr_hub_abm/spatial/room.py`      |
+| wall-clearance radius (inline)  | `0.1` metres               | `python-code/src/amr_hub_abm/spatial/room.py`      |
 | pseudo-room sizing constants    | `2 * len(doors) + 2`, etc. | `python-code/src/amr_hub_abm/spatial/floor.py`     |
 
 ## GPU physics path
