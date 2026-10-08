@@ -4,7 +4,7 @@ import pytest
 
 from amr_hub_abm.agent.enums import AgentType
 from amr_hub_abm.agent.internal_state import InternalState, InternalStateConfig
-from amr_hub_abm.exceptions import InvalidDefinitionError
+from amr_hub_abm.exceptions import InvalidDefinitionError, NonNegativeValueError
 
 
 def test_healthcare_worker_state_includes_fatigue() -> None:
@@ -69,3 +69,35 @@ def test_config_updates_state_by_role() -> None:
 
     assert worker == InternalState(fatigue=0.1, hunger=0.2, toilet_need=0.3)
     assert patient == InternalState(fatigue=None, hunger=0.4, toilet_need=0.5)
+
+
+def test_reset_clears_selected_needs() -> None:
+    """Only the requested needs are reset; fatigue is skipped when absent."""
+    worker = InternalState(hunger=0.5, toilet_need=0.6, fatigue=0.7)
+    worker.reset(hunger=True, fatigue=True)
+    assert worker == InternalState(hunger=0.0, toilet_need=0.6, fatigue=0.0)
+
+    patient = InternalState(hunger=0.5, toilet_need=0.6)
+    patient.reset(toilet_need=True, fatigue=True)
+    assert patient == InternalState(hunger=0.5, toilet_need=0.0, fatigue=None)
+
+
+def test_config_validation_errors() -> None:
+    """Invalid rates and missing keys are rejected."""
+    data = {
+        "hcw_initial_fatigue": 0.0,
+        "hcw_initial_hunger": 0.0,
+        "hcw_initial_toilet_need": 0.0,
+        "patient_initial_hunger": 0.0,
+        "patient_initial_toilet_need": 0.0,
+        "hcw_fatigue_rate": 0.1,
+        "hcw_hunger_rate": 0.1,
+        "hcw_toilet_rate": 0.1,
+        "patient_hunger_rate": 0.1,
+        "patient_toilet_rate": 0.1,
+    }
+    with pytest.raises(NonNegativeValueError, match="hcw_hunger_rate"):
+        InternalStateConfig.from_config({**data, "hcw_hunger_rate": -1.0})
+    incomplete = {k: v for k, v in data.items() if k != "patient_toilet_rate"}
+    with pytest.raises(InvalidDefinitionError, match="patient_toilet_rate"):
+        InternalStateConfig.from_config(incomplete)
