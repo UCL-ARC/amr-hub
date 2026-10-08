@@ -4,5 +4,7 @@
 # Python bytecode caches
 __pycache__/
 
-# TRE-specific table mappings, paths, and approved queries
+# TRE-specific configuration containing paths, source mappings, or study settings
+config/floorplan-extraction.yml
+config/simulation.yml
 config/tre-location-events.yml

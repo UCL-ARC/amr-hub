@@ -54,48 +54,10 @@ uv run python ../examples/floorplan_extraction.py \
   --floor-level 2
 ```
 
-The configuration is specific to a floorplan. The following is a non-sensitive
+The configuration is specific to a floorplan. Start from the shareable
+[`floorplan-extraction.example.yml`](../config/floorplan-extraction.example.yml)
 template; layer names, labels, coordinate corrections, and thresholds must be
 established from the actual DXF inside the TRE.
-
-```yaml
-spatial_units:
-  source_unit: millimetres
-  units_per_metre: 1000.0
-
-polygons:
-  polygon_layer_name: "ROOM_BOUNDARIES"
-  label_layer_name: "ROOM_LABELS"
-  polygon_label_column: "Text"
-  polygon_label_target: "room_numbers"
-  floor_filter: "FLOOR_CODE"
-  excluded_room_numbers: []
-
-doors:
-  layer_name: "INTERNAL_DOORS"
-  entity_col: "EntityHandle"
-  x_col: "x"
-  y_col: "y"
-  out_col: "doors"
-  predicate: "intersects"
-  excluded_entity_handles: []
-
-shared_walls:
-  enabled: true
-  min_gap: 50.0
-  max_gap: 250.0
-  angle_tolerance_degrees: 2.0
-  min_overlap_ratio: 0.5
-  min_overlap_length: 150.0
-  canonical_line: "midline"
-
-open_boundaries:
-  pairs: []
-
-polygon_splits: []
-polygon_additions: []
-polygon_merges: []
-```
 
 Validate the generated YAML before preparing event data:
 
@@ -116,33 +78,10 @@ floorplan. This configuration defines the simulation window and movement
 assumptions, and identifies the derived event database created in the next
 step.
 
-```yaml
-mode: data driven
-
-buildings_path: /project/derived/building.yml
-
-location_data:
-  format: duckdb
-  path: /project/derived/location-events.duckdb
-  table: location_timeseries
-  schema_version: 1
-
-start_time: 2024-01-01 00:00:00
-end_time: 2024-01-02 00:00:00
-length_of_timestep_in_seconds: 1
-
-# Metres per simulation timestep.
-agent_movement_speed: 1.2
-agent_stochasticity: 5.0
-agent_interaction_radius: 0.2
-agent_max_movement_attempts: 5
-
-# Simulation timesteps.
-time_needed_attend_patient: 900
-time_needed_door_access: 1
-time_needed_workstation: 1800
-time_needed_occupy_content: 10
-```
+Start from the shareable
+[`simulation.example.yml`](../config/simulation.example.yml) template. It keeps
+fixed simulator format settings while leaving TRE paths and study-specific
+assumptions blank.
 
 `buildings_path` must reference the validated generated floorplan YAML. Its
 `coordinate_unit` must be `m`; movement speed and interaction radius are

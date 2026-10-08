@@ -1,0 +1,54 @@
+# Shareable template for extracting one TRE floorplan. Copy this file to
+# floorplan-extraction.yml inside the TRE and fill every blank value from the
+# DXF. The empty lists are intentional: add entries only for known corrections.
+# All coordinates and thresholds remain in the DXF source unit.
+spatial_units:
+  # DXF coordinate unit, for example millimetres or metres.
+  source_unit: ""
+  # Number of DXF source units in one metre.
+  units_per_metre: ""
+
+polygons:
+  # DXF layer containing room-boundary polygons and room-label text.
+  polygon_layer_name: ""
+  label_layer_name: ""
+  # Attribute column containing label text and output room-name field.
+  polygon_label_column: ""
+  polygon_label_target: ""
+  # Optional label value identifying the required floor in a multi-floor DXF.
+  floor_filter: ""
+  excluded_room_numbers: []
+
+doors:
+  # DXF layer and extracted attribute columns identifying internal doors.
+  layer_name: ""
+  entity_col: ""
+  x_col: ""
+  y_col: ""
+  out_col: ""
+  # Spatial predicate used to attach doors to room boundaries.
+  predicate: ""
+  excluded_entity_handles: []
+
+shared_walls:
+  # Whether to normalise near-coincident room boundaries into shared walls.
+  enabled: ""
+  # Positive numeric thresholds in the DXF source unit, except angle tolerance
+  # (degrees) and overlap ratio (between zero and one).
+  min_gap: ""
+  max_gap: ""
+  angle_tolerance_degrees: ""
+  min_overlap_ratio: ""
+  min_overlap_length: ""
+  # Shared-wall representation; currently use midline.
+  canonical_line: ""
+
+# Configure known drawing corrections only after reviewing TRE diagnostics.
+# Add open_boundaries only when a wallless pair is known. Each pair needs two
+# room labels; omit this block when no open boundaries are required.
+# open_boundaries:
+#   pairs:
+#     - rooms: ["ROOM_A", "ROOM_B"]
+polygon_splits: []
+polygon_additions: []
+polygon_merges: []

@@ -1,0 +1,34 @@
+# Shareable template for a data-driven TRE simulation. Copy this file to
+# simulation.yml inside the TRE and fill every blank value with study-specific
+# paths, timing, and calibrated modelling assumptions.
+mode: data driven
+
+# Validated metre-based floorplan produced by floorplan extraction.
+buildings_path: ""
+
+location_data:
+  # Fixed format and relation written by the location-event preparation example.
+  format: duckdb
+  # Destination/read path for the derived simulator event database.
+  path: ""
+  table: location_timeseries
+  schema_version: 1
+
+# UTC simulation interval. Source events outside this interval are excluded.
+start_time: ""
+end_time: ""
+# Positive integer number of seconds represented by each simulation timestep.
+length_of_timestep_in_seconds: ""
+
+# Movement assumptions: metres per timestep, heading stochasticity in degrees,
+# interaction radius in metres, and a positive number of movement attempts.
+agent_movement_speed: ""
+agent_stochasticity: ""
+agent_interaction_radius: ""
+agent_max_movement_attempts: ""
+
+# Positive task durations in simulation timesteps.
+time_needed_attend_patient: ""
+time_needed_door_access: ""
+time_needed_workstation: ""
+time_needed_occupy_content: ""
