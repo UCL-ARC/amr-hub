@@ -8,6 +8,9 @@ import logging
 import re
 from collections import defaultdict
 from dataclasses import dataclass
+from itertools import combinations
+from math import floor as math_floor
+from math import isfinite
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -21,7 +24,7 @@ from matplotlib.colors import LogNorm
 from amr_hub_abm.agent.enums import AgentType
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
     from amr_hub_abm.spatial.building import Building
     from amr_hub_abm.spatial.floor import Floor
@@ -40,6 +43,9 @@ class AgentTrack:
 
     name: str
     positions_by_time: dict[int, tuple[int, int, float, float]]
+
+
+AgentPosition = tuple[int, AgentTrack, float, float]
 
 
 @dataclass(frozen=True)
@@ -136,6 +142,41 @@ def _sampling_interval(times: list[int]) -> int:
     return int(intervals[0])
 
 
+def _spatial_candidate_pairs(
+    positions: list[AgentPosition], distance_threshold: float
+) -> Iterator[tuple[AgentPosition, AgentPosition]]:
+    """Yield only pairs whose grid cells could be within the distance threshold."""
+    if distance_threshold == 0:
+        coincident_positions: dict[tuple[float, float], list[AgentPosition]] = (
+            defaultdict(list)
+        )
+        for position in positions:
+            coincident_positions[(position[2], position[3])].append(position)
+        for same_position in coincident_positions.values():
+            yield from combinations(same_position, 2)
+        return
+
+    cells: dict[tuple[int, int], list[AgentPosition]] = defaultdict(list)
+    for position in positions:
+        x, y = position[2], position[3]
+        cell_x, cell_y = x / distance_threshold, y / distance_threshold
+        if not isfinite(cell_x) or not isfinite(cell_y):
+            yield from combinations(positions, 2)
+            return
+        cells[(math_floor(cell_x), math_floor(cell_y))].append(position)
+
+    for cell, cell_positions in cells.items():
+        yield from combinations(cell_positions, 2)
+        for offset_x in (-1, 0, 1):
+            for offset_y in (-1, 0, 1):
+                neighbour = (cell[0] + offset_x, cell[1] + offset_y)
+                if neighbour <= cell:
+                    continue
+                for position_a in cell_positions:
+                    for position_b in cells.get(neighbour, ()):
+                        yield position_a, position_b
+
+
 def detect_contacts(
     tracks: list[AgentTrack],
     distance_threshold: float,
@@ -146,35 +187,56 @@ def detect_contacts(
         msg = "Distance threshold must be a finite, non-negative value"
         raise ValueError(msg)
 
-    rooms_by_agent_time: dict[tuple[str, int], Room | None] = {}
-    if buildings:
-        find_floor = _floor_finder(buildings)
-        for track in tracks:
-            for time, (building, floor, x, y) in track.positions_by_time.items():
-                floor_model = find_floor(building, floor)
-                rooms_by_agent_time[(track.name, time)] = (
-                    floor_model.find_room_by_location((x, y)) if floor_model else None
-                )
-
     all_times = sorted({time for track in tracks for time in track.positions_by_time})
     interval = _sampling_interval(all_times)
     observations: list[ContactObservation] = []
-    for index, track_a in enumerate(tracks):
-        for track_b in tracks[index + 1 :]:
-            for time in sorted(
-                track_a.positions_by_time.keys() & track_b.positions_by_time.keys()
+    find_floor = _floor_finder(buildings) if buildings else None
+    floor_cache: dict[tuple[int, int], Floor | None] = {}
+    for time in all_times:
+        positions_by_space: dict[tuple[int, int], list[AgentPosition]] = defaultdict(
+            list
+        )
+        for track_index, track in enumerate(tracks):
+            position = track.positions_by_time.get(time)
+            if position is None:
+                continue
+            building, floor_number, x, y = position
+            positions_by_space[(building, floor_number)].append(
+                (track_index, track, x, y)
+            )
+
+        rooms_by_agent: dict[int, Room | None] = {}
+        for (building, floor_number), positions in positions_by_space.items():
+            for position_a, position_b in _spatial_candidate_pairs(
+                positions, distance_threshold
             ):
-                building_a, floor_a, x_a, y_a = track_a.positions_by_time[time]
-                building_b, floor_b, x_b, y_b = track_b.positions_by_time[time]
-                if (building_a, floor_a) != (building_b, floor_b):
-                    continue
-                if buildings:
-                    room_a = rooms_by_agent_time[(track_a.name, time)]
-                    room_b = rooms_by_agent_time[(track_b.name, time)]
-                    if room_a is not None and room_b is not None and room_a != room_b:
-                        continue
+                _, track_a, x_a, y_a = position_a
+                _, track_b, x_b, y_b = position_b
                 distance = float(np.hypot(x_a - x_b, y_a - y_b))
                 if distance <= distance_threshold:
+                    if find_floor is not None:
+                        floor_key = (building, floor_number)
+                        if floor_key not in floor_cache:
+                            floor_cache[floor_key] = find_floor(*floor_key)
+                        floor_model = floor_cache[floor_key]
+                        for track_index, _track, x, y in (
+                            position_a,
+                            position_b,
+                        ):
+                            if track_index not in rooms_by_agent:
+                                rooms_by_agent[track_index] = (
+                                    floor_model.find_room_by_location((x, y))
+                                    if floor_model
+                                    else None
+                                )
+                        room_a = rooms_by_agent[position_a[0]]
+                        room_b = rooms_by_agent[position_b[0]]
+                        if (
+                            room_a is not None
+                            and room_b is not None
+                            and room_a != room_b
+                        ):
+                            continue
                     agent_a, agent_b = sorted((track_a.name, track_b.name))
                     observations.append(
                         ContactObservation(
@@ -182,8 +244,8 @@ def detect_contacts(
                             agent_a=agent_a,
                             agent_b=agent_b,
                             distance=distance,
-                            building=building_a,
-                            floor=floor_a,
+                            building=building,
+                            floor=floor_number,
                             midpoint_x=(x_a + x_b) / 2,
                             midpoint_y=(y_a + y_b) / 2,
                         )
@@ -415,6 +477,9 @@ def _write_outputs(  # noqa: PLR0913
     )
 
     starts_by_time: dict[int, int] = defaultdict(int)
+    active_by_time: dict[int, int] = defaultdict(int)
+    for observation in observations:
+        active_by_time[observation.time] += 1
     for episode in episodes:
         starts_by_time[episode.start_time] += 1
     _write_csv(
@@ -423,7 +488,7 @@ def _write_outputs(  # noqa: PLR0913
         [
             {
                 "time": time,
-                "active_contacts": sum(item.time == time for item in observations),
+                "active_contacts": active_by_time[time],
                 "new_episodes": starts_by_time[time],
             }
             for time in times
@@ -452,9 +517,7 @@ def _write_outputs(  # noqa: PLR0913
 
     figure, axis = plt.subplots()
     if times:
-        active_counts = [
-            sum(item.time == time for item in observations) for time in times
-        ]
+        active_counts = [active_by_time[time] for time in times]
         episode_counts = [starts_by_time[time] for time in times]
         axis.step(times, active_counts, where="post", label="Active agent pairs")
         axis.step(times, episode_counts, where="post", label="New contact episodes")

@@ -7,6 +7,8 @@ import numpy as np
 import pytest
 
 from amr_hub_abm.contact_analysis import (
+    AgentTrack,
+    ContactObservation,
     analyze_contacts,
     detect_contacts,
     load_trajectories,
@@ -123,6 +125,78 @@ def test_detect_contacts_excludes_agents_in_different_rooms(tmp_path: Path) -> N
     observations, _ = detect_contacts(load_trajectories(tmp_path), 0.2, buildings)
 
     assert [observation.time for observation in observations] == [1]
+
+
+def test_detect_contacts_matches_pairwise_results_across_grid_edges() -> None:
+    """Spatial indexing preserves pairwise results across cells and space groups."""
+    rng = np.random.default_rng(42)
+    tracks = [
+        AgentTrack(
+            name=f"patient_{agent_id}",
+            positions_by_time={
+                time: (
+                    int(rng.integers(0, 2)),
+                    int(rng.integers(0, 2)),
+                    float(rng.uniform(-2, 2)),
+                    float(rng.uniform(-2, 2)),
+                )
+                for time in range(5)
+                if rng.random() > 0.15
+            },
+        )
+        for agent_id in range(12)
+    ]
+    # Force contacts on opposite sides of a cell boundary and exact threshold.
+    tracks[0].positions_by_time[0] = (0, 0, -0.01, 0.0)
+    tracks[1].positions_by_time[0] = (0, 0, 0.24, 0.0)
+    threshold = 0.25
+
+    expected: list[ContactObservation] = []
+    for index, track_a in enumerate(tracks):
+        for track_b in tracks[index + 1 :]:
+            for time in sorted(
+                track_a.positions_by_time.keys() & track_b.positions_by_time.keys()
+            ):
+                building_a, floor_a, x_a, y_a = track_a.positions_by_time[time]
+                building_b, floor_b, x_b, y_b = track_b.positions_by_time[time]
+                if (building_a, floor_a) != (building_b, floor_b):
+                    continue
+                distance = float(np.hypot(x_a - x_b, y_a - y_b))
+                if distance <= threshold:
+                    agent_a, agent_b = sorted((track_a.name, track_b.name))
+                    expected.append(
+                        ContactObservation(
+                            time,
+                            agent_a,
+                            agent_b,
+                            distance,
+                            building_a,
+                            floor_a,
+                            (x_a + x_b) / 2,
+                            (y_a + y_b) / 2,
+                        )
+                    )
+    expected.sort(key=lambda item: (item.time, item.agent_a, item.agent_b))
+
+    actual, interval = detect_contacts(tracks, threshold)
+
+    assert interval == 1
+    assert actual == expected
+
+
+def test_detect_contacts_zero_threshold_matches_identical_positions() -> None:
+    """A zero threshold matches only agents at exactly coincident coordinates."""
+    tracks = [
+        AgentTrack("patient_1", {0: (1, 0, 0.0, 0.0)}),
+        AgentTrack("patient_2", {0: (1, 0, 0.0, 0.0)}),
+        AgentTrack("patient_3", {0: (1, 0, 1e-12, 0.0)}),
+    ]
+
+    observations, _ = detect_contacts(tracks, 0.0)
+
+    assert [(item.agent_a, item.agent_b, item.distance) for item in observations] == [
+        ("patient_1", "patient_2", 0.0)
+    ]
 
 
 def test_analyze_contacts_writes_episode_summaries_and_plots(tmp_path: Path) -> None:
