@@ -1,43 +1,323 @@
 hcw_id,timestamp,location,event_type,patient_id,door_id,content_type
-1,2024-01-01 01:00:00,Sample Hospital:0:Staff Room,workstation,-,-,-
-1,2024-01-01 05:00:00,Sample Hospital:0:Staff Room,door_access,-,1,-
-1,2024-01-01 06:00:00,Sample Hospital:0:Corridor,door_access,-,0,-
-1,2024-01-01 07:00:00,Sample Hospital:0:Ward,attend_patient,1,-,-
-1,2024-01-01 08:30:00,Sample Hospital:0:Ward,door_access,-,0,-
-1,2024-01-01 09:30:00,Sample Hospital:0:Corridor,door_access,-,1,-
-1,2024-01-01 10:00:00,Sample Hospital:0:Staff Room,door_access,-,1,-
-1,2024-01-01 11:30:00,Sample Hospital:0:Corridor,door_access,-,0,-
-1,2024-01-01 12:00:00,Sample Hospital:0:Ward,attend_patient,2,-,-
-1,2024-01-01 13:00:00,Sample Hospital:0:Ward,attend_patient,2,-,-
-1,2024-01-01 14:00:00,Sample Hospital:0:Ward,attend_patient,1,-,-
-1,2024-01-01 14:30:00,Sample Hospital:0:Ward,door_access,-,0,-
-1,2024-01-01 15:30:00,Sample Hospital:0:Corridor,door_access,-,1,-
-1,2024-01-01 16:00:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 07:00:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 07:10:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 07:11:00,Sample Hospital:0:Corridor,door_access,-,0,-
+1,2024-01-01 07:14:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 07:16:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+2,2024-01-01 07:20:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 07:24:00,Sample Hospital:0:Ward,door_access,-,0,-
+1,2024-01-01 07:25:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 07:26:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+2,2024-01-01 07:30:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 07:31:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 07:34:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 07:36:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 07:40:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 07:41:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 07:42:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 07:50:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 07:51:00,Sample Hospital:0:Corridor,door_access,-,0,-
+1,2024-01-01 07:54:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 07:56:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 08:04:00,Sample Hospital:0:Ward,door_access,-,0,-
+1,2024-01-01 08:05:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 08:06:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 08:09:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 08:10:00,Sample Hospital:0:Corridor,door_access,-,2,-
+2,2024-01-01 08:10:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 08:11:00,Sample Hospital:0:WC,occupy_content,-,-,3
+2,2024-01-01 08:11:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 08:14:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 08:16:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 08:20:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 08:21:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 08:22:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 08:24:00,Sample Hospital:0:WC,door_access,-,2,-
+1,2024-01-01 08:25:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 08:29:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 08:30:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 08:30:00,Sample Hospital:0:Corridor,door_access,-,3,-
+1,2024-01-01 08:31:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 08:31:00,Sample Hospital:0:Restaurant,occupy_content,-,-,2
+1,2024-01-01 08:34:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 08:36:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 08:44:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 08:44:00,Sample Hospital:0:Restaurant,door_access,-,3,-
+1,2024-01-01 08:45:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 08:45:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 08:46:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+2,2024-01-01 08:50:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 08:51:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 08:54:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 08:56:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 09:00:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 09:01:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 09:02:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 09:10:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 09:11:00,Sample Hospital:0:Corridor,door_access,-,0,-
+1,2024-01-01 09:14:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 09:16:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 09:24:00,Sample Hospital:0:Ward,door_access,-,0,-
+1,2024-01-01 09:25:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 09:26:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 09:29:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 09:30:00,Sample Hospital:0:Corridor,door_access,-,3,-
+2,2024-01-01 09:30:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 09:31:00,Sample Hospital:0:Restaurant,occupy_content,-,-,2
+2,2024-01-01 09:31:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 09:34:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 09:36:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 09:40:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 09:41:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 09:42:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 09:44:00,Sample Hospital:0:Restaurant,door_access,-,3,-
+1,2024-01-01 09:45:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 09:49:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 09:50:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 09:50:00,Sample Hospital:0:Corridor,door_access,-,2,-
+1,2024-01-01 09:51:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 09:51:00,Sample Hospital:0:WC,occupy_content,-,-,3
+1,2024-01-01 09:54:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 09:56:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 10:04:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 10:04:00,Sample Hospital:0:WC,door_access,-,2,-
+1,2024-01-01 10:05:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 10:05:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 10:06:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+2,2024-01-01 10:10:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 10:11:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 10:14:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 10:16:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 10:20:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 10:21:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 10:22:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 10:30:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 10:31:00,Sample Hospital:0:Corridor,door_access,-,0,-
+1,2024-01-01 10:34:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 10:36:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 10:44:00,Sample Hospital:0:Ward,door_access,-,0,-
+1,2024-01-01 10:45:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 10:46:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 10:49:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 10:50:00,Sample Hospital:0:Corridor,door_access,-,2,-
+2,2024-01-01 10:50:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 10:51:00,Sample Hospital:0:WC,occupy_content,-,-,3
+2,2024-01-01 10:51:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 10:54:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 10:56:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 11:00:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 11:01:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 11:02:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 11:04:00,Sample Hospital:0:WC,door_access,-,2,-
+1,2024-01-01 11:05:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 11:09:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 11:10:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 11:10:00,Sample Hospital:0:Corridor,door_access,-,3,-
+1,2024-01-01 11:11:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 11:11:00,Sample Hospital:0:Restaurant,occupy_content,-,-,2
+1,2024-01-01 11:14:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 11:16:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 11:24:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 11:24:00,Sample Hospital:0:Restaurant,door_access,-,3,-
+1,2024-01-01 11:25:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 11:25:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 11:26:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+2,2024-01-01 11:30:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 11:31:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 11:34:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 11:36:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 11:40:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 11:41:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 11:42:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 11:50:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 11:51:00,Sample Hospital:0:Corridor,door_access,-,0,-
+1,2024-01-01 11:54:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 11:56:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 12:04:00,Sample Hospital:0:Ward,door_access,-,0,-
+1,2024-01-01 12:05:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 12:06:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 12:09:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 12:10:00,Sample Hospital:0:Corridor,door_access,-,3,-
+2,2024-01-01 12:10:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 12:11:00,Sample Hospital:0:Restaurant,occupy_content,-,-,2
+2,2024-01-01 12:11:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 12:14:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 12:16:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 12:20:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 12:21:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 12:22:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 12:24:00,Sample Hospital:0:Restaurant,door_access,-,3,-
+1,2024-01-01 12:25:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 12:29:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 12:30:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 12:30:00,Sample Hospital:0:Corridor,door_access,-,2,-
+1,2024-01-01 12:31:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 12:31:00,Sample Hospital:0:WC,occupy_content,-,-,3
+1,2024-01-01 12:34:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 12:36:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 12:44:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 12:44:00,Sample Hospital:0:WC,door_access,-,2,-
+1,2024-01-01 12:45:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 12:45:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 12:46:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+2,2024-01-01 12:50:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 12:51:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 12:54:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 12:56:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 13:00:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 13:01:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 13:02:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 13:10:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 13:11:00,Sample Hospital:0:Corridor,door_access,-,0,-
+1,2024-01-01 13:14:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 13:16:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 13:24:00,Sample Hospital:0:Ward,door_access,-,0,-
+1,2024-01-01 13:25:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 13:26:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 13:29:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 13:30:00,Sample Hospital:0:Corridor,door_access,-,2,-
+2,2024-01-01 13:30:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 13:31:00,Sample Hospital:0:WC,occupy_content,-,-,3
+2,2024-01-01 13:31:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 13:34:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 13:36:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 13:40:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 13:41:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 13:42:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 13:44:00,Sample Hospital:0:WC,door_access,-,2,-
+1,2024-01-01 13:45:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 13:49:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 13:50:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 13:50:00,Sample Hospital:0:Corridor,door_access,-,3,-
+1,2024-01-01 13:51:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 13:51:00,Sample Hospital:0:Restaurant,occupy_content,-,-,2
+1,2024-01-01 13:54:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 13:56:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 14:04:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 14:04:00,Sample Hospital:0:Restaurant,door_access,-,3,-
+1,2024-01-01 14:05:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 14:05:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 14:06:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+2,2024-01-01 14:10:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 14:11:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 14:14:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 14:16:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 14:20:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 14:21:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 14:22:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 14:30:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 14:31:00,Sample Hospital:0:Corridor,door_access,-,0,-
+1,2024-01-01 14:34:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 14:36:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 14:44:00,Sample Hospital:0:Ward,door_access,-,0,-
+1,2024-01-01 14:45:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 14:46:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 14:49:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 14:50:00,Sample Hospital:0:Corridor,door_access,-,3,-
+2,2024-01-01 14:50:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 14:51:00,Sample Hospital:0:Restaurant,occupy_content,-,-,2
+2,2024-01-01 14:51:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 14:54:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 14:56:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 15:00:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 15:01:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 15:02:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 15:04:00,Sample Hospital:0:Restaurant,door_access,-,3,-
+1,2024-01-01 15:05:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 15:09:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 15:10:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 15:10:00,Sample Hospital:0:Corridor,door_access,-,2,-
+1,2024-01-01 15:11:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 15:11:00,Sample Hospital:0:WC,occupy_content,-,-,3
+1,2024-01-01 15:14:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 15:16:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 15:24:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 15:24:00,Sample Hospital:0:WC,door_access,-,2,-
+1,2024-01-01 15:25:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 15:25:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 15:26:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+2,2024-01-01 15:30:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 15:31:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 15:34:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 15:36:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 15:40:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 15:41:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 15:42:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 15:50:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 15:51:00,Sample Hospital:0:Corridor,door_access,-,0,-
+1,2024-01-01 15:54:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 15:56:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 16:04:00,Sample Hospital:0:Ward,door_access,-,0,-
+1,2024-01-01 16:05:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 16:06:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 16:09:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 16:10:00,Sample Hospital:0:Corridor,door_access,-,2,-
+2,2024-01-01 16:10:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 16:11:00,Sample Hospital:0:WC,occupy_content,-,-,3
+2,2024-01-01 16:11:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 16:14:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 16:16:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 16:20:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 16:21:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 16:22:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 16:24:00,Sample Hospital:0:WC,door_access,-,2,-
+1,2024-01-01 16:25:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 16:29:00,Sample Hospital:0:Staff Room,door_access,-,1,-
 1,2024-01-01 16:30:00,Sample Hospital:0:Staff Room,door_access,-,1,-
-1,2024-01-01 17:00:00,Sample Hospital:0:Corridor,door_access,-,0,-
-1,2024-01-01 18:00:00,Sample Hospital:0:Ward,attend_patient,1,-,-
-1,2024-01-01 19:00:00,Sample Hospital:0:Ward,attend_patient,3,-,-
-1,2024-01-01 19:30:00,Sample Hospital:0:Ward,door_access,-,0,-
-1,2024-01-01 20:00:00,Sample Hospital:0:Corridor,door_access,-,1,-
-1,2024-01-01 21:00:00,Sample Hospital:0:Staff Room,occupy_content,-,-,2
-2,2024-01-01 01:00:00,Sample Hospital:0:Staff Room,workstation,-,-,-
-2,2024-01-01 05:00:00,Sample Hospital:0:Staff Room,door_access,-,1,-
-2,2024-01-01 06:00:00,Sample Hospital:0:Corridor,door_access,-,0,-
-2,2024-01-01 07:00:00,Sample Hospital:0:Ward,attend_patient,1,-,-
-2,2024-01-01 08:00:00,Sample Hospital:0:Ward,door_access,-,0,-
-2,2024-01-01 09:00:00,Sample Hospital:0:Corridor,door_access,-,1,-
-2,2024-01-01 10:00:00,Sample Hospital:0:Staff Room,door_access,-,1,-
-2,2024-01-01 11:00:00,Sample Hospital:0:Corridor,door_access,-,0,-
-2,2024-01-01 12:00:00,Sample Hospital:0:Ward,attend_patient,2,-,-
-2,2024-01-01 13:00:00,Sample Hospital:0:Ward,attend_patient,2,-,-
-2,2024-01-01 14:00:00,Sample Hospital:0:Ward,attend_patient,1,-,-
-2,2024-01-01 14:00:00,Sample Hospital:0:Ward,door_access,-,0,-
-2,2024-01-01 15:00:00,Sample Hospital:0:Corridor,door_access,-,1,-
-2,2024-01-01 16:00:00,Sample Hospital:0:Staff Room,workstation,-,-,-
-2,2024-01-01 16:00:00,Sample Hospital:0:Staff Room,door_access,-,1,-
-2,2024-01-01 17:00:00,Sample Hospital:0:Corridor,door_access,-,0,-
-2,2024-01-01 18:00:00,Sample Hospital:0:Ward,attend_patient,1,-,-
-2,2024-01-01 19:00:00,Sample Hospital:0:Ward,attend_patient,3,-,-
-2,2024-01-01 19:00:00,Sample Hospital:0:Ward,door_access,-,0,-
-2,2024-01-01 20:00:00,Sample Hospital:0:Corridor,door_access,-,1,-
-2,2024-01-01 21:00:00,Sample Hospital:0:Staff Room,occupy_content,-,-,2
+2,2024-01-01 16:30:00,Sample Hospital:0:Corridor,door_access,-,3,-
+1,2024-01-01 16:31:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 16:31:00,Sample Hospital:0:Restaurant,occupy_content,-,-,2
+1,2024-01-01 16:34:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 16:36:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 16:44:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 16:44:00,Sample Hospital:0:Restaurant,door_access,-,3,-
+1,2024-01-01 16:45:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 16:45:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 16:46:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+2,2024-01-01 16:50:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 16:51:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 16:54:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 16:56:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 17:00:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 17:01:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 17:02:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 17:10:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 17:11:00,Sample Hospital:0:Corridor,door_access,-,0,-
+1,2024-01-01 17:14:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 17:16:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 17:24:00,Sample Hospital:0:Ward,door_access,-,0,-
+1,2024-01-01 17:25:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 17:26:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 17:29:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 17:30:00,Sample Hospital:0:Corridor,door_access,-,3,-
+2,2024-01-01 17:30:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 17:31:00,Sample Hospital:0:Restaurant,occupy_content,-,-,2
+2,2024-01-01 17:31:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 17:34:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 17:36:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 17:40:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 17:41:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 17:42:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 17:44:00,Sample Hospital:0:Restaurant,door_access,-,3,-
+1,2024-01-01 17:45:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 17:49:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+1,2024-01-01 17:50:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 17:50:00,Sample Hospital:0:Corridor,door_access,-,2,-
+1,2024-01-01 17:51:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 17:51:00,Sample Hospital:0:WC,occupy_content,-,-,3
+1,2024-01-01 17:54:00,Sample Hospital:0:Ward,attend_patient,1,-,-
+1,2024-01-01 17:56:00,Sample Hospital:0:Ward,attend_patient,2,-,-
+1,2024-01-01 18:04:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 18:04:00,Sample Hospital:0:WC,door_access,-,2,-
+1,2024-01-01 18:05:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 18:05:00,Sample Hospital:0:Corridor,door_access,-,1,-
+1,2024-01-01 18:06:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+2,2024-01-01 18:10:00,Sample Hospital:0:Staff Room,door_access,-,1,-
+2,2024-01-01 18:11:00,Sample Hospital:0:Corridor,door_access,-,0,-
+2,2024-01-01 18:14:00,Sample Hospital:0:Ward,attend_patient,3,-,-
+2,2024-01-01 18:16:00,Sample Hospital:0:Ward,attend_patient,4,-,-
+2,2024-01-01 18:20:00,Sample Hospital:0:Ward,door_access,-,0,-
+2,2024-01-01 18:21:00,Sample Hospital:0:Corridor,door_access,-,1,-
+2,2024-01-01 18:22:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+1,2024-01-01 18:50:00,Sample Hospital:0:Staff Room,workstation,-,-,-
+2,2024-01-01 18:55:00,Sample Hospital:0:Staff Room,workstation,-,-,-

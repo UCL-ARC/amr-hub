@@ -159,6 +159,33 @@ Running with `record=True` and/or `plot_trajectory=True` produces files in `simu
 
 These are gitignored — they're generated artifacts.
 
+### Contact analysis
+
+After recording a simulation, analyse contacts between agents using their trajectory
+CSV files. A contact is a pair within 0.1 metres on the same building and floor;
+contact duration is reported in simulation timesteps.
+
+```bash
+cd python-code
+uv run python -m amr_hub_abm.contact_analysis
+```
+
+The default input is `simulation_outputs/`, and results are written to
+`simulation_outputs/contact_analysis/`. Override the input, output directory,
+distance threshold, and heatmap resolution as needed:
+
+```bash
+uv run python -m amr_hub_abm.contact_analysis simulation_outputs \
+  --output simulation_outputs/contact_analysis \
+  --distance-threshold 0.1 \
+  --bins 50
+```
+
+The analysis writes `contact_observations.csv`, `contact_episodes.csv`,
+`contact_pair_summary.csv`, and `contact_timeseries.csv`, plus a time-series plot
+and a contact-location heatmap for each building/floor with contacts.
+Contact episode duration counts each recorded contact sample as one timestep.
+
 ### Browser-based visualization (SolaraViz)
 
 For an interactive browser-based view with play/pause/step controls, use the Solara app:

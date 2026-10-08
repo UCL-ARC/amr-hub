@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from amr_hub_abm.agent.enums import AgentType, InfectionStatus
+from amr_hub_abm.agent.internal_state import InternalState
 from amr_hub_abm.agent.output import Record, record_state
 from amr_hub_abm.exceptions import NonNegativeValueError, SimulationModeError
 from amr_hub_abm.spatial.furniture import ContentType
@@ -62,6 +63,7 @@ class Agent:
     agent_type: AgentType = field(default=AgentType.GENERIC)
     infection_status: InfectionStatus = field(default=InfectionStatus.SUSCEPTIBLE)
     infection_details: dict = field(default_factory=dict)
+    internal_state: InternalState = field(default_factory=InternalState)
 
     movement_speed: float = field(default=0.001)  # units per time step
     stochasticity: float = field(default=5.0)  # degrees of randomness in movement

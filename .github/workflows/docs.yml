@@ -35,7 +35,17 @@ jobs:
         run: python -m pip install tox
 
       - name: Build HTML documentation with tox
-        run: tox -e docs
+        run: |
+          for attempt in 1 2 3; do
+            if tox -e docs; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Documentation build failed; retrying in $((attempt * 10)) seconds."
+              sleep "$((attempt * 10))"
+            fi
+          done
+          exit 1
 
       - name: Upload built docs as artifact
         id: deployment

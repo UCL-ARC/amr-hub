@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from amr_hub_abm.agent.agent import Agent, AgentType
+from amr_hub_abm.agent.internal_state import InternalStateConfig
 from amr_hub_abm.agent.kinematics import AgentKinematicsConfig
 from amr_hub_abm.config import SimulationConfig
 from amr_hub_abm.exceptions import InvalidDefinitionError, SimulationModeError
@@ -54,6 +55,7 @@ def create_simulation(
     """
     agent_kinematics = config.agent_kinematics
     task_durations = config.task_durations
+    internal_state_config = config.internal_state
     rng_generator = np.random.default_rng()
 
     buildings_path_value = config.config_data["buildings_path"]
@@ -103,6 +105,7 @@ def create_simulation(
         rng_generator=rng_generator,
         agent_kinematics=agent_kinematics,
         task_durations=task_durations,
+        internal_state_config=internal_state_config,
     )
 
     msg = f"Parsed {len(agents)} agents from location time series."
@@ -119,6 +122,7 @@ def create_simulation(
         rng_generator=rng_generator,
         use_gpu=use_gpu,
         agent_max_movement_attempts=agent_kinematics.max_movement_attempts,
+        internal_state_config=internal_state_config,
     )
 
 
@@ -176,6 +180,7 @@ def update_patient(  # noqa: PLR0913
     total_time_steps: int,
     rng_generator: np.random.Generator,
     agent_kinematics: AgentKinematicsConfig,
+    internal_state_config: InternalStateConfig,
 ) -> None:
     """
     Update patient information from data.
@@ -228,6 +233,7 @@ def update_patient(  # noqa: PLR0913
             movement_speed=agent_kinematics.movement_speed,
             stochasticity=agent_kinematics.stochasticity,
             interaction_radius=agent_kinematics.interaction_radius,
+            internal_state=internal_state_config.initial_state(AgentType.PATIENT),
         )
 
 
@@ -240,6 +246,7 @@ def update_hcw(  # noqa: PLR0913
     rng_generator: np.random.Generator,
     agent_kinematics: AgentKinematicsConfig,
     task_durations: TaskDurationConfig,
+    internal_state_config: InternalStateConfig,
     additional_info: dict | None = None,
 ) -> None:
     """
@@ -302,6 +309,9 @@ def update_hcw(  # noqa: PLR0913
             movement_speed=agent_kinematics.movement_speed,
             stochasticity=agent_kinematics.stochasticity,
             interaction_radius=agent_kinematics.interaction_radius,
+            internal_state=internal_state_config.initial_state(
+                AgentType.HEALTHCARE_WORKER
+            ),
         )
 
     hcw_dict[hcw_id].add_task(
@@ -325,6 +335,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
     rng_generator: np.random.Generator,
     agent_kinematics: AgentKinematicsConfig,
     task_durations: TaskDurationConfig,
+    internal_state_config: InternalStateConfig | None = None,
 ) -> list[Agent]:
     """
     Parse validated location-event data for agents.
@@ -355,6 +366,19 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
     """
     hcw_dict: dict[int, Agent] = {}
     patient_dict: dict[int, Agent] = {}
+    if internal_state_config is None:
+        internal_state_config = InternalStateConfig(
+            hcw_initial_fatigue=0.0,
+            hcw_initial_hunger=0.0,
+            hcw_initial_toilet_need=0.0,
+            patient_initial_hunger=0.0,
+            patient_initial_toilet_need=0.0,
+            hcw_fatigue_rate=0.0,
+            hcw_hunger_rate=0.0,
+            hcw_toilet_rate=0.0,
+            patient_hunger_rate=0.0,
+            patient_toilet_rate=0.0,
+        )
 
     for _, row in timeseries_data.iterrows():
         hcw_id = int(row["hcw_id"])
@@ -395,6 +419,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
                 total_time_steps=total_time_steps,
                 rng_generator=rng_generator,
                 agent_kinematics=agent_kinematics,
+                internal_state_config=internal_state_config,
             )
             patient = patient_dict[patient_id]
 
@@ -507,6 +532,7 @@ def parse_location_timeseries(  # noqa: PLR0913, PLR0915, PLR0912
             rng_generator=rng_generator,
             agent_kinematics=agent_kinematics,
             task_durations=task_durations,
+            internal_state_config=internal_state_config,
         )
 
     return list(hcw_dict.values()) + list(patient_dict.values())
