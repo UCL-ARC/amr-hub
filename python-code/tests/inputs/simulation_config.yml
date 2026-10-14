@@ -8,9 +8,9 @@ location_data:
 
 buildings_path: tests/inputs/buildings.yml # Path to buildings geojson file
 
-agent_movement_speed: 0.001 # Agent movement speed in units per time step
+agent_movement_speed: 0.001 # Agent movement speed in metres per simulation time step
 agent_stochasticity: 5.0 # Degrees of randomness applied to agent heading each step
-agent_interaction_radius: 0.01 # Distance within which an agent is considered to have reached a target
+agent_interaction_radius: 0.01 # Target and CPU wall-clearance distance in metres
 agent_max_movement_attempts: 5 # Max attempts to find a movement step that avoids wall intersections
 
 time_needed_attend_patient: 15 # Timesteps needed for a healthcare worker to attend to a patient
