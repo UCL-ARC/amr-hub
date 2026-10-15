@@ -108,25 +108,23 @@ class InternalStateConfig:
     @classmethod
     def from_config(cls, config_data: dict[str, Any]) -> InternalStateConfig:
         """Build state configuration from YAML data."""
-        keys = (
-            "hcw_initial_fatigue",
-            "hcw_initial_hunger",
-            "hcw_initial_toilet_need",
-            "patient_initial_hunger",
-            "patient_initial_toilet_need",
-            "hcw_fatigue_rate",
-            "hcw_hunger_rate",
-            "hcw_toilet_rate",
-            "patient_hunger_rate",
-            "patient_toilet_rate",
+        defaults = {
+            "hcw_initial_fatigue": 0.0,
+            "hcw_initial_hunger": 0.0,
+            "hcw_initial_toilet_need": 0.0,
+            "patient_initial_hunger": 0.0,
+            "patient_initial_toilet_need": 0.0,
+            "hcw_fatigue_rate": 0.0,
+            "hcw_hunger_rate": 0.0,
+            "hcw_toilet_rate": 0.0,
+            "patient_hunger_rate": 0.0,
+            "patient_toilet_rate": 0.0,
+        }
+        result = cls(
+            **{
+                key: config_data.get(key, default)
+                for key, default in defaults.items()}
         )
-        missing = [key for key in keys if key not in config_data]
-        if missing:
-            msg = (
-                f"Missing required internal state config key(s): {', '.join(missing)}."
-            )
-            raise InvalidDefinitionError(msg)
-        result = cls(**{key: config_data[key] for key in keys})
         for name in (
             "hcw_initial_fatigue",
             "hcw_initial_hunger",
