@@ -83,7 +83,7 @@ def test_reset_clears_selected_needs() -> None:
 
 
 def test_config_validation_errors() -> None:
-    """Invalid rates and missing keys are rejected."""
+    """Invalid rates are rejected and missing rates default to zero."""
     data = {
         "hcw_initial_fatigue": 0.0,
         "hcw_initial_hunger": 0.0,
@@ -99,5 +99,5 @@ def test_config_validation_errors() -> None:
     with pytest.raises(NonNegativeValueError, match="hcw_hunger_rate"):
         InternalStateConfig.from_config({**data, "hcw_hunger_rate": -1.0})
     incomplete = {k: v for k, v in data.items() if k != "patient_toilet_rate"}
-    with pytest.raises(InvalidDefinitionError, match="patient_toilet_rate"):
-        InternalStateConfig.from_config(incomplete)
+    config = InternalStateConfig.from_config(incomplete)
+    assert config.patient_toilet_rate == 0.0
