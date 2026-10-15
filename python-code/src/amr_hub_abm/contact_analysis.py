@@ -75,12 +75,14 @@ class ContactEpisode:
     duration: int
     observations: int
 
-    def _parse_integral_identifier(value: str | None) -> int:
+
+def _parse_integral_identifier(value: str) -> int:
     numeric = float(value)
     if not isfinite(numeric) or not numeric.is_integer():
         msg = "Expected a finite integer."
         raise ValueError(msg)
     return int(numeric)
+
 
 def _read_track(path: Path) -> AgentTrack:
     """Load one recorded agent trajectory CSV."""
