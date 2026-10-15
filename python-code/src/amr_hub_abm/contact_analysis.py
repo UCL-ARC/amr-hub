@@ -75,6 +75,12 @@ class ContactEpisode:
     duration: int
     observations: int
 
+    def _parse_integral_identifier(value: str | None) -> int:
+    numeric = float(value)
+    if not isfinite(numeric) or not numeric.is_integer():
+        msg = "Expected a finite integer."
+        raise ValueError(msg)
+    return int(numeric)
 
 def _read_track(path: Path) -> AgentTrack:
     """Load one recorded agent trajectory CSV."""
@@ -96,9 +102,9 @@ def _read_track(path: Path) -> AgentTrack:
             try:
                 # time/building/floor are written as floats (e.g. "1.0e+02") by
                 # np.savetxt, since they share a homogeneous float array with x/y.
-                time = int(float(row["time"]))
-                building = int(float(row["building"]))
-                floor = int(float(row["floor"]))
+                time = _parse_integral_identifier(row["time"])
+                building = _parse_integral_identifier(row["building"])
+                floor = _parse_integral_identifier(row["floor"])
                 x = float(row["x"])
                 y = float(row["y"])
             except (TypeError, ValueError) as error:
