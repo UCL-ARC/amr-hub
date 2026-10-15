@@ -121,9 +121,7 @@ class InternalStateConfig:
             "patient_toilet_rate": 0.0,
         }
         result = cls(
-            **{
-                key: config_data.get(key, default)
-                for key, default in defaults.items()}
+            **{key: config_data.get(key, default) for key, default in defaults.items()}
         )
         for name in (
             "hcw_initial_fatigue",
