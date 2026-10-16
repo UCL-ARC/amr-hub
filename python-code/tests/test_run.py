@@ -18,10 +18,15 @@ class FakeSimulation:
         self.total_simulation_time = total_time
         self.space: list[Any] = []
         self.live_plot_times: list[int] = []
+        self.final_record_time: int | None = None
 
     def step(self, **_kwargs: object) -> None:
         """Advance one timestep."""
         self.time += 1
+
+    def record_current_state(self) -> None:
+        """Record the time at which the final state was captured."""
+        self.final_record_time = self.time
 
     def plot_live(self, _figures: list, *, trajectory: bool) -> None:
         """Record when live plotting is requested."""
@@ -48,6 +53,17 @@ def test_run_steps_plots_live_every_hundred_steps() -> None:
 
     assert simulation.time == 200
     assert simulation.live_plot_times == [100, 200]
+
+
+def test_run_steps_records_final_state_only_when_recording() -> None:
+    """The state after the last step is recorded when ``record`` is set."""
+    recorded = FakeSimulation(3)
+    run_steps(recorded, None, record=True)  # type: ignore[arg-type]
+    assert recorded.final_record_time == 3
+
+    unrecorded = FakeSimulation(3)
+    run_steps(unrecorded, None, record=False)  # type: ignore[arg-type]
+    assert unrecorded.final_record_time is None
 
 
 def test_run_and_analyse_contacts_writes_outputs(

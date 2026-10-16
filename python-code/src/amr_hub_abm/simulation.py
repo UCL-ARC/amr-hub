@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from matplotlib import pyplot as plt
 
+from amr_hub_abm.agent.output import record_state
 from amr_hub_abm.exceptions import TimeError
 from amr_hub_abm.spatial.engine import SpatialQuery
 from amr_hub_abm.spatial.engine_gpu import GPUSpatialQuery
@@ -286,6 +287,16 @@ class Simulation:
             for floor in building.floors:
                 all_rooms.extend(floor.rooms)
         return all_rooms
+
+    def record_current_state(self) -> None:
+        """
+        Record every agent's state at the current time without advancing.
+
+        ``step`` records the state at the start of each step, so the state reached
+        after the final step is only captured by calling this once the loop ends.
+        """
+        for agent in self.agents:
+            record_state(agent=agent, current_time=self.time)
 
     def record_agent_states(self, file_path: Path) -> None:
         """

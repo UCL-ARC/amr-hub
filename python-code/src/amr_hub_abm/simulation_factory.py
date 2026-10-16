@@ -228,7 +228,7 @@ def update_patient(  # noqa: PLR0913
             location=location,
             heading_rad=0.0,
             agent_type=AgentType.PATIENT,
-            trajectory_length=total_time_steps,
+            trajectory_length=total_time_steps + 1,  # +1 for the final state
             rng_generator=rng_generator,
             movement_speed=agent_kinematics.movement_speed,
             stochasticity=agent_kinematics.stochasticity,
@@ -304,7 +304,7 @@ def update_hcw(  # noqa: PLR0913
             location=hcw_location,
             heading_rad=0.0,
             agent_type=AgentType.HEALTHCARE_WORKER,
-            trajectory_length=total_time_steps,
+            trajectory_length=total_time_steps + 1,  # +1 for the final state
             rng_generator=rng_generator,
             movement_speed=agent_kinematics.movement_speed,
             stochasticity=agent_kinematics.stochasticity,

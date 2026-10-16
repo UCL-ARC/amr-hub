@@ -149,6 +149,9 @@ def run_steps(
         if figures is not None and simulation.time % 100 == 0:
             simulation.plot_live(figures, trajectory=trajectory)
 
+    if record:
+        simulation.record_current_state()
+
 
 # =============================================================================
 
