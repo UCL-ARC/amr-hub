@@ -11,6 +11,7 @@ import argparse
 import bisect
 import contextlib
 import csv
+import logging
 import pickle
 import random
 import re
@@ -34,6 +35,8 @@ if TYPE_CHECKING:
 # ====================================================================
 # 0] Config Vars
 # ====================================================================
+logger = logging.getLogger(__name__)
+
 N_TIME_BUCKETS = 4
 KEEP_UNROSTERED = False
 MIN_SHIFT_EVENTS = 3
@@ -188,7 +191,8 @@ def _load_room_maps(
         except duckdb.Error as exc:
             # Optional enrichment: if the lookup query fails, continue with
             # other mapping sources and return partial maps.
-            print(f"Skipping optional Flowsheet room-map lookup: {exc}", file=sys.stderr)
+            msg = f"Flowsheet room mapping query failed: {exc}"
+            logger.warning(msg)
 
     try:
         door_names = _load_key_to_name_map(conn, *FALLBACK_NAME_TABLES["Door Message"])

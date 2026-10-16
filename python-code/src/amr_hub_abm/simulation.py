@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from matplotlib import pyplot as plt
 
+from amr_hub_abm.agent.output import record_state
 from amr_hub_abm.exceptions import TimeError
 from amr_hub_abm.spatial.engine import SpatialQuery
 from amr_hub_abm.spatial.engine_gpu import GPUSpatialQuery
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
     from amr_hub_abm.agent.agent import Agent
+    from amr_hub_abm.agent.internal_state import InternalStateConfig
     from amr_hub_abm.spatial.building import Building
     from amr_hub_abm.spatial.room import Room
 
@@ -80,6 +82,7 @@ class Simulation:
     # Unified engine property (handles both CPU and GPU cleanly)
     spatial_engine: Any = field(default=None, init=False)
     agent_max_movement_attempts: int = field(default=5)
+    internal_state_config: InternalStateConfig | None = field(default=None)
     # ------------------------------------------------------------------------------
 
     def __post_init__(self) -> None:
@@ -116,6 +119,10 @@ class Simulation:
         # Always run the task state machine so agents transition correctly.
         # If engine is type gpu then polymorphic move_one_step does nothing
         for agent in self.agents:
+            if self.internal_state_config is not None:
+                self.internal_state_config.update_state(
+                    agent.internal_state, agent.agent_type
+                )
             agent.perform_task(
                 current_time=self.time, engine=self.spatial_engine, record=record
             )
@@ -280,6 +287,16 @@ class Simulation:
             for floor in building.floors:
                 all_rooms.extend(floor.rooms)
         return all_rooms
+
+    def record_current_state(self) -> None:
+        """
+        Record every agent's state at the current time without advancing.
+
+        ``step`` records the state at the start of each step, so the state reached
+        after the final step is only captured by calling this once the loop ends.
+        """
+        for agent in self.agents:
+            record_state(agent=agent, current_time=self.time)
 
     def record_agent_states(self, file_path: Path) -> None:
         """

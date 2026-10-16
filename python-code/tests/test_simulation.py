@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from amr_hub_abm.agent.agent import Agent, AgentType, InfectionStatus
+from amr_hub_abm.agent.internal_state import InternalState, InternalStateConfig
 from amr_hub_abm.exceptions import TimeError
 from amr_hub_abm.simulation import Simulation, SimulationMode
 from amr_hub_abm.spatial.building import Building
@@ -125,6 +126,28 @@ def test_simulation_step_advances_time(sample_simulation: Simulation) -> None:
     assert sample_simulation.time == 0
     sample_simulation.step()
     assert sample_simulation.time == 1
+
+
+def test_simulation_step_updates_internal_state(sample_simulation: Simulation) -> None:
+    """Simulation steps advance configured internal needs."""
+    sample_simulation.internal_state_config = InternalStateConfig(
+        hcw_initial_fatigue=0.0,
+        hcw_initial_hunger=0.0,
+        hcw_initial_toilet_need=0.0,
+        patient_initial_hunger=0.0,
+        patient_initial_toilet_need=0.0,
+        hcw_fatigue_rate=0.1,
+        hcw_hunger_rate=0.2,
+        hcw_toilet_rate=0.3,
+        patient_hunger_rate=0.4,
+        patient_toilet_rate=0.5,
+    )
+
+    sample_simulation.step()
+
+    assert sample_simulation.agents[0].internal_state == InternalState(
+        fatigue=None, hunger=0.4, toilet_need=0.5
+    )
 
 
 def test_simulation_excessive_current_time_raises(

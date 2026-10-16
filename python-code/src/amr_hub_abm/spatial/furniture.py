@@ -27,18 +27,21 @@ class ContentType(IntEnum):
     BED = 0
     WORKSTATION = 1
     CHAIR = 2
+    TOILET = 3
 
 
 CONTENT_SIZES = {
     ContentType.BED: (0.2, 0.1),  # length x width in meters
     ContentType.WORKSTATION: (0.1, 0.05),  # length x width in meters
     ContentType.CHAIR: (0.05, 0.05),  # length x width in meters
+    ContentType.TOILET: (0.1, 0.1),  # length x width in meters
 }
 
 CONTENT_COLORS = {
     ContentType.BED: "lightblue",
     ContentType.WORKSTATION: "lightgreen",
     ContentType.CHAIR: "lightgray",
+    ContentType.TOILET: "lightyellow",
 }
 
 
