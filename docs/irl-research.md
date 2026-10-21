@@ -7,7 +7,7 @@
 - In mobility research, IRL gains over simple baselines are modest. A first-order Markov chain matched or beat IRL and adversarial imitation on simple, well-sampled route data [1]. The main argument for IRL is transfer to new layouts or policies, and a 2026 review (preprint) finds that evidence weak [2].
 - Our data are offline, partially observed and irregularly timed. Our first build should be an empirical semi-Markov kernel (next room plus dwell time), conditioned on role, unit and time. If IRL is tried, it should be a tabular or linear-feature maximum causal entropy (MCE) model, estimated as a logit dynamic discrete choice (DDC) model on the room graph, with a hidden-room layer and a separate dwell model. GAIL and AIRL need simulator rollouts and do not suit our data.
 - Recommendation: IRL is not recommended for this data at this stage. For next activity class, local history already explains almost all of the structure we can measure (88.6% top-1 with current and previous class, 88.7% with time, role and unit added); the spatial data is too incomplete for location rewards to be identified; and two roster units are not enough to test transfer. Next-room results are not yet recorded, so this is a judgement on the data we have.
-- The proposed route is an empirical semi-Markov model first, then forward RL with a specified (not learned) reward, once the agent state includes room, current and next task, time of shift, role and nearby task demand. Staff agents would be trained in the ABM with PPO/IPPO (MAPPO if coordination matters) through a PettingZoo wrapper, and checked against held-out logs.
+- The proposed route is an empirical semi-Markov model first, then forward RL with a specified (not learned) reward, once the agent state includes room, current and next task, time of shift, role and nearby task demand. Staff agents would be trained in the ABM with actor–critic PPO, trained centrally and run per agent: one shared policy per role first (IPPO), then a centralised critic (MAPPO) if coordination matters, through a PettingZoo wrapper, and checked against held-out logs.
 - IRL can be revisited if door direction is resolved, workstation mapping improves and data from more than one layout are available.
 
 ## Background
@@ -188,6 +188,33 @@ Stage 5 trains staff agents together in the ABM with the specified reward, so th
 - MAPPO adds a centralised critic that sees the full state during training, while each agent still acts on its own observations at run time. It performed strongly across four cooperative benchmarks, and the authors recommend fewer training epochs per batch than single-agent PPO [42].
 - MA-AIRL extends adversarial IRL to Markov games and recovers a reward per agent [43]. Like AIRL it needs environment rollouts, so it only becomes usable once the ABM has been validated against the logs, and only if IRL is revisited.
 
+### PPO with centralised training and decentralised execution
+
+PPO in an actor–critic set-up, trained centrally and run per agent, is the simplest place to start and fits the ABM well.
+
+The actor and the critic:
+
+- The actor is the policy: a network that takes one agent's observation and outputs a probability for each action (move to a neighbouring room, stay, start the next task). Sampling from it keeps behaviour stochastic, which suits staff movement better than a single fixed choice.
+- The critic is a value network that estimates the expected future reward from a state. It is used only during training.
+- After each batch of simulated shifts, the advantage of each action (how much better it turned out than the critic expected) is estimated, usually with generalised advantage estimation [48]. The actor is updated to make better-than-expected actions more likely, with PPO's clipping limiting how far it moves in one update [40]. The critic is updated to predict returns more accurately.
+- The two can share a network body with separate policy and value heads, or be separate networks. A small multi-layer perceptron is enough for a state this size.
+
+Centralised training, decentralised execution (CTDE):
+
+- Decentralised execution means that at run time each staff agent acts only on its own observation, which is how staff behave and how the ABM steps agents.
+- Centralised training means that during training the experience of all agents is pooled, and the critic may use information no single agent has, such as the occupancy of every room, where all staff are and the full task queue. Because the critic is discarded after training, this extra information does not leak into behaviour [49].
+
+Two levels, in order of effort:
+
+1. Parameter sharing: one actor–critic per role, trained on the pooled experience of every agent in that role, with each agent's critic seeing only its own observation. This is IPPO with shared parameters [41, 50]; it is quick to set up, and parameter sharing has worked well on cooperative benchmarks [51]. Adding a role indicator or agent index to the observation lets one network behave differently where needed.
+2. Centralised critic: the same actors, with a critic that takes the global ward state. This is MAPPO [42]. Move to it if agents need to coordinate (for example covering bays or avoiding the same patient) or if training with independent critics is unstable, since each agent's environment shifts as the others learn.
+
+Practical points:
+
+- If an agent needs memory, for example because the effect of an action shows only later or other staff are out of view, add a recurrent layer (LSTM) to the policy. Recurrent model-free RL is a reasonable baseline for partially observed problems [52].
+- Run several copies of the environment in parallel, log per-agent metrics (rewards, rooms visited, contacts) during training, evaluate periodically on held-out scenarios, save checkpoints, and decay the learning rate over training.
+- For multi-agent PPO, use fewer epochs per batch than single-agent defaults [42].
+
 ### Suggested set-up
 
 - Agents are staff, grouped by role, with parameters shared within a role.
@@ -199,7 +226,8 @@ Stage 5 trains staff agents together in the ABM with the specified reward, so th
 ### Engine
 
 - Wrap the `amr_hub_abm` `Simulation` as a PettingZoo environment [44], using its parallel API so all staff act at each step. PettingZoo is the standard interface that most MARL libraries accept.
-- Train with RLlib [45] or BenchMARL [46]. BenchMARL is built on TorchRL, includes IPPO and MAPPO, and is designed for reproducible comparisons between algorithms.
+- For level 1, the quickest route is a PettingZoo parallel environment, vectorised with SuperSuit so that all agents share one policy, and trained with Stable-Baselines3 PPO [53] (or `RecurrentPPO` from `sb3-contrib` for the recurrent version).
+- For level 2, train with RLlib [45] or BenchMARL [46]. BenchMARL is built on TorchRL, includes IPPO and MAPPO, and is designed for reproducible comparisons between algorithms.
 - JaxMARL [47] is much faster because environments run on the GPU in JAX, but it would mean rewriting the ABM step in JAX. It is only worth it if training time becomes the bottleneck. The ABM's existing GPU path uses NVIDIA Warp, so start with the CPU path.
 - Policies trained in the ABM are only as good as its dynamics. Before any counterfactual use, check rollouts from trained agents against held-out logs with the same metrics as in the evaluation section.
 
@@ -252,3 +280,9 @@ Stage 5 trains staff agents together in the ABM with the specified reward, so th
 45. Liang E, Liaw R, Nishihara R, et al. (2018). RLlib: Abstractions for distributed reinforcement learning. _ICML 2018_, PMLR 80:3053–3062. <https://proceedings.mlr.press/v80/liang18b.html>
 46. Bettini M, Prorok A, Moens V. (2024). BenchMARL: Benchmarking multi-agent reinforcement learning. _JMLR_ 25(217):1–10. <https://jmlr.org/papers/v25/23-1612.html>
 47. Rutherford A, Ellis B, Gallici M, et al. (2024). JaxMARL: Multi-agent RL environments and algorithms in JAX. _NeurIPS 2024, Datasets and Benchmarks Track_. <https://proceedings.neurips.cc/paper_files/paper/2024/hash/5aee125f052c90e326dcf6f380df94f6-Abstract.html>
+48. Schulman J, Moritz P, Levine S, Jordan MI, Abbeel P. (2016). High-dimensional continuous control using generalized advantage estimation. _ICLR 2016_. <https://arxiv.org/abs/1506.02438>
+49. Lowe R, Wu Y, Tamar A, Harb J, Abbeel P, Mordatch I. (2017). Multi-agent actor-critic for mixed cooperative-competitive environments. _NeurIPS 2017_. <https://proceedings.neurips.cc/paper/2017/hash/68a9750337a418a86fe06c1991a1d64c-Abstract.html>
+50. Gupta JK, Egorov M, Kochenderfer M. (2017). Cooperative multi-agent control using deep reinforcement learning. _Adaptive and Learning Agents Workshop (ALA), AAMAS 2017_. <https://ala2017.cs.universityofgalway.ie/papers/ALA2017_Gupta.pdf>
+51. Terry JK, Grammel N, Son S, Black B, Agrawal A. (2020). Revisiting parameter sharing in multi-agent deep reinforcement learning. arXiv:2005.13625 (preprint). <https://arxiv.org/abs/2005.13625>
+52. Ni T, Eysenbach B, Salakhutdinov R. (2022). Recurrent model-free RL can be a strong baseline for many POMDPs. _ICML 2022_, PMLR 162:16691–16723. <https://proceedings.mlr.press/v162/ni22a.html>
+53. Raffin A, Hill A, Gleave A, Kanervisto A, Ernestus M, Dormann N. (2021). Stable-Baselines3: Reliable reinforcement learning implementations. _JMLR_ 22(268):1–8. <https://jmlr.org/papers/v22/20-1364.html>
