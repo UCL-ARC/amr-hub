@@ -231,6 +231,7 @@ def update_patient(  # noqa: PLR0913
             trajectory_length=total_time_steps + 1,  # +1 for the final state
             rng_generator=rng_generator,
             movement_speed=agent_kinematics.movement_speed,
+            movement_strategy=agent_kinematics.movement_strategy,
             stochasticity=agent_kinematics.stochasticity,
             interaction_radius=agent_kinematics.interaction_radius,
             internal_state=internal_state_config.initial_state(AgentType.PATIENT),
@@ -307,6 +308,7 @@ def update_hcw(  # noqa: PLR0913
             trajectory_length=total_time_steps + 1,  # +1 for the final state
             rng_generator=rng_generator,
             movement_speed=agent_kinematics.movement_speed,
+            movement_strategy=agent_kinematics.movement_strategy,
             stochasticity=agent_kinematics.stochasticity,
             interaction_radius=agent_kinematics.interaction_radius,
             internal_state=internal_state_config.initial_state(
