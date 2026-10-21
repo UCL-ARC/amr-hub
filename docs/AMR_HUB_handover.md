@@ -10,31 +10,39 @@ enough sequential structure to learn from.
 
 ## Glossary
 
-| Term                       | Meaning                                                                                                                                                                                                               |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shift                      | A roster interval for one staff member, from Roster Start to Roster End (paired by `LinkKey`).                                                                                                                        |
-| Activity class             | Event type: Flowsheet (FS), Workstation (WS) or Door Message. Roster events are not activities.                                                                                                                       |
-| Canonical dataset          | `canonical_events.parquet`: cleaned, ordered events per shift, with pseudonymous staff and shift IDs. Input to the later analyses.                                                                                    |
-| Resolved location          | An event mapped to a room or door point. Unresolved events are kept but not given a location.                                                                                                                         |
-| Door point                 | A door identified by its parsed code and key, e.g. `doorpoint:XX00A#DOORKEY:000`. Gives no direction.                                                                                                                 |
-| Workstation crosswalk      | Table mapping workstations to rooms, inferred from the same staff member's nearby flowsheet rooms. **Support** is the number of nearby flowsheet observations; **share** is the fraction naming the most common room. |
-| State                      | What the model conditions on, e.g. current and previous activity class or room.                                                                                                                                       |
-| Context                    | Extra conditions: time bucket, role, roster unit.                                                                                                                                                                     |
-| Time bucket                | Six-hour band of the event time: `00–06`, `06–12`, `12–18`, `18–24`.                                                                                                                                                  |
-| Majority baseline          | Always predicts the most common next value in training.                                                                                                                                                               |
-| Markov (first-order) model | Predicts the next value from the current one only.                                                                                                                                                                    |
-| Count-based model          | For each exact state, predicts the most frequent next value seen in training.                                                                                                                                         |
-| Shift-held-out split       | Whole shifts go to train (80%) or test (20%). The same person can appear in both.                                                                                                                                     |
-| Top-1 / top-3              | Correct if the true value is the first / among the first three predictions.                                                                                                                                           |
-| Unseen-state fraction      | Share of test cases whose state never appeared in training (the model falls back to the overall ranking).                                                                                                             |
-| Entropy / information gain | Uncertainty of the next value, and how much a state reduces it. Descriptive, in-sample.                                                                                                                               |
-| Trigram                    | Three consecutive activity classes, e.g. `WS → FS → WS`.                                                                                                                                                              |
-| Calinski–Harabasz score    | Cluster-separation score used to compare numbers of clusters; higher is better.                                                                                                                                       |
-| Transition concentration   | Share of transitions that go to the most common next class. In-sample.                                                                                                                                                |
-| Free-running rollout       | Generating a shift's sequence by feeding predictions back in, after a few real seed events.                                                                                                                           |
-| Correct prefix             | Number of generated events that are correct before the first error.                                                                                                                                                   |
-| TV distance                | Difference between generated and real activity-class proportions; 0 means identical.                                                                                                                                  |
-| BC / IRL                   | Behaviour cloning (learn actions directly from data) / inverse reinforcement learning (infer the reward behind the behaviour). Not fitted here.                                                                       |
+| Term                                                         | Meaning                                                                                                                                                                                                               |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shift                                                        | A roster interval for one staff member, from Roster Start to Roster End (paired by `LinkKey`).                                                                                                                        |
+| Activity class                                               | Event type: Flowsheet (FS), Workstation (WS) or Door Message. Roster events are not activities.                                                                                                                       |
+| Canonical dataset                                            | `canonical_events.parquet`: cleaned, ordered events per shift, with pseudonymous staff and shift IDs. Input to the later analyses.                                                                                    |
+| Resolved location                                            | An event mapped to a room or door point. Unresolved events are kept but not given a location.                                                                                                                         |
+| Door point                                                   | A door identified by its parsed code and key, e.g. `doorpoint:XX00A#DOORKEY:000`. Gives no direction.                                                                                                                 |
+| Workstation crosswalk                                        | Table mapping workstations to rooms, inferred from the same staff member's nearby flowsheet rooms. **Support** is the number of nearby flowsheet observations; **share** is the fraction naming the most common room. |
+| State                                                        | What the model conditions on, e.g. current and previous activity class or room.                                                                                                                                       |
+| Context                                                      | Extra conditions: time bucket, role, roster unit.                                                                                                                                                                     |
+| Time bucket                                                  | Six-hour band of the event time: `00–06`, `06–12`, `12–18`, `18–24`.                                                                                                                                                  |
+| Majority baseline                                            | Always predicts the most common next value in training.                                                                                                                                                               |
+| Markov (first-order) model                                   | Predicts the next value from the current one only.                                                                                                                                                                    |
+| Count-based model                                            | For each exact state, predicts the most frequent next value seen in training.                                                                                                                                         |
+| Pair                                                         | One training or test example: the state at an event and the value at the next event in the same shift.                                                                                                                |
+| Task                                                         | What is predicted: `next_class` (next activity class), `next_room_observation` (next room-resolved event, repeats kept), `next_room_change` (next different room).                                                    |
+| `majority`                                                   | Model label: majority baseline, no state.                                                                                                                                                                             |
+| `markov_current_class` / `markov_current_room`               | Model label: first-order model on the current class or room.                                                                                                                                                          |
+| `current_plus_previous_class` / `current_plus_previous_room` | Model label: current and previous class or room.                                                                                                                                                                      |
+| `plus_time_role`, `plus_time`, `plus_role`                   | Model labels: the previous model with time bucket and/or role added (see Section 5).                                                                                                                                  |
+| `full_context`                                               | Model label: all state and context variables for that task (see Section 5).                                                                                                                                           |
+| Pooled / subgroup                                            | Pooled results use all shifts; subgroup results repeat the test within one role or roster unit.                                                                                                                       |
+| Shift-held-out split                                         | Whole shifts go to train (80%) or test (20%). The same person can appear in both.                                                                                                                                     |
+| Top-1 / top-3                                                | Correct if the true value is the first / among the first three predictions.                                                                                                                                           |
+| Unseen-state fraction                                        | Share of test cases whose state never appeared in training (the model falls back to the overall ranking).                                                                                                             |
+| Entropy / information gain                                   | Uncertainty of the next value, and how much a state reduces it. Descriptive, in-sample.                                                                                                                               |
+| Trigram                                                      | Three consecutive activity classes, e.g. `WS → FS → WS`.                                                                                                                                                              |
+| Calinski–Harabasz score                                      | Cluster-separation score used to compare numbers of clusters; higher is better.                                                                                                                                       |
+| Transition concentration                                     | Share of transitions that go to the most common next class. In-sample.                                                                                                                                                |
+| Free-running rollout                                         | Generating a shift's sequence by feeding predictions back in, after a few real seed events.                                                                                                                           |
+| Correct prefix                                               | Number of generated events that are correct before the first error.                                                                                                                                                   |
+| TV distance                                                  | Difference between generated and real activity-class proportions; 0 means identical.                                                                                                                                  |
+| BC / IRL                                                     | Behaviour cloning (learn actions directly from data) / inverse reinforcement learning (infer the reward behind the behaviour). Not fitted here.                                                                       |
 
 ## Outline of the analysis
 
@@ -123,19 +131,43 @@ prediction on held-out shifts (80/20 by shift, seed `20260813`):
 
 - Targets: next activity class; next room observation (repeats kept); next
   room change (repeats collapsed). Door points are not rooms here.
-- Models: majority, then count-based models with a growing state. For class,
-  add in turn: current class, previous class, time and role, roster unit. For
-  rooms: current room, previous room, time, role, activity class and unit.
-- Unseen states fall back to the overall top-3.
+- Each model counts next values per exact state in the training pairs and
+  predicts the most frequent (ties broken alphabetically); top-3 is the three
+  most frequent. Test states never seen in training fall back to the overall
+  top-3 from training.
 - Subgroups: role and roster unit with at least 30 shifts and 100 test pairs,
-  for both room targets.
-- Outputs include `pooled_learnability.csv`, `subgroup_learnability.csv`,
-  `entropy_summary.csv` and `LEARNABILITY_REPORT.md`.
+  for both room tasks, using `majority`, `markov_current_room` and
+  `full_context`.
+
+Models (labels as in the output files):
+
+| Model                                                        | `next_class` state                                         | Room tasks state                                                         |
+| ------------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `majority`                                                   | none                                                       | none                                                                     |
+| `markov_current_class` / `markov_current_room`               | current class                                              | current room                                                             |
+| `current_plus_previous_class` / `current_plus_previous_room` | current and previous class                                 | current and previous room                                                |
+| `plus_time_role` (class) / `plus_time` (room)                | current and previous class, time bucket, role              | current and previous room, time bucket                                   |
+| `plus_role` (room only)                                      | n/a                                                        | current and previous room, time bucket, role                             |
+| `full_context`                                               | current and previous class, time bucket, role, roster unit | current and previous room, time bucket, role, current class, roster unit |
+
+Output files and columns:
+
+- `pooled_learnability.csv`: `task`, `population` (`pooled`), `model`,
+  `train_pairs`, `test_pairs`, `train_shifts`, `test_shifts`, `top1`, `top3`,
+  `unseen_state_fraction` (always 0 for `majority`).
+- `subgroup_learnability.csv`: the same, plus `group_type` (`role` or
+  `roster_unit`), `group_value` and `group_shifts_total`.
+- `entropy_summary.csv`: per task, `conditioning_state` (current class or
+  room), `H_action_bits`, `H_action_given_state_bits`,
+  `information_gain_bits`. Calculated on all pairs, not held out.
+- `quality_summary.csv`: counts of events, shifts, staff, resolved events,
+  overlapping intervals and pairs per task.
+- `LEARNABILITY_REPORT.md` and figures `01`–`05` summarise the above.
 
 ### 6. Free-running rollout
 
-`AMR_HUB_Free_Running_Rollout.ipynb`. Same split and models as step 5 for the
-next class. Each test shift is seeded with its first two real classes; the
+`AMR_HUB_Free_Running_Rollout.ipynb`. Same split and the five `next_class`
+models from step 5. Each test shift is seeded with its first two real classes; the
 rest is generated. Role and unit are given; the time bucket comes from the real
 event times, so timing is not generated. Reports rollout accuracy, exact
 match, correct prefix, unseen-state fraction and TV distance, and compares
