@@ -15,7 +15,19 @@ building:
             - door2
 
         - name: Corridor
-          area: 5
+          area: 8
           doors:
             - door1
             - door2
+            - door3
+            - door4
+
+        - name: WC
+          area: 9
+          doors:
+            - door3
+
+        - name: Restaurant
+          area: 9
+          doors:
+            - door4
