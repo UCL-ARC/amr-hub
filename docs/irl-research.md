@@ -6,8 +6,9 @@
 - We found no published IRL or imitation-learning study of hospital staff movement. Hospital transmission models replay sensor contacts, build contact networks from sensors or electronic medical record (EMR) logins, or use rule-based staff profiles.
 - In mobility research, IRL gains over simple baselines are modest. A first-order Markov chain matched or beat IRL and adversarial imitation on simple, well-sampled route data [1]. The main argument for IRL is transfer to new layouts or policies, and a 2026 review (preprint) finds that evidence weak [2].
 - Our data are offline, partially observed and irregularly timed. Our first build should be an empirical semi-Markov kernel (next room plus dwell time), conditioned on role, unit and time. If IRL is tried, it should be a tabular or linear-feature maximum causal entropy (MCE) model, estimated as a logit dynamic discrete choice (DDC) model on the room graph, with a hidden-room layer and a separate dwell model. GAIL and AIRL need simulator rollouts and do not suit our data.
-- IRL should be adopted only if it matches the kernel on held-out likelihood, beats it on leave-one-unit-out transfer, and reproduces the contact heterogeneity that drives transmission.
-- A later multi-agent stage would train staff agents together in the ABM with the learned rewards: IPPO with one shared policy per role first, MAPPO if coordination matters, run through a PettingZoo wrapper of the ABM with RLlib or BenchMARL.
+- Recommendation: IRL is not recommended for this data at this stage. For next activity class, local history already explains almost all of the structure we can measure (88.6% top-1 with current and previous class, 88.7% with time, role and unit added); the spatial data is too incomplete for location rewards to be identified; and two roster units are not enough to test transfer. Next-room results are not yet recorded, so this is a judgement on the data we have.
+- The proposed route is an empirical semi-Markov model first, then forward RL with a specified (not learned) reward, once the agent state includes room, current and next task, time of shift, role and nearby task demand. Staff agents would be trained in the ABM with PPO/IPPO (MAPPO if coordination matters) through a PettingZoo wrapper, and checked against held-out logs.
+- IRL can be revisited if door direction is resolved, workstation mapping improves and data from more than one layout are available.
 
 ## Background
 
@@ -120,7 +121,7 @@ Evaluation should be offline, split at the level of whole shifts, staff and unit
 - **Predictive:** held-out log-likelihood and perplexity of the observed event sequence (hidden rooms marginalised), plus top-k accuracy for next room change.
 - **Generative:** roll out full shifts and compare with held-out data by JSD on dwell-time distributions, visits per room per shift, transition matrices, door-event rates and rooms visited per shift. Do not rely on BLEU-type metrics, which saturate [1].
 - **Infection-relevant:** per-worker distributions of patient-room visits and co-location with other workers, and the share of contacts held by the most mobile workers. Compare against the logs; use published figures [27, 28] only as plausibility checks.
-- **Transfer:** leave-one-unit-out. This is where IRL must beat the kernel to justify itself.
+- **Transfer:** leave-one-unit-out. This is where IRL or RL must beat the kernel to justify itself.
 - **Synthetic recovery:** generate logs from the ABM with a known reward, apply our observation process (drop rooms, strip door direction, irregular timestamps), and check reward recovery with EPIC [37] and policy recovery with likelihood.
 - **Reporting:** standard errors from DDC estimation, repeated seeds and a fixed tuning budget for every model [2].
 
@@ -128,17 +129,36 @@ Decision rule: if IRL does not beat a second-order kernel on held-out likelihood
 
 ## Recommendations based on literature
 
-| Stage | Work                                                                                                           | Go / no-go                                                                      |
-| ----- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| 1     | Next-room-change learnability on resolved rooms; staff-held-out test                                           | Is room-level context beyond current/previous room informative?                 |
-| 2     | Empirical semi-Markov kernel (role × unit × time, back-off) plus dwell hazard; room-change rollouts in the ABM | Do rollouts match dwell, visit and contact distributions?                       |
-| 3     | Hidden-room HMM with door and workstation emissions, fitted by EM; re-estimate kernel                          | Does likelihood of observed events improve over complete-case fitting?          |
-| 4     | Synthetic recovery study in the ABM                                                                            | Can rewards and policies be recovered through our observation process?          |
-| 5     | Linear-feature MCE IRL / logit DDC on the room graph, inside the same EM and dwell model                       | Matches kernel in-layout; beats it on leave-one-unit-out                        |
-| 6     | Use for counterfactual layouts, with uncertainty and stated caveats                                            | Only if stage 5 passes                                                          |
-| 7     | Multi-agent training in the ABM (IPPO, then MAPPO) with the stage 5 rewards                                    | Trained agents still match held-out distributions before any counterfactual use |
+IRL is not recommended at this stage, for four reasons:
 
-### Suggested model design
+1. For next activity class, low-order history explains almost all the measurable structure: top-1 is about 76% for the majority class, 88.6% with current and previous class, and 88.7% with time, role and unit added. The context an IRL reward would weight adds about 0.1 points. This is a result for activity class; next-room results are not yet recorded.
+2. Rewards over locations would be poorly identified: workstation mapping is partial (13 of 36), door messages carry no direction and many events have no room.
+3. Even with complete data, the reward is identified only up to an equivalence class unless behaviour is seen under different dynamics [7, 8]. Two roster units are not enough to test transfer, which is the main reason to prefer IRL over a transition model.
+4. There is no published precedent for hospital staff movement, and in mobility studies simple Markov models match IRL except on complex data [1, 2].
+
+The plan below therefore uses an empirical model for movement and, where behaviour has to respond to new conditions, forward RL with a specified reward. IRL is kept as an optional branch.
+
+| Stage    | Work                                                                                                           | Go / no-go                                                                                                            |
+| -------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| 1        | Next-room-change learnability on resolved rooms; staff-held-out test                                           | Is room-level context beyond current/previous room informative?                                                       |
+| 2        | Empirical semi-Markov kernel (role × unit × time, back-off) plus dwell hazard; room-change rollouts in the ABM | Do rollouts match dwell, visit and contact distributions?                                                             |
+| 3        | Hidden-room HMM with door and workstation emissions, fitted by EM; re-estimate kernel                          | Does likelihood of observed events improve over complete-case fitting?                                                |
+| 4        | Forward RL with a specified reward, one shared policy per role (PPO)                                           | Do rollouts match held-out distributions as well as the stage 2 kernel?                                               |
+| 5        | Multi-agent training in the ABM (IPPO, then MAPPO)                                                             | Same check, plus contact heterogeneity across staff                                                                   |
+| 6        | Counterfactual runs (layouts, staffing, isolation rules), with uncertainty and stated caveats                  | Only if stage 4 or 5 passes                                                                                           |
+| Optional | Synthetic recovery study, then linear-feature MCE IRL / logit DDC inside the same EM and dwell model           | Only if door direction, workstation mapping and multi-layout data improve; must beat the kernel on leave-one-unit-out |
+
+### Forward RL with a specified reward
+
+Instead of learning the reward from the logs, specify it and use the logs to check the result. The reward is then explicit and open to review, and the assumptions sit in a few named terms rather than in an unidentified reward.
+
+- State: current room on the floorplan graph, current activity or task and the next task in the queue, time of shift, role, and task demand in nearby rooms (for example patients needing care).
+- Actions: move to an adjacent room, stay, or start the next task.
+- Reward: task completion minus travel cost, with a small penalty for idle time. Weights are tuned so that rollouts match held-out dwell, visit and transition distributions; this is calibration, not inference of staff preferences.
+- Infection outcomes stay out of the reward when the aim is to reproduce current behaviour.
+- The specified reward encodes our assumptions about what drives movement. If calibrated rollouts cannot match the held-out distributions, the reward or the state is missing something, and the stage 2 kernel remains the movement model.
+
+### Suggested IRL model design (if revisited)
 
 - **States:** rooms on the ABM floorplan graph, plus activity class and a time-of-shift bin. Keep it tabular.
 - **Actions:** move to an adjacent room through a door, or stay. Transitions are deterministic given the floorplan.
@@ -155,25 +175,25 @@ Decision rule: if IRL does not beat a second-order kernel on held-out likelihood
 
 ### The gap
 
-We found no IRL study of hospital staff movement or of EHR, login or door-access logs. The work would be novel but unproven, and the case for IRL over a kernel rests on transfer, which is weakly evidenced. IRL should be a stage-5 experiment with a clear exit, not the default movement model.
+We found no IRL study of hospital staff movement or of EHR, login or door-access logs. The work would be novel but unproven, and the case for IRL over a kernel rests on transfer, which is weakly evidenced. IRL is therefore an optional branch with a clear exit, not part of the main plan.
 
 ## Multi-agent RL stage
 
-The step after IRL was to train staff agents together in the ABM, using the learned rewards, so that simulated staff respond to changes the logs never show, such as new layouts, staffing levels or isolation rules. Staff share rooms and patients, so one person's movement changes what others face. That makes it a Markov game rather than a single-agent problem.
+Stage 5 trains staff agents together in the ABM with the specified reward, so that simulated staff respond to changes the logs never show, such as new layouts, staffing levels or isolation rules. Staff share rooms and patients, so one person's movement changes what others face. That makes it a Markov game rather than a single-agent problem.
 
 ### Algorithms
 
 - PPO is the single-agent policy-gradient method most multi-agent work builds on. It limits each policy update with a clipped objective [40].
 - IPPO runs PPO separately for each agent, with its own value function, and treats the other agents as part of the environment. On the StarCraft Multi-Agent Challenge it matched or beat joint-learning methods with little tuning [41]. With one shared policy per role, it fits staff agents of the same type.
 - MAPPO adds a centralised critic that sees the full state during training, while each agent still acts on its own observations at run time. It performed strongly across four cooperative benchmarks, and the authors recommend fewer training epochs per batch than single-agent PPO [42].
-- MA-AIRL extends adversarial IRL to Markov games and recovers a reward per agent [43]. Like AIRL it needs environment rollouts, so it only becomes usable once the ABM has been validated against the logs.
+- MA-AIRL extends adversarial IRL to Markov games and recovers a reward per agent [43]. Like AIRL it needs environment rollouts, so it only becomes usable once the ABM has been validated against the logs, and only if IRL is revisited.
 
 ### Suggested set-up
 
 - Agents are staff, grouped by role, with parameters shared within a role.
 - Observations: current room, next task, time of shift, occupancy of nearby rooms and patient status where the ABM has it.
-- Actions: the same as the IRL design (move to an adjacent room or stay), so the stage 5 rewards plug in directly.
-- Rewards: the IRL reward for each role plus task-completion terms. Infection outcomes should stay out of the staff reward if the aim is to reproduce current behaviour; putting them in turns the model into an optimisation of behaviour, which is a separate question.
+- Actions: move to an adjacent room, stay, or start the next task, as in the single-agent design.
+- Rewards: the specified reward for each role (task completion, travel cost, idle time). If IRL is revisited, a learned reward can replace it. Infection outcomes should stay out of the staff reward if the aim is to reproduce current behaviour; putting them in turns the model into an optimisation of behaviour, which is a separate question.
 - Start with IPPO and shared role policies, and move to MAPPO only if coordination between staff, such as covering bays, matters to the results.
 
 ### Engine
