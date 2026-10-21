@@ -1,0 +1,7 @@
+# Builds on an existing image with Python and duckdb (for offline builds).
+ARG BASE_IMAGE=amr-activity-exploration:latest
+FROM ${BASE_IMAGE}
+
+WORKDIR /app
+COPY generate_learnability_analysis.py /app/generate_learnability_analysis.py
+ENTRYPOINT ["python", "/app/generate_learnability_analysis.py"]
