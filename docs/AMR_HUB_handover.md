@@ -8,6 +8,21 @@ simulator: whether the electronic records can be turned into staff
 trajectories with a usable spatial frame, and whether those trajectories have
 enough sequential structure to learn from.
 
+The engine that runs RL algorithms in a simulation, or IRL can be described as:
+
+[a](current agent state) --(b)---> [next agent state]
+
+Main goal of these set of analyses were to:
+
+(a) Understand the "informative" states that should be saved and passed as the (state,action) pair in any simulation. These variables either can go through an ABM based logic or an ML algorithm
+
+(b) Decide what kind of algorithm is minimally sufficient to inform a policy/behaviour strategy that is
+
+1. natural/similar to human movement
+2. intelligent to learn and operate within new constraints ex infection spread
+
+One main idea here was to explore the possibility of training an Inverse-Reinforcement Learning algorithm that could, given our discovery in (a) and that it has a spatial correspondence, could be implemented as a "policy" in the AMR simulation being built, with general variables of interest for what reward functions would likely include, that would rollout with the existing TRE data, to recover the best reward function that would explain this TRE data. More on the idea behind, and eventually we didn't implement IRL, is covered in another document (shared in PR #219).
+
 ## Glossary
 
 | Term                                                         | Meaning                                                                                                                                                                                                               |
