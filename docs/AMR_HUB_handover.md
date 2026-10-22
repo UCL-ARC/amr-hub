@@ -215,19 +215,6 @@ pairs, otherwise global). Also Markov matrices by time, role and unit.
 - Spatial learnability and rollout results are in the TRE and are not
   reproduced here.
 
-## What's next
-
-1. Re-run and record the spatial rows of `pooled_learnability.csv` and the
-   rollout results.
-2. Next-room-change learnability, including role and unit subgroups. This
-   shows whether movement depends on context.
-3. Room-change rollouts.
-4. A staff-held-out test, so the same person is never in train and test.
-5. Decide on IRL. If context adds little beyond the previous room, an
-   empirical transition table plus dwell times is enough for the simulator;
-   if role or time clearly matter, IRL over those features is justified.
-6. Add a model for event timing and dwell time.
-
 Not in the repository and would need recovering: the trigram clustering stage,
 the door network figure script, the door → ABM export scripts
 (`legacy/amr_hub_door_to_abm_timeseries.py`, `legacy/amr_hub_door_matching_only.py`; the
