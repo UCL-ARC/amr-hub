@@ -57,15 +57,15 @@ flowchart LR
     LA --> AD[Advanced demo:<br/>seed length, context splits]
 ```
 
-| Step                    | Question                                                  | Folder or file in `learning-from-data/`                      |
-| ----------------------- | --------------------------------------------------------- | ------------------------------------------------------------ |
-| 1. Progress report      | Can shifts be rebuilt and events placed in rooms?         | `amr_hub_progress_report/`                                   |
-| 2. Door exploration     | Are door messages a usable movement signal?               | `amr_hub_door_jupyter_existing/`                             |
-| 3. Activity exploration | What do activity mix and transitions look like?           | `amr_hub_activity_exploration/`                              |
-| 4. Trigram clustering   | Do shifts fall into distinct groups?                      | `amr_hub_cluster_meeting/` (trigram stage not in repo)       |
-| 5. Learnability         | Can the next class or room be predicted on unseen shifts? | `amr_hub_learnability_bundle/`                               |
-| 6. Free-running rollout | Do predictions hold up when fed back in?                  | `AMR_HUB_Free_Running_Rollout.ipynb`                         |
-| 7. Advanced demo        | Does more seed history or a context-specific policy help? | `amr_hub_advanced_demo/`, `AMR_HUB_Advanced_RISE_Demo.ipynb` |
+| Step                    | Question                                                  | Folder or file in `learning-from-data/`                             |
+| ----------------------- | --------------------------------------------------------- | ------------------------------------------------------------------- |
+| 1. Progress report      | Can shifts be rebuilt and events placed in rooms?         | `legacy/amr_hub_progress_report/`                                   |
+| 2. Door exploration     | Are door messages a usable movement signal?               | `legacy/amr_hub_door_jupyter_existing/`                             |
+| 3. Activity exploration | What do activity mix and transitions look like?           | `legacy/amr_hub_activity_exploration/`                              |
+| 4. Trigram clustering   | Do shifts fall into distinct groups?                      | `legacy/amr_hub_cluster_meeting/` (trigram stage not in repo)       |
+| 5. Learnability         | Can the next class or room be predicted on unseen shifts? | `legacy/amr_hub_learnability_bundle/`                               |
+| 6. Free-running rollout | Do predictions hold up when fed back in?                  | `AMR_HUB_Free_Running_Rollout.ipynb`                                |
+| 7. Advanced demo        | Does more seed history or a context-specific policy help? | `legacy/amr_hub_advanced_demo/`, `AMR_HUB_Advanced_RISE_Demo.ipynb` |
 
 ## Data preparation
 
@@ -93,7 +93,7 @@ flowchart LR
 
 ### 1. Progress report
 
-`amr_hub_progress_report/generate_progress_report.py`. Rebuilds shifts and
+`legacy/amr_hub_progress_report/generate_progress_report.py`. Rebuilds shifts and
 summarises staff, shifts, units, durations and date range; audits door and
 workstation references; infers the workstation crosswalk (`--window-min`,
 `--min-support`, `--min-share`); reports mapping coverage and one example
@@ -103,7 +103,7 @@ with step 5).
 
 ### 2. Door exploration
 
-`amr_hub_door_jupyter_existing/`. Door messages per shift and per rostered
+`legacy/amr_hub_door_jupyter_existing/`. Door messages per shift and per rostered
 hour, door count vs shift length, minutes and non-door events between
 consecutive doors, and a door-to-door transition matrix. Messages are not
 deduplicated by default (`--door-dedupe-seconds 0`). The separate network
@@ -111,7 +111,7 @@ figure script is not in the repository.
 
 ### 3. Activity exploration
 
-`amr_hub_activity_exploration/`. Events per hour, activity mix per shift,
+`legacy/amr_hub_activity_exploration/`. Events per hour, activity mix per shift,
 distinct locations, location changes per hour, class transition probabilities
 (pooled and per shift), and location transitions (repeats of the same location
 ignored; heatmap of the top 20 locations).
@@ -120,13 +120,13 @@ ignored; heatmap of the top 20 locations).
 
 The trigram stage (not in the repository) represented each shift by its
 trigram proportions (shifts with at least 10 trigrams), ran K-means for
-`k = 2–6` and compared Calinski–Harabasz scores. `amr_hub_cluster_meeting/`
+`k = 2–6` and compared Calinski–Harabasz scores. `legacy/amr_hub_cluster_meeting/`
 reads those outputs and draws a 2-D embedding, transition matrices per cluster
 and transition concentration.
 
 ### 5. Learnability
 
-`amr_hub_learnability_bundle/`. Builds the canonical dataset, then tests
+`legacy/amr_hub_learnability_bundle/`. Builds the canonical dataset, then tests
 prediction on held-out shifts (80/20 by shift, seed `20260813`):
 
 - Targets: next activity class; next room observation (repeats kept); next
@@ -175,7 +175,7 @@ them with one-step accuracy.
 
 ### 7. Advanced demo
 
-`amr_hub_advanced_demo/`. Rollouts with **1, 2, 3, 5 and 10** seed events,
+`legacy/amr_hub_advanced_demo/`. Rollouts with **1, 2, 3, 5 and 10** seed events,
 global policies for all five class models, and policies fitted separately by
 time bucket, role or unit (only for segments with at least **1,000** training
 pairs, otherwise global). Also Markov matrices by time, role and unit.
@@ -215,10 +215,10 @@ pairs, otherwise global). Also Markov matrices by time, role and unit.
 
 Not in the repository and would need recovering: the trigram clustering stage,
 the door network figure script, the door → ABM export scripts
-(`amr_hub_door_to_abm_timeseries.py`, `amr_hub_door_matching_only.py`; the
+(`legacy/amr_hub_door_to_abm_timeseries.py`, `legacy/amr_hub_door_matching_only.py`; the
 door crosswalk was never completed) and `AMR_HUB_RISE_Demo.ipynb`. The door
 code parser also exists in the simulation package as
-`amr_hub_abm.data_ingestion.door_mapping.read_door_mapping()`.
+`legacy/amr_hub_abm.data_ingestion.door_mapping.read_door_mapping()`.
 
 ## Running the analyses
 
@@ -240,9 +240,10 @@ Order: progress report → activity exploration and learnability → rollout
 notebook and advanced demo. Dockerfiles for activity exploration, cluster
 summary and advanced demo were rebuilt from the TRE images' build history.
 
-The five folders `activity_exploration/`, `sequence_clustering/`,
-`learnability/`, `rollout_analysis/` and `door_matching/` are short simplified
-versions, not reproductions. They expect `iclass` and `event_time` columns
+The original scripts above are in `learning-from-data/legacy/`. The top-level
+folders `activity_exploration/`, `sequence_clustering/`, `learnability/`,
+`rollout_analysis/` and `door_matching/` are short one-script-per-image
+versions of these analyses, not exact reproductions. They expect `iclass` and `event_time` columns
 (the canonical dataset has `interaction_class` and no timestamps by default),
 use seed `42`, and leave out the trigram minimum, top-3, subgroups, the
 1,000-pair minimum and door points.
