@@ -1,0 +1,5 @@
+# Docker image exports are large and are rebuilt from the Dockerfiles.
+*.tar
+__pycache__/
+.DS_Store
+.ruff_cache/
