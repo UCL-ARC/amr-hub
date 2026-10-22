@@ -97,12 +97,12 @@ flowchart LR
 - Raw staff IDs stay in DuckDB. The canonical dataset has no absolute
   timestamps unless `--include-timestamps` is set.
 
-| Source       | Mapping                                                                                  | Limitation                                      |
-| ------------ | ---------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| Flowsheet    | `SourceKey` → `Ref.Department.RoomName`, stored as `room:<NAME>`                         | Only direct room mapping                        |
-| Workstation  | Crosswalk: flowsheet rooms by the same person within ±10 min; support ≥ 20, share ≥ 0.60 | Partial: 13 of 36 mapped in the exploratory run |
-| Door Message | Code parsed from `DoorName`, stored as a door point                                      | 12 of 13 doors had a code; no direction         |
-| Other        | Kept as events with no location                                                          | Excluded from spatial analyses                  |
+| Source       | Mapping                                                                                                        | Limitation                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Flowsheet    | `SourceKey` → `Ref.Department.RoomName`, stored as `room:<NAME>`                                               | Only direct room mapping                        |
+| Workstation  | Crosswalk: flowsheet rooms by the same person within ±10 min; support ≥ 20 in all data, share of a room ≥ 0.60 | Partial: 13 of 36 mapped in the exploratory run |
+| Door Message | Code parsed from `DoorName`, stored as a door point                                                            | 12 of 13 doors had a code; no direction         |
+| Other        | Kept as events with no location                                                                                | Excluded from spatial analyses                  |
 
 ## Analyses
 
