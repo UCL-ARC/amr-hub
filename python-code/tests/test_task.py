@@ -5,6 +5,7 @@ import pytest
 
 from amr_hub_abm.agent.agent import Agent
 from amr_hub_abm.agent.enums import AgentType
+from amr_hub_abm.agent.kinematics import MovementStrategy
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.spatial.building import Building
 from amr_hub_abm.spatial.door import Door
@@ -516,6 +517,34 @@ def test_occupy_content_task_waits_for_reserved_content(
 
     assert perform_to_be_started_task(sample_agent, 30, sample_engine)
     assert later_task.progress == TaskProgress.IN_PROGRESS
+
+
+def test_deadline_paced_strategy_moves_early_and_adjusts_speed(
+    sample_agent: Agent, sample_engine: SpatialQuery
+) -> None:
+    """Deadline pacing starts immediately and targets the task's start deadline."""
+    sample_agent.location = Location(building="A", floor=0, x=1.0, y=1.0)
+    sample_agent.movement_speed = 0.5
+    sample_agent.base_movement_speed = 0.5
+    sample_agent.movement_strategy = MovementStrategy.DEADLINE_PACED
+    task = Task(
+        time_needed=1,
+        time_due=10,
+        location=Location(building="A", floor=0, x=2.0, y=1.0),
+    )
+    sample_agent.tasks = [task]
+
+    assert perform_to_be_started_task(sample_agent, 0, sample_engine)
+
+    assert task.progress == TaskProgress.MOVING_TO_LOCATION
+    assert sample_agent.movement_speed == pytest.approx(1.0 / 9.0)
+
+    sample_agent.location = Location(building="A", floor=0, x=1.5, y=1.0)
+    sample_agent.update_movement_speed_for_task(task, current_time=8)
+    assert sample_agent.movement_speed == pytest.approx(0.5)
+
+    sample_agent.update_movement_speed_for_task(task, current_time=9)
+    assert sample_agent.movement_speed == sample_agent.base_movement_speed
 
 
 def test_occupy_content_task_selects_another_available_chair(

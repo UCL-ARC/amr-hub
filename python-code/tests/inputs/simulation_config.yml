@@ -9,6 +9,7 @@ location_data:
 buildings_path: tests/inputs/buildings.yml # Path to buildings geojson file
 
 agent_movement_speed: 0.01 # Agent movement speed in units per time step
+agent_movement_strategy: deadline_paced # fixed or deadline_paced
 agent_stochasticity: 0.5 # Degrees of randomness applied to agent heading each step
 agent_interaction_radius: 0.01 # Distance within which an agent is considered to have reached a target
 agent_max_movement_attempts: 5 # Max attempts to find a movement step that avoids wall intersections
@@ -29,7 +30,7 @@ time_needed_door_access: 1 # Timesteps needed for a healthcare worker to access 
 time_needed_workstation: 30 # Timesteps needed for a healthcare worker to use a workstation
 time_needed_occupy_content: 10 # Timesteps needed for a healthcare worker to occupy content (e.g. a bed, a chair, etc.)
 
-start_time: 2024-01-01 07:00:00
-end_time: 2024-01-01 19:00:00
+start_time: 2024-01-01 06:55:00
+end_time: 2024-01-01 19:05:00
 
 length_of_timestep_in_seconds: 1 # Length of each timestep in seconds (e.g., 900 seconds = 15 minutes)

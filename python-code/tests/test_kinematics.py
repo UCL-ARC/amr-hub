@@ -2,7 +2,7 @@
 
 import pytest
 
-from amr_hub_abm.agent.kinematics import AgentKinematicsConfig
+from amr_hub_abm.agent.kinematics import AgentKinematicsConfig, MovementStrategy
 from amr_hub_abm.exceptions import InvalidDefinitionError
 
 
@@ -28,6 +28,28 @@ def test_from_config_builds_expected_values(
     assert kinematics.stochasticity == 5.0
     assert kinematics.interaction_radius == 0.01
     assert kinematics.max_movement_attempts == 5
+    assert kinematics.movement_strategy is MovementStrategy.FIXED
+
+
+def test_from_config_reads_movement_strategy(
+    valid_config_data: dict[str, object],
+) -> None:
+    """Test that a configured movement strategy is parsed."""
+    valid_config_data["agent_movement_strategy"] = MovementStrategy.DEADLINE_PACED.value
+
+    kinematics = AgentKinematicsConfig.from_config(valid_config_data)
+
+    assert kinematics.movement_strategy is MovementStrategy.DEADLINE_PACED
+
+
+def test_from_config_rejects_unknown_movement_strategy(
+    valid_config_data: dict[str, object],
+) -> None:
+    """Test that an unknown movement strategy is rejected."""
+    valid_config_data["agent_movement_strategy"] = "unknown"
+
+    with pytest.raises(InvalidDefinitionError, match="agent_movement_strategy"):
+        AgentKinematicsConfig.from_config(valid_config_data)
 
 
 def test_from_config_is_frozen(valid_config_data: dict[str, object]) -> None:

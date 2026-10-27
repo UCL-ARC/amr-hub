@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from amr_hub_abm.agent.kinematics import MovementStrategy
 from amr_hub_abm.config import sim_config
 from amr_hub_abm.task.task import TaskProgress
 
@@ -107,30 +108,38 @@ def perform_to_be_started_task(
         return False
     assert task.location is not None  # noqa: S101
 
-    # Engine handles estimating travel distances!
-    task_move_time = (
-        task.time_due
-        - task.time_needed
-        - engine.estimate_time_to_reach_location(agent, task.location)
-    )
-    logger.info(
-        "Agent id %s next task move time: %s, current time: %s",
-        agent.idx,
-        task_move_time,
-        current_time,
-    )
-
-    if current_time < task_move_time:
-        task_durations = sim_config.task_durations
-
-        agent.attempt_task_insertion(
+    task_start_time = task.time_due - task.time_needed
+    if agent.movement_strategy == MovementStrategy.DEADLINE_PACED:
+        if current_time < task_start_time and agent.attempt_task_insertion(
             next_task=task,
-            next_task_move_time=task_move_time,
+            next_task_move_time=task_start_time,
             current_time=current_time,
             engine=engine,
-            task_durations=task_durations,
+            task_durations=sim_config.task_durations,
+        ):
+            return False
+    else:
+        # The fixed-speed strategy waits until it is time to leave for the task.
+        task_move_time = task_start_time - engine.estimate_time_to_reach_location(
+            agent, task.location
         )
-        return False
+        logger.info(
+            "Agent id %s next task move time: %s, current time: %s",
+            agent.idx,
+            task_move_time,
+            current_time,
+        )
+
+        if current_time < task_move_time:
+            task_durations = sim_config.task_durations
+            agent.attempt_task_insertion(
+                next_task=task,
+                next_task_move_time=task_move_time,
+                current_time=current_time,
+                engine=engine,
+                task_durations=task_durations,
+            )
+            return False
 
     if not task.on_dispatch(agent=agent):
         return True
