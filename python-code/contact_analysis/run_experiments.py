@@ -56,10 +56,10 @@ def pair_type(agent_a: str, agent_b: str) -> str:
 
 
 def run_one(
-    args: tuple[MovementStrategy, bool, int, int],
+    args: tuple[MovementStrategy, bool, int, int, Path | None],
 ) -> dict[str, str | int | float]:
     """Run one seeded simulation and return its pair-type contact metrics."""
-    strategy, stochastic, replicate, step_seconds = args
+    strategy, stochastic, replicate, step_seconds, location_path = args
     base_kinematics = sim_config.agent_kinematics
     kinematics = replace(
         base_kinematics,
@@ -69,6 +69,11 @@ def run_one(
     config = replace(
         sim_config,
         agent_kinematics=kinematics,
+        location_data=(
+            sim_config.location_data
+            if location_path is None
+            else replace(sim_config.location_data, path=location_path)
+        ),
         config_data={
             **sim_config.config_data,
             "length_of_timestep_in_seconds": step_seconds,
@@ -130,6 +135,12 @@ def main() -> None:
     parser.add_argument("--step-seconds", type=int, default=1)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument(
+        "--location-path",
+        type=Path,
+        default=None,
+        help="Override the DuckDB location timeseries from the config.",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=Path("contact_analysis/results/contact_pair_types.csv"),
@@ -137,7 +148,7 @@ def main() -> None:
     args = parser.parse_args()
 
     jobs = [
-        (strategy, stochastic, replicate, args.step_seconds)
+        (strategy, stochastic, replicate, args.step_seconds, args.location_path)
         for strategy, stochastic in CASES
         for replicate in range(args.replicates)
     ]
