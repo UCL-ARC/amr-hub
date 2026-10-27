@@ -50,3 +50,37 @@ Run order: progress report → activity exploration and learnability → advance
 demo and rollout notebook. Each folder's README or script `--help` lists its
 options. The canonical dataset used above is produced by
 `legacy/amr_hub_learnability_bundle/`.
+
+## Testing with synthetic data
+
+`python-code/data_analysis/make_synthetic_db.py` (on `main`) writes a synthetic
+DuckDB file in the same schema as the TRE extract (`Data.StaffLocationEvent`
+and the `Ref.*` tables). It can be used to check that the images run before
+they go through the airlock. The results say nothing about real staff
+behaviour; the generator follows its own fixed rules.
+
+```bash
+cd python-code
+uv run python data_analysis/make_synthetic_db.py --out ../synthetic/synthetic_amr.duckdb
+cd ..
+docker run --rm -v "$PWD/synthetic:/data:ro" -v "$PWD/outputs:/outputs" \
+  --entrypoint /app/run_progress_report.sh amr-bc-jupyter-report
+docker run --rm -v "$PWD/synthetic:/data:ro" -v "$PWD/outputs:/outputs" \
+  amr-learnability:latest
+```
+
+Options: `--n-staff`, `--n-days`, `--seed`, and `--noisy-fraction` (share of
+staff with random room order instead of a fixed rotation).
+
+The legacy progress report and learnability scripts run on it without changes.
+Things to expect:
+
+- The synthetic door names ("Corridor - Bay1") have no door code, so no door
+  points are built and door events stay unresolved.
+- The mobile workstation cart is meant to stay unresolved in the workstation
+  crosswalk; only the fixed bay workstation gets placed.
+- The scripts in the top-level folders read `canonical_events.parquet`, not the
+  database. Run the learnability bundle with `--include-timestamps` first and
+  rename `interaction_class` to `iclass` before using them.
+
+Keep `synthetic/` and `outputs/` out of git.
