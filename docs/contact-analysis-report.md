@@ -9,7 +9,7 @@ agent-based model and examines how simulated contact patterns scale with the
 number of healthcare workers (HCWs). Thirty seeded replicates were run for
 each combination of movement strategy (fixed speed, deadline-paced), movement
 stochasticity (on, off) and HCW count (2, 4, 6, 8, 16, 24 and 32), giving 840
-runs on a synthetic fixture. Contact volume grows far faster than staffing:
+runs on a synthetic scenario. Contact volume grows far faster than staffing:
 a 16-fold increase in HCWs (2 to 32) increased contact observations by about
 63-79 times, driven by HCW-HCW pairs. Deadline-paced movement produced fewer
 contact observations than fixed-speed movement at every HCW count, but the
@@ -35,10 +35,10 @@ contact only.
 
 ### 2.1 Simulation set-up
 
-All runs use the synthetic fixture in `python-code/tests/inputs/`: a single
+All runs use the synthetic scenario in `python-code/tests/inputs/`: a single
 building layout, 4 patients and a simulation window of 06:55-19:05 with a
-1-second timestep. Two contacts are recorded when a pair of agents is within
-the contact-distance threshold (0.1) at a recorded timestep; pairs located in
+1-second timestep. One contact is recorded when a pair of agents is within
+the contact-distance threshold (0.1 metres) at a recorded timestep; pairs located in
 different known rooms are excluded. Episodes are maximal consecutive runs of
 contact for a pair, and durations are converted to seconds using the timestep.
 
@@ -49,12 +49,12 @@ contact for a pair, and durations are converted to seconds using the timestep.
 | Fixed          | Agents move at the configured movement speed.                                      |
 | Deadline-paced | Speed is the remaining distance divided by the time to the task's scheduled start. |
 
-Each strategy was run with movement stochasticity on (configured value 0.5) and
+Each strategy was run with movement stochasticity (standard deviation of the variability of angular deviations) on (configured value 0.5) and
 off (0), giving four cases.
 
 ### 2.3 Staffing levels
 
-The 2-HCW condition is the original fixture. Larger conditions add synthetic
+The 2-HCW condition is the original scenario. Larger conditions add synthetic
 HCWs produced by `contact_analysis/generate_extra_hcws.py`; each performs
 workstation work, patient rounds on the existing patients, and occasional WC
 and restaurant visits. The same 4 patients are used in every condition. The
@@ -160,8 +160,8 @@ Key observations:
 
 ### 3.3 Detailed small-population results
 
-For the original fixture (2 HCWs, 4 patients) contact was almost entirely
-HCW-patient (97.3-98.6%); patient-patient contact did not occur. With 6 HCWs the
+For the original scenario (2 HCWs, 4 patients) contact was almost entirely
+HCW-patient (97.3-98.6%); patient-patient contact did not occur (See Table 3). With 6 HCWs the
 HCW-HCW share rose to 15-27%. Figures broken down by pair type are in
 `contact-counts-by-type.png`, `contact-duration-by-type.png`,
 `contact-episodes-by-type.png` and `contact-summary.png` (2 HCWs), with the
@@ -201,9 +201,9 @@ shared resources, while fixed-speed agents arrive early and wait elsewhere.
 
 ## 5. Limitations
 
-- The fixture is synthetic, with a single layout and only 4 patients; results
+- The scenario is synthetic, with a single layout and only 4 patients; results
   should not be generalised to real hospital populations or workflows.
-- Extra HCWs follow a generated schedule built for the fixture layout, and
+- Extra HCWs follow a generated schedule built for the scenario layout, and
   large counts over-subscribe shared resources (extra HCWs fall back to random
   points in the Staff Room when workstations are exhausted). High-HCW results
   show crowding effects rather than realistic staffing.
@@ -234,4 +234,4 @@ synthetic.
    by a diminishing margin as staffing increases.
 3. Deadline-paced movement shifts contact from HCW-patient to HCW-HCW pairs.
 4. Movement stochasticity has a smaller effect than strategy or staffing.
-5. Conclusions hold for the synthetic, over-subscribed fixture only.
+5. Conclusions hold for the synthetic, over-subscribed scenario only.
