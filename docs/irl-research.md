@@ -12,11 +12,37 @@
 
 ## Background
 
+### Why a reward function
+
+In the AMR-HUB model, staff agents move between rooms and carry out tasks, and
+that movement produces contacts and infection outcomes. The model is built from
+three kinds of input: floorplans for the space, routinely collected data for
+checkpoints and agent parameters, and infection data for infection parameters.
+
+The idea behind IRL was to close the loop between the model and the
+observations. Instead of replaying recorded movement, or sampling from a
+transition table fitted to it, each staff agent would act on a reward function:
+a score for what it is trying to achieve, such as reaching patients, finishing
+tasks and not walking further than needed. IRL would recover that reward from
+the observed trajectories, and the agents' behaviour would follow from it.
+
+The reason this matters is counterfactuals. A replay or a fitted transition
+table only reproduces behaviour under the conditions we observed. A reward can,
+in principle, be carried into situations we never observed, such as a new ward
+layout, different staffing, isolation rules or infection-aware behaviour, and
+the agents re-plan around the change. That is what would make it useful for
+testing interventions in the simulation.
+
+Whether this works depends on two things this work set out to check: whether
+the data contain enough structure to learn from, and whether a reward can be
+identified from the data we have. The rest of this document covers both, and
+why I recommend a simpler route first.
+
 ### IRL in brief
 
-IRL can be framed as recovering a reward from behaviour and dynamics (Ng and Russell), but can be ill-posed as many rewards fit under which every policy is optimal [3]. There are several tie-brakers to address situation, such as Abbeel and Ng assuming a reward linear in known features and match the expert's expected feature counts [4]. Maximum entropy (MaxEnt) IRL picks, among distributions that match those counts, the one with most entropy, so P(trajectory) ∝ exp(reward) and noisy, suboptimal behaviour keeps non-zero likelihood [5]. Maximum causal entropy extends this to stochastic dynamics and yields a softmax ("soft Bellman") policy [6]. Both classical algorithms need a known transition model and solve a soft value iteration in the inner loop.
+IRL can be framed as recovering a reward from behaviour and dynamics (Ng and Russell), but the problem is ill-posed: many rewards fit the same behaviour, including a zero reward under which every policy is optimal [3]. There are several tie-breakers for this; for example, Abbeel and Ng assume a reward linear in known features and match the expert's expected feature counts [4]. Maximum entropy (MaxEnt) IRL picks, among distributions that match those counts, the one with most entropy, so P(trajectory) ∝ exp(reward) and noisy, suboptimal behaviour keeps non-zero likelihood [5]. Maximum causal entropy extends this to stochastic dynamics and yields a softmax ("soft Bellman") policy [6]. Both classical algorithms need a known transition model and solve a soft value iteration in the inner loop.
 
-Even with infinite data, MaxEnt-type models identify the reward only up to potential-based shaping and a constant. Recovery up to a constant needs demonstrations under sufficiently different dynamics or discount factors [7]. Skalse et al. argue that the useful question is whether the remaining ambiguity matters for the downstream task [8]. For us, rovery is sensitive as this will be a prediction under a changed layout.
+Even with infinite data, MaxEnt-type models identify the reward only up to potential-based shaping and a constant. Recovery up to a constant needs demonstrations under sufficiently different dynamics or discount factors [7]. Skalse et al. argue that the useful question is whether the remaining ambiguity matters for the downstream task [8]. For us, recovery matters because the model would be used to predict behaviour under a changed layout.
 
 ### Project context
 
@@ -83,7 +109,7 @@ The consistent lesson is that heterogeneity in mobility between individual worke
 
 ### Partial observability
 
-IRL under occlusion, where the learner sees only part of the trajectory [31], than to POMDP-IRL, where the expert acts under uncertainty [32]. A practical design, which no paper implements in this exact form, is a hidden-room hidden Markov model (HMM) with event-specific emissions:
+Our case is closer to IRL under occlusion, where the learner sees only part of the trajectory [31], than to POMDP-IRL, where the expert acts under uncertainty [32]. A practical design, which no paper implements in this exact form, is a hidden-room hidden Markov model (HMM) with event-specific emissions:
 
 - a flowsheet or mapped workstation event emits a known room;
 - a door message emits "one of the two rooms adjacent to door d", so direction is resolved by neighbouring latent states;
