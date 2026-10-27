@@ -2,7 +2,7 @@
 
 Analysis scripts run inside the TRE. Images are built outside, exported with
 `docker save`, and imported through the airlock. Mount the data folder
-read-only at `/data` and an output folder at `/outputs`.
+read-only at `/data` and an output folder at `/outputs`. Refer to docker run scripts saved in the shared folders and ask Kieran.
 
 ## Analyses (one script per Docker image)
 
@@ -31,11 +31,11 @@ docker run --rm -v "$PWD/data:/data:ro" -v "$PWD/outputs:/outputs" <name>
 The notebooks `AMR_HUB_Free_Running_Rollout.ipynb` (reads
 `learnability_analysis/canonical_events.parquet`) and
 `AMR_HUB_Advanced_RISE_Demo.ipynb` (shows the advanced-demo figures) run in
-JupyterLab.
+JupyterLab. Notebooks are generally used more for exploratory analysis and visualisation purposes.
 
 ## Legacy
 
-`legacy/` holds the original TRE scripts that read the database directly:
+`legacy/` holds the original TRE scripts that read the database directly, and I might have more files in the TRE itself as there were iterations of the Docker and earlier code:
 
 | Folder                                  | Input                                      | Output folder                                               |
 | --------------------------------------- | ------------------------------------------ | ----------------------------------------------------------- |
