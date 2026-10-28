@@ -38,7 +38,7 @@ def extract_bed_location(
     value : str
         Bed identifier in ``NU##-##``, ``NN##-##``, or ``CB##-##`` form.
     room_codes : pandas.DataFrame
-        Lookup data with ``room_name``, ``ben_name``, and ``room_code`` columns.
+        Lookup data with ``room_name``, ``bed_name``, and ``room_code`` columns.
     building : str, default="E"
         Building name whose first initial forms the canonical room-code prefix.
     floor : int, default=2
@@ -58,7 +58,7 @@ def extract_bed_location(
         If a lookup room code is not in canonical ``X##XX###`` form.
 
     """
-    required_columns = {"room_name", "ben_name", "room_code"}
+    required_columns = {"room_name", "bed_name", "room_code"}
     missing_columns = required_columns.difference(room_codes.columns)
     if missing_columns:
         msg = f"Missing room-code columns: {', '.join(sorted(missing_columns))}"
@@ -71,7 +71,7 @@ def extract_bed_location(
     room = f"{_PREFIXES[match['prefix'].upper()]} {int(match['room_number'])}"
     bed = f"Cot {int(match['bed_number'])}"
     matches = room_codes.loc[
-        (room_codes["room_name"] == room) & (room_codes["ben_name"] == bed),
+        (room_codes["room_name"] == room) & (room_codes["bed_name"] == bed),
         "room_code",
     ]
     if matches.empty:

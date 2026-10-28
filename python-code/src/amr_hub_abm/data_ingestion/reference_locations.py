@@ -136,7 +136,7 @@ def resolve_patient_location_events(  # noqa: PLR0913
         columns={
             mapping_room_code_column: "room_code",
             mapping_room_column: "room_name",
-            mapping_bed_column: "ben_name",
+            mapping_bed_column: "bed_name",
         }
     )
     result = _initialise_result(events)
