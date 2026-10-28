@@ -61,7 +61,7 @@ def test_extract_bed_location_constructs_room_code() -> None:
     room_codes = pd.DataFrame(
         {
             "room_name": ["Cubicle 99"],
-            "ben_name": ["Cot 88"],
+            "bed_name": ["Cot 88"],
             "room_code": ["Q11ZZ999"],
         }
     )
