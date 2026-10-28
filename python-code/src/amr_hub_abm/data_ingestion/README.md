@@ -73,7 +73,10 @@ explicit mapping rule.
 The audit distinguishes missing or duplicate references
 (`reference_not_found`, `ambiguous_reference`), unparsable locations
 (`unparseable_location`), missing room-code mappings (`room_code_not_found`),
-and rooms that do not exist in the model (`room_not_in_model`). It also records
+conflicting room codes for the same bed (`ambiguous_bed_mapping`), and rooms
+that do not exist in the model (`room_not_in_model`). Duplicate mapping rows
+with the same room code are accepted; conflicting codes are excluded for manual
+review rather than resolved by row order. The audit also records
 missing room or door geometry, rooms without doors, and ambiguous door mappings
 (`room_has_no_spatial_geometry`, `door_has_no_spatial_geometry`,
 `room_has_no_doors`, and `ambiguous_doors`). Ambiguous door records include the

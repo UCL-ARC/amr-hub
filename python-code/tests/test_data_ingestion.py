@@ -71,3 +71,41 @@ def test_extract_bed_location_constructs_room_code() -> None:
     assert location.building == "BETA"
     assert location.floor == 8
     assert location.room_code == "B08ZZ999"
+
+
+def test_extract_bed_location_allows_duplicate_room_codes() -> None:
+    """Duplicate mappings to the same room do not make the bed ambiguous."""
+    room_codes = pd.DataFrame(
+        {
+            "room_name": ["Cubicle 99", "Cubicle 99"],
+            "bed_name": ["Cot 88", "Cot 88"],
+            "room_code": ["Q11ZZ999", "q11zz999"],
+        }
+    )
+
+    location = extract_bed_location("CB99-88", room_codes, building="BETA", floor=8)
+
+    assert location.room_code == "B08ZZ999"
+    assert not location.ambiguous_mapping
+
+
+@pytest.mark.parametrize(
+    "codes",
+    [("Q11ZZ999", "Q11XY777"), ("Q11XY777", "Q11ZZ999")],
+)
+def test_extract_bed_location_rejects_conflicting_room_codes(
+    codes: tuple[str, str],
+) -> None:
+    """A bed with different room codes cannot resolve based on row order."""
+    room_codes = pd.DataFrame(
+        {
+            "room_name": ["Cubicle 99", "Cubicle 99"],
+            "bed_name": ["Cot 88", "Cot 88"],
+            "room_code": list(codes),
+        }
+    )
+
+    location = extract_bed_location("CB99-88", room_codes, building="BETA", floor=8)
+
+    assert location.room_code is None
+    assert location.ambiguous_mapping
