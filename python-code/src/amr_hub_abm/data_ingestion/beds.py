@@ -22,6 +22,7 @@ class BedLocation:
     room: str | None
     bed: str | None
     room_code: str | None
+    ambiguous_mapping: bool = False
 
 
 def extract_bed_location(
@@ -48,7 +49,8 @@ def extract_bed_location(
     -------
     BedLocation
         Parsed room and bed names, together with the canonical room code when
-        their lookup entry exists.
+        their lookup entry exists and is unambiguous. Conflicting lookup codes
+        leave the room code unset and set ``ambiguous_mapping``.
 
     Raises
     ------
@@ -77,10 +79,22 @@ def extract_bed_location(
     if matches.empty:
         return BedLocation(building, floor, room, bed, None)
 
-    suffix_match = _ROOM_CODE_SUFFIX.fullmatch(matches.iloc[0])
-    if suffix_match is None:
-        msg = f"Invalid canonical room code: {matches.iloc[0]}"
-        raise ValueError(msg)
+    unique_codes: set[str] = set()
+    suffix = ""
+    for candidate in matches:
+        suffix_match = (
+            _ROOM_CODE_SUFFIX.fullmatch(candidate)
+            if isinstance(candidate, str)
+            else None
+        )
+        if suffix_match is None:
+            msg = f"Invalid canonical room code: {candidate}"
+            raise ValueError(msg)
+        unique_codes.add(candidate.upper())
+        suffix = suffix_match["suffix"].upper()
 
-    room_code = f"{building[0].upper()}{floor:02d}{suffix_match['suffix'].upper()}"
+    if len(unique_codes) > 1:
+        return BedLocation(building, floor, room, bed, None, ambiguous_mapping=True)
+
+    room_code = f"{building[0].upper()}{floor:02d}{suffix}"
     return BedLocation(building, floor, room, bed, room_code)

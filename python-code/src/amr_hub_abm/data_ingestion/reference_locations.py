@@ -33,6 +33,7 @@ class EventLocationResolutionStatus(StrEnum):
     RESOLVED = "resolved"
     REFERENCE_NOT_FOUND = "reference_not_found"
     AMBIGUOUS_REFERENCE = "ambiguous_reference"
+    AMBIGUOUS_BED_MAPPING = "ambiguous_bed_mapping"
     UNPARSEABLE_LOCATION = "unparseable_location"
     ROOM_CODE_NOT_FOUND = "room_code_not_found"
     ROOM_NOT_IN_MODEL = "room_not_in_model"
@@ -168,6 +169,11 @@ def resolve_patient_location_events(  # noqa: PLR0913
             building=building,
             floor=floor,
         )
+        if parsed.ambiguous_mapping:
+            _set_status(
+                result, index, EventLocationResolutionStatus.AMBIGUOUS_BED_MAPPING
+            )
+            continue
         if parsed.room_code is None:
             status = (
                 EventLocationResolutionStatus.UNPARSEABLE_LOCATION

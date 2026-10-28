@@ -118,6 +118,48 @@ def test_prepare_location_events_builds_input_and_complete_audit() -> None:
     ]
 
 
+def test_prepare_location_events_audits_ambiguous_bed_mapping() -> None:
+    """Conflicting bed mappings remain in the audit, not simulator input."""
+    events = pd.DataFrame(
+        {
+            "eventID": ["event-1"],
+            "locationID": [101],
+            "hcw_id": [4],
+            "timestamp": pd.to_datetime(["2024-01-01 09:00:00"]),
+            "event_type": ["attend_patient"],
+            "patient_id": [8],
+            "door_id": [pd.NA],
+            "content_type": [pd.NA],
+        }
+    )
+    room_code_mappings = pd.DataFrame(
+        {
+            "roomCode": ["Q11ZZ999", "Q11XY777"],
+            "roomName": ["Cubicle 99", "Cubicle 99"],
+            "bedName": ["Cot 88", "Cot 88"],
+        }
+    )
+
+    result = prepare_location_events(
+        events,
+        pd.DataFrame({"locationID": [101], "bedName": ["CB99-88"]}),
+        room_code_mappings,
+        pd.DataFrame(columns=["locationID", "descriptiveDoorName"]),
+        [make_room("B08ZZ999"), make_room("B08XY777")],
+        patient_building="BETA",
+        patient_floor=8,
+    )
+
+    assert result.location_timeseries.empty
+    assert result.audit["source_event_id"].tolist() == ["event-1"]
+    assert result.audit.loc[0, "resolution_status"] == (
+        EventLocationResolutionStatus.AMBIGUOUS_BED_MAPPING
+    )
+    assert pd.isna(result.audit.loc[0, "model_room_code"])
+    assert pd.isna(result.audit.loc[0, "x"])
+    assert pd.isna(result.audit.loc[0, "y"])
+
+
 def test_prepare_location_events_requires_unique_source_identifier() -> None:
     """A source identifier cannot link results when it is duplicated."""
     events = pd.DataFrame(
