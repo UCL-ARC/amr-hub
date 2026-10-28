@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from amr_hub_abm.agent.enums import AgentType, InfectionStatus
+from amr_hub_abm.agent.internal_state import InternalState
+from amr_hub_abm.agent.kinematics import MovementStrategy
 from amr_hub_abm.agent.output import Record, record_state
 from amr_hub_abm.exceptions import NonNegativeValueError, SimulationModeError
 from amr_hub_abm.spatial.furniture import ContentType
@@ -62,8 +64,11 @@ class Agent:
     agent_type: AgentType = field(default=AgentType.GENERIC)
     infection_status: InfectionStatus = field(default=InfectionStatus.SUSCEPTIBLE)
     infection_details: dict = field(default_factory=dict)
+    internal_state: InternalState = field(default_factory=InternalState)
 
-    movement_speed: float = field(default=0.001)  # units per time step
+    movement_speed: float = field(default=0.001)  # effective units per time step
+    movement_strategy: MovementStrategy = field(default=MovementStrategy.FIXED)
+    base_movement_speed: float = field(init=False)
     stochasticity: float = field(default=5.0)  # degrees of randomness in movement
 
     trajectory_length: int = field(default=0)
@@ -119,6 +124,7 @@ class Agent:
         """
         # Ensure heading is between 0 and 360 degrees
         self.heading_rad = self.heading_rad % (2 * math.pi)
+        self.base_movement_speed = self.movement_speed
 
         logger.debug(
             "Created Agent id %s of type %s at location %s with heading %s",
@@ -224,6 +230,7 @@ class Agent:
             )
             record_state(agent=self, current_time=current_time)
 
+        self.movement_speed = self.base_movement_speed
         if not self.tasks:
             return
 
@@ -239,6 +246,28 @@ class Agent:
             if handler(self, current_time=current_time, engine=engine):
                 return
 
+    def update_movement_speed_for_task(self, task: Task, current_time: int) -> None:
+        """
+        Pace travel to the task's scheduled start time.
+
+        Speed is recalculated from the remaining distance and time at every
+        movement step. Once the task's start time is reached, the configured
+        base speed is used.
+        """
+        self.movement_speed = self.base_movement_speed
+        if (
+            self.movement_strategy != MovementStrategy.DEADLINE_PACED
+            or task.location is None
+        ):
+            return
+
+        task_start_time = task.time_due - task.time_needed
+        remaining_time = task_start_time - current_time
+        if remaining_time > 0:
+            self.movement_speed = (
+                self.location.distance_to(task.location) / remaining_time
+            )
+
     def attempt_task_insertion(
         self,
         next_task: Task,
@@ -246,7 +275,7 @@ class Agent:
         current_time: int,
         engine: SpatialQuery,
         task_durations: TaskDurationConfig,
-    ) -> None:
+    ) -> bool:
         """
         Attempt to insert a task to occupy an empty chair.
 
@@ -261,11 +290,16 @@ class Agent:
         engine : SpatialQuery
             The SpatialQuery instance for resolving spatial queries.
 
+        Returns
+        -------
+        bool
+            Whether an occupy-content task was inserted.
+
         """
         if isinstance(next_task, TaskOccupyContent):
-            return
+            return False
         if self.stationary:
-            return
+            return False
 
         room = engine.get_room(self)
         if room is None:
@@ -275,7 +309,7 @@ class Agent:
                 self.idx,
                 next_task.task_type.name,
             )
-            return
+            return False
 
         empty_chairs = [
             content
@@ -330,3 +364,5 @@ class Agent:
                     len(self.tasks),
                     current_time,
                 )
+                return True
+        return False

@@ -57,7 +57,7 @@ There are certains parts of the problem completely left out for now, such as the
 Focus is also on creating a modular design where different components (e.g., environment representation, agent behaviors, task management) can be developed and tested independently before integrating them into a complete simulation model.
 
 !!! info
-**The Toy Problem:** Given a simple building layout with a Ward, a Corridor, and a Staff Room, simulate the movement of a health care worker who attends to patients in the Ward and takes breaks in the Staff Room, while completing assigned tasks over a specified time period.
+**The Toy Problem:** Given a simple building layout with a Ward, a Corridor, a Staff Room, a WC, and a Restaurant, simulate the movement of a health care worker who attends to patients in the Ward, takes breaks in the Staff Room, visits the WC as needed, and has meals in the Restaurant while completing assigned tasks over a specified time period.
 
 ### The Input Data Format 📥
 

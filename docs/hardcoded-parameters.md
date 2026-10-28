@@ -47,6 +47,7 @@ config parameter.
 | `CONTENT_SIZES[BED]`            | `(0.2, 0.1)` metres        | `python-code/src/amr_hub_abm/spatial/furniture.py` |
 | `CONTENT_SIZES[WORKSTATION]`    | `(0.1, 0.05)` metres       | `python-code/src/amr_hub_abm/spatial/furniture.py` |
 | `CONTENT_SIZES[CHAIR]`          | `(0.05, 0.05)` metres      | `python-code/src/amr_hub_abm/spatial/furniture.py` |
+| `CONTENT_SIZES[TOILET]`         | `(0.1, 0.1)` metres        | `python-code/src/amr_hub_abm/spatial/furniture.py` |
 | `get_random_point.max_attempts` | `1000`                     | `python-code/src/amr_hub_abm/spatial/room.py`      |
 | wall-clearance radius (inline)  | `0.1`                      | `python-code/src/amr_hub_abm/spatial/room.py`      |
 | pseudo-room sizing constants    | `2 * len(doors) + 2`, etc. | `python-code/src/amr_hub_abm/spatial/floor.py`     |
@@ -84,23 +85,23 @@ from `tests/inputs/simulation_config.yml` unless that loading path is changed.
 
 ## Visualization / cosmetic (lower priority - style, not science)
 
-| Variable                                  | Current Value                    | File                                               |
-| ----------------------------------------- | -------------------------------- | -------------------------------------------------- |
-| infection ring `markersize`               | `12`                             | `python-code/src/amr_hub_abm/agent/plotter.py`     |
-| infection ring `markeredgewidth`          | `2`                              | `python-code/src/amr_hub_abm/agent/plotter.py`     |
-| agent dot `markersize`                    | `5`                              | `python-code/src/amr_hub_abm/agent/plotter.py`     |
-| label offset (x, y)                       | `0.1, 0.05`                      | `python-code/src/amr_hub_abm/agent/plotter.py`     |
-| label `fontsize`                          | `7`                              | `python-code/src/amr_hub_abm/agent/plotter.py`     |
-| trajectory `linewidth` / `alpha`          | `1.5` / `0.7`                    | `python-code/src/amr_hub_abm/agent/plotter.py`     |
-| `ROLE_COLOUR_MAP`                         | `blue/red/green`                 | `python-code/src/amr_hub_abm/agent/enums.py`       |
-| `INFECTION_RING_COLOUR`                   | `gold/darkred/blue`              | `python-code/src/amr_hub_abm/agent/enums.py`       |
-| `CONTENT_COLORS`                          | `lightblue/lightgreen/lightgray` | `python-code/src/amr_hub_abm/spatial/furniture.py` |
-| `marker_size` (content)                   | `100`                            | `python-code/src/amr_hub_abm/spatial/furniture.py` |
-| `marker_type` (content)                   | `"s"`                            | `python-code/src/amr_hub_abm/spatial/furniture.py` |
-| content label offset                      | `+0.05, -0.15`                   | `python-code/src/amr_hub_abm/spatial/plotter.py`   |
-| content label `fontsize`                  | `6`                              | `python-code/src/amr_hub_abm/spatial/plotter.py`   |
-| default door colour / width               | `"brown"` / `2`                  | `python-code/src/amr_hub_abm/spatial/plotter.py`   |
-| `hash(...) % 128` (int8 packing)          | `128`                            | `python-code/src/amr_hub_abm/agent/output.py`      |
-| QR code `version` / `box_size` / `border` | `1` / `10` / `5`                 | `examples/solara_app.py`                           |
-| `figsize`                                 | `(6, 6)`                         | `examples/solara_app.py`                           |
-| `play_interval` / `render_interval`       | `100` / `100`                    | `examples/solara_app.py`                           |
+| Variable                                  | Current Value                                | File                                               |
+| ----------------------------------------- | -------------------------------------------- | -------------------------------------------------- |
+| infection ring `markersize`               | `12`                                         | `python-code/src/amr_hub_abm/agent/plotter.py`     |
+| infection ring `markeredgewidth`          | `2`                                          | `python-code/src/amr_hub_abm/agent/plotter.py`     |
+| agent dot `markersize`                    | `5`                                          | `python-code/src/amr_hub_abm/agent/plotter.py`     |
+| label offset (x, y)                       | `0.1, 0.05`                                  | `python-code/src/amr_hub_abm/agent/plotter.py`     |
+| label `fontsize`                          | `7`                                          | `python-code/src/amr_hub_abm/agent/plotter.py`     |
+| trajectory `linewidth` / `alpha`          | `1.5` / `0.7`                                | `python-code/src/amr_hub_abm/agent/plotter.py`     |
+| `ROLE_COLOUR_MAP`                         | `blue/red/green`                             | `python-code/src/amr_hub_abm/agent/enums.py`       |
+| `INFECTION_RING_COLOUR`                   | `gold/darkred/blue`                          | `python-code/src/amr_hub_abm/agent/enums.py`       |
+| `CONTENT_COLORS`                          | `lightblue/lightgreen/lightgray/lightyellow` | `python-code/src/amr_hub_abm/spatial/furniture.py` |
+| `marker_size` (content)                   | `100`                                        | `python-code/src/amr_hub_abm/spatial/furniture.py` |
+| `marker_type` (content)                   | `"s"`                                        | `python-code/src/amr_hub_abm/spatial/furniture.py` |
+| content label offset                      | `+0.05, -0.15`                               | `python-code/src/amr_hub_abm/spatial/plotter.py`   |
+| content label `fontsize`                  | `6`                                          | `python-code/src/amr_hub_abm/spatial/plotter.py`   |
+| default door colour / width               | `"brown"` / `2`                              | `python-code/src/amr_hub_abm/spatial/plotter.py`   |
+| `hash(...) % 128` (int8 packing)          | `128`                                        | `python-code/src/amr_hub_abm/agent/output.py`      |
+| QR code `version` / `box_size` / `border` | `1` / `10` / `5`                             | `examples/solara_app.py`                           |
+| `figsize`                                 | `(6, 6)`                                     | `examples/solara_app.py`                           |
+| `play_interval` / `render_interval`       | `100` / `100`                                | `examples/solara_app.py`                           |

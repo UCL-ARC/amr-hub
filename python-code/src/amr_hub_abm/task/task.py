@@ -267,6 +267,7 @@ class Task:
             self._start(current_time, agent)
             return
 
+        agent.update_movement_speed_for_task(self, current_time)
         engine.head_to_point(agent, (self.location.x, self.location.y))
         engine.move_one_step(agent)
 
@@ -287,6 +288,7 @@ class Task:
         self.on_start_moving(agent, engine)
         remove_agent_occupancy(agent, current_time=current_time, engine=engine)
         logger.info("Agent %s moving to task location %s.", agent.idx, self.location)
+        agent.update_movement_speed_for_task(self, current_time)
         engine.head_to_point(agent, (self.location.x, self.location.y))
         engine.move_one_step(agent)
 
