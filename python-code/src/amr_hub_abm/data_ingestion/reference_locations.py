@@ -290,7 +290,7 @@ def _require_columns(
 
 def _initialise_result(events: pd.DataFrame) -> pd.DataFrame:
     """Create an event copy with standardised spatial-resolution fields."""
-    result = events.copy()
+    result = events.reset_index(drop=True)
     result["model_building"] = pd.Series(pd.NA, index=result.index, dtype="string")
     result["model_floor"] = pd.Series(pd.NA, index=result.index, dtype="Int64")
     result["model_room_code"] = pd.Series(pd.NA, index=result.index, dtype="string")

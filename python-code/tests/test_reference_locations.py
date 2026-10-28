@@ -79,6 +79,36 @@ def test_resolve_patient_location_events_prepares_and_reconciles_records() -> No
     )
 
 
+def test_resolve_patient_location_events_with_duplicate_input_indices() -> None:
+    """An event's resolution must not overwrite another event with the same index."""
+    events = pd.DataFrame({"eventID": [1, 2], "locationID": [101, 999]}, index=[0, 0])
+    bed_references = pd.DataFrame({"locationID": [101], "bedName": ["CB99-88"]})
+    room_code_mappings = pd.DataFrame(
+        {
+            "roomCode": ["Q11ZZ999"],
+            "roomName": ["Cubicle 99"],
+            "bedName": ["Cot 88"],
+        }
+    )
+
+    report = resolve_patient_location_events(
+        events,
+        bed_references,
+        room_code_mappings,
+        [make_room("B08ZZ999")],
+        building="BETA",
+        floor=8,
+    )
+
+    assert report.prepared["eventID"].tolist() == [1]
+    assert report.prepared["location"].tolist() == ["BETA:8:B08ZZ999"]
+    assert report.excluded["eventID"].tolist() == [2]
+    assert report.excluded["resolution_status"].tolist() == [
+        EventLocationResolutionStatus.REFERENCE_NOT_FOUND
+    ]
+    assert events.index.tolist() == [0, 0]
+
+
 def test_resolve_door_location_events_prepares_unique_model_door() -> None:
     """A door reference resolves to the midpoint of one model door."""
     door = Door(
