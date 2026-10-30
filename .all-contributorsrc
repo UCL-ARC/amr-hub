@@ -109,6 +109,13 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/6137757?v=4",
       "profile": "https://github.com/nicolin",
       "contributions": ["review"]
+    },
+    {
+      "login": "pineapple-cat",
+      "name": "Emily Dubrovska",
+      "avatar_url": "https://avatars.githubusercontent.com/u/34184448?v=4",
+      "profile": "https://github.com/pineapple-cat",
+      "contributions": ["review"]
     }
   ],
   "contributorsPerLine": 7,
