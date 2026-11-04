@@ -22,6 +22,7 @@ from amr_hub_abm.agent.kinematics import MovementStrategy
 from amr_hub_abm.agent.output import Record, record_state
 from amr_hub_abm.exceptions import NonNegativeValueError, SimulationModeError
 from amr_hub_abm.spatial.furniture import ContentType
+from amr_hub_abm.task.routing import perform_journey
 from amr_hub_abm.task.task import (
     Task,
     TaskOccupyContent,
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
 
     from amr_hub_abm.spatial.engine import SpatialQuery
     from amr_hub_abm.spatial.location import Location
+    from amr_hub_abm.task.routing import Journey
     from amr_hub_abm.task.task_duration import TaskDurationConfig
 
 
@@ -61,6 +63,9 @@ class Agent:
 
     interaction_radius: float = field(default=0.01)
     tasks: list[Task] = field(default_factory=list)
+    journey: Journey | None = field(default=None, init=False)
+    routing_buffer_steps: int = 0
+    routing_door_duration: int = 1
     agent_type: AgentType = field(default=AgentType.GENERIC)
     infection_status: InfectionStatus = field(default=InfectionStatus.SUSCEPTIBLE)
     infection_details: dict = field(default_factory=dict)
@@ -235,6 +240,7 @@ class Agent:
             return
 
         task_handlers = (
+            perform_journey,
             perform_in_progress_task,
             perform_moving_to_task_location,
             perform_suspended_task,
@@ -255,8 +261,15 @@ class Agent:
         base speed is used.
         """
         self.movement_speed = self.base_movement_speed
+        if task.fixed_speed and task.location is not None:
+            # Shorten the last step to avoid oscillating across a narrow doorway.
+            self.movement_speed = min(
+                self.base_movement_speed, self.location.distance_to(task.location)
+            )
+            return
         if (
-            self.movement_strategy != MovementStrategy.DEADLINE_PACED
+            task.fixed_speed
+            or self.movement_strategy != MovementStrategy.DEADLINE_PACED
             or task.location is None
         ):
             return

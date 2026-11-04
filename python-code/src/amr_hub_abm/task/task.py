@@ -22,6 +22,7 @@ Design notes
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import TYPE_CHECKING
@@ -122,6 +123,10 @@ class Task:
     progress: TaskProgress = field(default=TaskProgress.NOT_STARTED, kw_only=True)
     priority: TaskPriority = field(default=TaskPriority.MEDIUM, kw_only=True)
 
+    inferred: bool = field(default=False, kw_only=True)
+    fixed_speed: bool = field(default=False, kw_only=True)
+    lateness_steps: int = field(default=0, init=False)
+
     time_started: int | None = field(init=False, default=None)
     time_completed: int | None = field(init=False, default=None)
 
@@ -150,6 +155,16 @@ class Task:
 
         """
         return True
+
+    def routing_room_id(self) -> int | None:
+        """Return a required approach room, or resolve it from the location."""
+        return None
+
+    def target_reached(self, agent: Agent, engine: SpatialQuery) -> bool:
+        """Check arrival using the spatial engine."""
+        return self.location is not None and engine.is_target_reached(
+            agent.location, self.location, agent.interaction_radius
+        )
 
     def on_dispatch(self, agent: Agent) -> bool:  # noqa: ARG002
         """
@@ -218,7 +233,10 @@ class Task:
         if self.progress == TaskProgress.COMPLETED:
             return
 
-        if self.time_spent(current_time) >= self.time_needed:
+        if (
+            self.progress == TaskProgress.IN_PROGRESS
+            and self.time_spent(current_time) >= self.time_needed
+        ):
             self._complete(current_time, agent, engine)
             return
 
@@ -261,9 +279,7 @@ class Task:
             msg = f"Task {self.task_type.name} has no location to move to."
             raise SimulationModeError(msg)
 
-        if engine.is_target_reached(
-            agent.location, self.location, agent.interaction_radius
-        ):
+        if self.target_reached(agent, engine):
             self._start(current_time, agent)
             return
 
@@ -278,9 +294,7 @@ class Task:
             msg = f"Task {self.task_type.name} has no location set."
             raise SimulationModeError(msg)
 
-        if engine.is_target_reached(
-            agent.location, self.location, agent.interaction_radius
-        ):
+        if self.target_reached(agent, engine):
             self._start(current_time, agent)
             return
 
@@ -295,6 +309,14 @@ class Task:
     def _start(self, current_time: int, agent: Agent) -> None:
         self.progress = TaskProgress.IN_PROGRESS
         self.time_started = current_time
+        self.lateness_steps = max(0, current_time - (self.time_due - self.time_needed))
+        if self.fixed_speed and not self.inferred and self.lateness_steps:
+            logger.warning(
+                "Agent %s started task %s %s steps late after inferred travel.",
+                agent.idx,
+                self.task_type.name,
+                self.lateness_steps,
+            )
         self.on_started(agent, current_time)
 
     def __repr__(self) -> str:
@@ -367,8 +389,40 @@ class TaskDoorAccess(Task):
             y=mid_y + y_offset,
         )
 
+    def routing_room_id(self) -> int | None:
+        """Require approach from the recorded crossing's source room."""
+        assert self.door is not None  # noqa: S101
+        return next(r for r in self.door.connecting_rooms if r != self.destination_room)
+
+    def target_reached(self, agent: Agent, engine: SpatialQuery) -> bool:
+        """Require inferred crossings to arrive on the destination side."""
+        if not super().target_reached(agent, engine):
+            return False
+        if not self.inferred:
+            return True
+        room = engine.get_room(agent)
+        return room is not None and room.room_id == self.destination_room
+
     def on_start_moving(self, agent: Agent, engine: SpatialQuery) -> None:
         """Offset the target to the correct side of the door for the destination."""
+        if self.inferred:
+            assert self.door is not None  # noqa: S101
+            assert self.door.start is not None  # noqa: S101
+            assert self.door.end is not None  # noqa: S101
+            dx = self.door.end[0] - self.door.start[0]
+            dy = self.door.end[1] - self.door.start[1]
+            length = math.hypot(dx, dy)
+            offset = max(self.buffer_distance, 2 * agent.interaction_radius)
+            for sign in (1, -1):
+                candidate = self._midpoint_location(
+                    -sign * dy / length * offset, sign * dx / length * offset
+                )
+                room = engine.get_room(agent, coords=(candidate.x, candidate.y))
+                if room is not None and room.room_id == self.destination_room:
+                    self.location = candidate
+                    return
+            msg = f"Cannot locate destination side of door {self.door.door_id}."
+            raise SimulationModeError(msg)
         candidate = self._midpoint_location(
             x_offset=self.buffer_distance, y_offset=self.buffer_distance
         )
@@ -432,6 +486,16 @@ class TaskOccupyContent(Task):
         self.content = content
         self.location = content.location
         return True
+
+    def routing_room_id(self) -> int | None:
+        """Return a required approach room, or resolve it from the location."""
+        return None
+
+    def target_reached(self, agent: Agent, engine: SpatialQuery) -> bool:
+        """Check arrival using the spatial engine."""
+        return self.location is not None and engine.is_target_reached(
+            agent.location, self.location, agent.interaction_radius
+        )
 
     def on_dispatch(self, agent: Agent) -> bool:
         """Reserve the selected content before starting travel."""
