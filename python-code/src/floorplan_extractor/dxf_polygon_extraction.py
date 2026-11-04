@@ -53,6 +53,7 @@ from shapely.geometry.base import BaseGeometry
 from shapely.ops import linemerge, nearest_points, polygonize, snap, split, unary_union
 
 from floorplan_extractor.shared_walls import SharedWallConfig, normalise_shared_walls
+from floorplan_extractor.spatial_units import SpatialUnits
 
 XY = tuple[float, float]
 DoorQuad = list[float]  # [x1, y1, x2, y2]
@@ -208,6 +209,8 @@ class ExtractionConfig:
     ----------
     polygons : PolygonExtractionConfig
         Configuration controlling polygon generation and label attachment.
+    spatial_units : SpatialUnits
+        Explicit conversion from source coordinates to canonical metres.
     door_layer_name : str
         Name of the DXF layer containing door geometries.
     doors : DoorAttachmentConfig or None
@@ -227,6 +230,7 @@ class ExtractionConfig:
     """
 
     polygons: PolygonExtractionConfig
+    spatial_units: SpatialUnits
     door_layer_name: str | None = None
     doors: DoorAttachmentConfig | None = None
     shared_walls: SharedWallConfig | None = None
@@ -250,6 +254,10 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
       polygon_label_target: ...
       floor_filter: ...
       excluded_room_numbers: [...]
+
+    spatial_units:
+      source_unit: millimetres
+      units_per_metre: 1000.0
 
     doors:                       # optional
       layer_name: DOORS
@@ -320,8 +328,12 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
     if "polygons" not in data:
         msg = "Missing required 'polygons' configuration block"
         raise KeyError(msg)
+    if "spatial_units" not in data:
+        msg = "Missing required 'spatial_units' configuration block"
+        raise KeyError(msg)
 
     polygons_cfg = PolygonExtractionConfig(**data["polygons"])
+    spatial_units = _parse_spatial_units(data["spatial_units"])
 
     door_layer_name: str | None = None
     door_config: DoorAttachmentConfig | None = None
@@ -386,6 +398,7 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
 
     return ExtractionConfig(
         polygons=polygons_cfg,
+        spatial_units=spatial_units,
         door_layer_name=door_layer_name,
         doors=door_config,
         shared_walls=shared_wall_config,
@@ -393,6 +406,23 @@ def config_from_yaml(path: Path) -> ExtractionConfig:
         polygon_splits=polygon_splits,
         polygon_additions=polygon_additions,
         polygon_merges=polygon_merges,
+    )
+
+
+def _parse_spatial_units(block: object) -> SpatialUnits:
+    """Parse the required source-unit conversion configuration."""
+    if not isinstance(block, dict):
+        msg = "'spatial_units' block must be a mapping"
+        raise TypeError(msg)
+    if "source_unit" not in block:
+        msg = "'spatial_units.source_unit' is required"
+        raise KeyError(msg)
+    if "units_per_metre" not in block:
+        msg = "'spatial_units.units_per_metre' is required"
+        raise KeyError(msg)
+    return SpatialUnits(
+        source_unit=block["source_unit"],
+        units_per_metre=block["units_per_metre"],
     )
 
 

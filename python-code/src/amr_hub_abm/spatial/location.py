@@ -22,9 +22,9 @@ class Location:
     Parameters
     ----------
     x : float
-        The x-coordinate of the location.
+        The x-coordinate of the location in metres.
     y : float
-        The y-coordinate of the location.
+        The y-coordinate of the location in metres.
     floor : int
         The floor number of the location.
     building : str | None, optional
@@ -50,7 +50,7 @@ class Location:
         Returns
         -------
         float
-            The Euclidean distance between the two locations.
+            The Euclidean distance between the two locations in metres.
 
         Raises
         ------

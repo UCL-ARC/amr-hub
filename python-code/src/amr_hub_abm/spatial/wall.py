@@ -14,11 +14,11 @@ class Wall:
     Parameters
     ----------
     start : tuple[float, float]
-        The starting coordinates of the wall as a tuple (x, y).
+        The starting coordinates of the wall in metres as a tuple (x, y).
     end : tuple[float, float]
-        The ending coordinates of the wall as a tuple (x, y).
+        The ending coordinates of the wall in metres as a tuple (x, y).
     thickness : float, optional
-        The thickness of the wall. Defaults to 0.2 units.
+        The thickness of the wall in metres. Defaults to 0.2 metres.
 
     """
 
