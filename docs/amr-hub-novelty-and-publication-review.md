@@ -1,5 +1,9 @@
 # AMR-Hub: novelty, scientific weaknesses and publication strategy
 
+## Summary
+
+The novelty review concludes that AMR-Hub has credible publication potential as infrastructure for hospital workflow and contact modelling, but the audited version does not yet support claims of validated AMR transmission prediction. Combining movement, floorplans and infection modelling has substantial precedent; the strongest potential contribution is a reproducible way to reconstruct contact networks from imperfect routine hospital records and geometry, while quantifying how modelling assumptions affect conclusions. Realising that contribution requires resolving movement and contact-measurement issues, clarifying CPU/GPU differences, and validating against independent observations. The recommended path is a focused software paper, followed by a methods paper on reconstruction or uncertainty, and an empirical UCLH ward study with predefined outcomes and held-out evaluation, explicitly accounting for uncertain patient stays and clinical testing patterns.
+
 Critical research and publication assessment — draft, 29 October 2026
 
 **Audit basis:** repository revision `dc3b0d620025211232f39e535e45792363a91af2`, plus inspection of the separate stochasticity-sweep worktree. This report evaluates the software that is present, not all capabilities described in the project vision. No simulation code or running experiment was changed. The current 2,100-run sweep is treated as an experiment in progress, not as completed evidence.
