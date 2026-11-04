@@ -1,0 +1,2964 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AMR-Hub — critical publication review</title>
+    <style>
+      body {
+        font:
+          17px/1.65 system-ui,
+          sans-serif;
+        color: #182431;
+        background: #fff;
+        max-width: 1100px;
+        margin: 3rem auto;
+        padding: 0 1.5rem;
+      }
+      h1,
+      h2,
+      h3 {
+        line-height: 1.25;
+        color: #163c52;
+      }
+      h1 {
+        font-size: 2.2rem;
+      }
+      h2 {
+        margin-top: 2.8rem;
+        border-top: 1px solid #cbd5dc;
+        padding-top: 1rem;
+      }
+      h3 {
+        margin-top: 2rem;
+      }
+      a {
+        color: #075e85;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        margin: 1.5rem 0;
+      }
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 0.7rem;
+        border: 1px solid #cbd5dc;
+      }
+      th {
+        background: #eef4f7;
+      }
+      code {
+        font-size: 0.9em;
+        overflow-wrap: anywhere;
+      }
+      li {
+        margin: 0.4rem 0;
+      }
+      @media print {
+        body {
+          font-size: 10pt;
+          max-width: none;
+          margin: 0;
+          padding: 0;
+        }
+        h2,
+        h3 {
+          break-after: avoid;
+        }
+        tr {
+          break-inside: avoid;
+        }
+        a {
+          color: inherit;
+          text-decoration: none;
+        }
+      }
+      @media (max-width: 700px) {
+        table {
+          display: block;
+          overflow-x: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="amr-hub-novelty-scientific-weaknesses-and-publication-strategy">
+      AMR-Hub: novelty, scientific weaknesses and publication strategy
+    </h1>
+    <p>
+      <strong
+        >Critical research and publication assessment — draft, 29 October
+        2026</strong
+      >
+    </p>
+    <p>
+      <strong>Audit basis:</strong> repository revision
+      <code>dc3b0d620025211232f39e535e45792363a91af2</code>, plus inspection of
+      the separate stochasticity-sweep worktree. This report evaluates the
+      software that is present, not all capabilities described in the project
+      vision. No simulation code or running experiment was changed. The current
+      2,100-run sweep is treated as an experiment in progress, not as completed
+      evidence.
+    </p>
+    <p>
+      <strong
+        >Clinical-study context (updated following investigator
+        clarification):</strong
+      >
+      The public synthetic scenario is a toy problem. The planned application is
+      a UCLH ward with one year of routinely collected staff location/activity
+      records, CAD floorplans and patient-linked positive and negative
+      organism-specific clinical testing results over time. Patient movement and
+      direct ward admission/discharge records are unavailable; ward-stay
+      intervals are inferred from testing timelines. Sensitive clinical records
+      must remain outside this repository. These are investigator-reported data
+      streams for the planned study, not datasets independently inspected in
+      this audit. Availability within the approved environment, completeness,
+      linkage and temporal/spatial resolution have not been assessed. Absence of
+      clinical records from the repository is not a scientific weakness or
+      evidence that the project lacks a clinical application.
+    </p>
+    <p>
+      <strong>Evidence labels:</strong> <em>implemented</em> means located in
+      inspected code; <em>demonstrated</em> requires an executed example or
+      test; <em>validated</em> means compared with independent observations for
+      a specified use; <em>proposed</em> means future work. These distinctions
+      matter more than the number of features in a README.
+    </p>
+    <h2 id="1-executive-assessment">1. Executive assessment</h2>
+    <p>
+      AMR-Hub has a credible route to peer-reviewed publication, but its
+      strongest present contribution is
+      <strong
+        >research infrastructure for hospital workflow and contact
+        modelling</strong
+      >, not a validated model of antimicrobial resistance transmission. A
+      manuscript claiming the latter now would substantially overstate the
+      evidence.
+    </p>
+    <p>
+      Hospital infection ABMs, heterogeneous healthcare-worker contact networks,
+      data-driven contact reconstruction, architectural environments, and GPU
+      ABM frameworks all have substantial precedent. In particular, EHR-derived
+      staff contact networks were published in 2013; sensor-informed hospital
+      transmission ABMs predate that; and a 2025 paper already combines
+      high-resolution staff/device trajectories, a hospital floorplan and an
+      infection model. “We combine movement, geometry and infection” will not
+      survive a serious literature review.
+      <a href="https://doi.org/10.1073/pnas.0900974106">Temime et al. (2009)</a
+      >,
+      <a href="https://doi.org/10.1093/infdis/jis542">Hornbeck et al. (2012)</a
+      >,
+      <a href="https://doi.org/10.1371/journal.pone.0079906"
+        >Curtis et al. (2013)</a
+      >,
+      <a href="https://doi.org/10.1145/3765612.3767222">Thota et al. (2025)</a>.
+    </p>
+    <p>
+      The defensible opportunity is narrower and more interesting:
+      <strong
+        >an auditable, uncertainty-aware route from imperfect routine hospital
+        events and imperfect geometry to contact-network estimates, with
+        explicit tests of when modelling choices change scientific
+        conclusions.</strong
+      >
+      This is a candidate contribution, not a priority claim. AMR-Hub currently
+      supplies parts of that route; it does not yet demonstrate the full
+      inference and validation argument.
+    </p>
+    <p>My recommended portfolio is:</p>
+    <ol>
+      <li>
+        <strong>One software paper</strong>, after narrowing the scope,
+        correcting scientific contract problems and demonstrating reuse. This is
+        the nearest route.
+      </li>
+      <li>
+        <strong>One substantive methods paper</strong> on movement/contact
+        reconstruction or structural uncertainty. The present sweep can motivate
+        it, but cannot alone establish a general result.
+      </li>
+      <li>
+        <strong>One empirical UCLH ward study</strong>, using the planned year
+        of staff records, geometry and organism-specific test results, with a
+        predefined endpoint and temporally held-out evaluation. Patient movement
+        and the testing observation process are central uncertainties.
+      </li>
+    </ol>
+    <p>
+      Geometry extraction, GPU execution, a benchmark dataset and TRE deployment
+      could support additional papers
+      <strong
+        >only if each produces an independently evaluated contribution</strong
+      >. They should not become six thin papers describing pieces of the same
+      implementation.
+    </p>
+    <p>
+      <strong>Blunt verdict:</strong> there is potentially publishable work
+      here, but the present evidence does not justify “novel AMR digital twin,”
+      “realistic transmission prediction,” “validated GPU acceleration,” or
+      “learned staff decision-making.” More simulation runs cannot compensate
+      for an unvalidated mechanism.
+    </p>
+    <h2 id="2-review-method-and-its-limits">2. Review method and its limits</h2>
+    <p>
+      This is a
+      <strong>targeted critical scoping review and code audit</strong>, not a
+      registered systematic review or a meta-analysis. Searches covered
+      hospital/HAI ABMs; staff movement and contact networks; routine EHR and
+      sensor observations; spatial ABM and crowd frameworks; CAD-to-topology
+      extraction; GPU ABMs; secure research computation; model reporting; and
+      publication requirements. Searches deliberately included 2025–2026 work.
+      The companion
+      <a href="novelty-review/search-and-evidence-notes.md"
+        >search and evidence notes</a
+      >
+      describe queries, exclusions and access limitations.
+    </p>
+    <p>
+      The evidence base prioritises primary research articles, conference
+      papers, author/institutional copies and official journal policies.
+      Bibliographic details were checked against publisher/PubMed records and,
+      where available, Crossref metadata. Journal issue years are used where
+      they differ from online-first years: for example, GAMA is cited as 2019
+      and STRESS as 2019, with their earlier online publication noted in the
+      bibliography. Search-engine crawl dates are not publication dates.
+    </p>
+    <p>
+      The review used accessible abstracts and selected full-text sections. Not
+      every paper received full-text appraisal; restricted or partially
+      accessible sources are identified in the evidence notes. No claim that
+      AMR-Hub is “the first” is established by this search. Citation counts,
+      impact factors and acceptance probabilities are not used as substitutes
+      for assessing fit.
+    </p>
+    <p>
+      The code audit followed the actual CPU and GPU execution paths, task
+      movement, contact measurements, geometry conversion, the event-analysis
+      prototype and the TRE container. Two small non-mutating probes confirmed
+      retry and duration semantics; their outputs are preserved in
+      <a href="novelty-review/code-probes.json">code-probes.json</a>. File
+      fingerprints and the audited revision are in
+      <a href="novelty-review/code-audit-manifest.json"
+        >code-audit-manifest.json</a
+      >. This is not a full security assessment, clinical validation study or
+      exhaustive defect hunt.
+    </p>
+    <h2 id="3-what-the-software-currently-supports">
+      3. What the software currently supports
+    </h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>Evidence in the repository</th>
+          <th>Publication implication</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Workflow-driven simulation</td>
+          <td>
+            Factory-created simulations, event inputs, task lifecycle hooks,
+            resource occupancy, explicit RNG use and interchangeable movement
+            strategies
+          </td>
+          <td>
+            A useful software contribution if the behavioural contract is
+            specified and reproducible
+          </td>
+        </tr>
+        <tr>
+          <td>Spatial representation</td>
+          <td>
+            Building/floor/room hierarchy, walls, doors, furniture, spatial
+            queries and topological input support
+          </td>
+          <td>
+            Necessary infrastructure; neither hierarchy nor geometric realism is
+            novel by itself
+          </td>
+        </tr>
+        <tr>
+          <td>CAD preparation</td>
+          <td>
+            DXF polygonisation, label attachment, configured corrections,
+            shared-wall normalisation, door/open-boundary construction and
+            diagnostics
+          </td>
+          <td>
+            A potentially useful
+            <em>quality-controlled conversion workflow</em>, but not evidence of
+            fully automatic extraction across arbitrary hospitals
+          </td>
+        </tr>
+        <tr>
+          <td>Contact analysis</td>
+          <td>
+            Building/floor-aware proximity detection, exclusion of different
+            known rooms, episode construction, pair types and network outputs
+          </td>
+          <td>
+            Supports contact-opportunity studies; does not itself estimate
+            acquisition, colonisation or infection
+          </td>
+        </tr>
+        <tr>
+          <td>CPU infection dynamics</td>
+          <td>
+            Infection-status fields and demonstration seeding exist; no
+            infection-update step was found in the inspected CPU loop
+          </td>
+          <td>The CPU sweep is not an AMR transmission experiment</td>
+        </tr>
+        <tr>
+          <td>GPU infection dynamics</td>
+          <td>
+            A separate same-floor proximity kernel identifies an infected
+            neighbour; host code directly changes susceptible status to infected
+          </td>
+          <td>
+            A demonstration mechanism, scientifically different from the CPU
+            path; not pathogen-specific AMR dynamics
+          </td>
+        </tr>
+        <tr>
+          <td>Event-data analysis</td>
+          <td>
+            Shift reconstruction, mappings, occupancy/time proxies, categorical
+            Markov baselines and “IRL feasibility” diagnostics
+          </td>
+          <td>
+            A prototype for studying observation and prediction, not a trained
+            or validated IRL system
+          </td>
+        </tr>
+        <tr>
+          <td>TRE deployment</td>
+          <td>
+            Container recipe, locked dependencies and instructions for offline
+            use
+          </td>
+          <td>
+            Deployment infrastructure; no inspected evidence establishes
+            disclosure safety or reproducible multi-TRE deployment
+          </td>
+        </tr>
+        <tr>
+          <td>Software sustainability</td>
+          <td>
+            Public development structure, tests, documentation, MIT licence and
+            <code>python-code/CITATION.cff</code>
+          </td>
+          <td>
+            Positive software-publication evidence; these do not validate the
+            model scientifically
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      The distinction between CPU and GPU is not cosmetic. In
+      <a href="../python-code/src/amr_hub_abm/simulation.py"
+        ><code>simulation.py</code></a
+      >, the GPU branch invokes an additional physics step after CPU task
+      handling. In
+      <a href="../python-code/src/amr_hub_abm/spatial/engine_gpu.py"
+        ><code>engine_gpu.py</code></a
+      >, that step also performs transmission. A paper must not describe a
+      single invariant scientific model that merely switches computational
+      backends unless that equivalence has been established.
+    </p>
+    <p>
+      The project README describes several agent roles, anonymised outputs and
+      infection propagation more broadly than the inspected implementation
+      demonstrates. Currently,
+      <a href="../python-code/src/amr_hub_abm/agent/enums.py"
+        ><code>agent/enums.py</code></a
+      >
+      distinguishes generic, patient and healthcare-worker agents; adding a
+      label for a visitor or cleaner would not by itself establish a realistic
+      role-specific model. The manuscript should use a capability table similar
+      to this one instead of presenting the project roadmap as completed
+      functionality.
+    </p>
+    <h2 id="4-the-literature-that-most-directly-limits-novelty-claims">
+      4. The literature that most directly limits novelty claims
+    </h2>
+    <p>
+      <strong>Follow-up software comparison:</strong> see
+      <a href="novelty-review/closest-software-comparators.md"
+        >closest software comparators</a
+      >
+      for RTLS_ABM, AMRinference, H-Outbreak, the HDI simulator, H-ABM and
+      SmICS, including verified repository links and reuse limitations.
+      H-Outbreak is an additional precedent identified after the initial
+      bibliography.
+    </p>
+    <h3
+      id="41-hospital-contact-and-infection-modelling-are-mature-starting-points"
+    >
+      4.1 Hospital contact and infection modelling are mature starting points
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Primary precedent</th>
+          <th>What it already establishes</th>
+          <th>Consequence for AMR-Hub; critical qualification</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <a href="https://doi.org/10.1073/pnas.0900974106"
+              >Temime et al., 2009</a
+            >
+          </td>
+          <td>
+            Agent-based investigation of peripatetic healthcare workers and
+            superspreading
+          </td>
+          <td>
+            Staff heterogeneity and movement-mediated risk are old questions.
+            This does not settle realistic trajectory reconstruction.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://doi.org/10.1093/infdis/jis542"
+              >Hornbeck et al., 2012</a
+            >
+          </td>
+          <td>
+            An ICU sensor contact network used in an infection simulation to
+            investigate highly connected workers and hygiene
+          </td>
+          <td>
+            “Empirical contacts plus ABM” is not novel. Sensor contacts and
+            modelled transmission still have different evidential status.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://doi.org/10.1080/19488300.2012.736120"
+              >Barnes et al., 2012</a
+            >
+          </td>
+          <td>
+            Effects of contact-network structure and worker behaviour, including
+            worker-to-worker transmission
+          </td>
+          <td>
+            A staffing/behaviour sensitivity study needs a sharper question than
+            “network structure matters.”
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://doi.org/10.1371/journal.pone.0079906"
+              >Curtis et al., 2013</a
+            >
+          </td>
+          <td>
+            Hospital staff contact networks reconstructed from EMR data, with
+            preliminary sensor-based validation
+          </td>
+          <td>
+            Routine event logs as proxies for movement are direct prior art. The
+            open question is how much uncertainty those proxies leave
+            unresolved.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://doi.org/10.1371/journal.pone.0073970"
+              >Vanhems et al., 2013</a
+            >
+          </td>
+          <td>
+            Wearable-sensor measurements of contact timing, duration and role
+            mixing
+          </td>
+          <td>
+            Provides empirical targets, but its approximately 1.5 m/20 s
+            measurement definition is not interchangeable with AMR-Hub’s 0.1 m/1
+            s definition.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://doi.org/10.1038/s41598-018-20008-w"
+              >Duval et al., 2018</a
+            >
+          </td>
+          <td>
+            Four months of contact observations in a rehabilitation hospital
+          </td>
+          <td>
+            A single synthetic day cannot establish the heterogeneity or
+            temporal generality available in this literature. Different settings
+            must not be pooled uncritically.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://doi.org/10.1093/cid/cix962">Barker et al., 2018</a>
+          </td>
+          <td>
+            A pathogen-specific hospital ABM assessing multiple CDI
+            interventions
+          </td>
+          <td>
+            Generic proximity counts are substantially short of the evidence
+            needed for infection-control effectiveness claims. Simulated
+            intervention benefits remain model-dependent.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://doi.org/10.1016/j.jtbi.2017.03.025"
+              >Caudill and Lawson, 2017</a
+            >
+          </td>
+          <td>
+            A model linking inter-host interactions, within-host dynamics and
+            antibiotic resistance
+          </td>
+          <td>
+            AMR-specific mechanisms have explicit prior art. A generic
+            susceptible/infected label is not a resistance mechanism.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://doi.org/10.1371/journal.pcbi.1010352"
+              >Mietchen et al., 2022</a
+            >
+          </td>
+          <td>
+            Comparison of population-interaction structures and their effects on
+            modelled S. aureus acquisition
+          </td>
+          <td>
+            Direct precedent for structural uncertainty. A new study must show
+            what spatial trajectories add beyond contact assignment or mixing
+            structure.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://doi.org/10.1371/journal.pone.0284611"
+              >Scaria et al., 2023</a
+            >
+          </td>
+          <td>
+            Adaptation and validation of a hospital CDI ABM against primary
+            hospital data
+          </td>
+          <td>
+            Sets a materially higher validation bar than unit tests or plausible
+            animations. Validation remains specific to the chosen data and
+            endpoints.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://doi.org/10.1371/journal.pmed.1004433"
+              >Leclerc et al., 2024</a
+            >
+          </td>
+          <td>
+            Contact-network-informed modelling of targeted pathogen-control
+            interventions
+          </td>
+          <td>
+            Intervention ranking from temporal contact data is an established
+            research direction. A new pipeline must justify its additional
+            decisions and uncertainty.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://doi.org/10.1145/3765612.3767222"
+              >Thota et al., 2025</a
+            >
+          </td>
+          <td>
+            RTLS-driven staff/device trajectories, digitised hospital layout and
+            a C. difficile exposure model in AnyLogic
+          </td>
+          <td>
+            The closest recent challenge to a broad movement-plus-layout novelty
+            claim. It uses a proximity proxy, not direct touch; its stated focus
+            excludes patient infection dynamics. Do not equate its exposure
+            forecasts with independently validated clinical predictions.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://doi.org/10.1016/j.jhin.2026.06.007"
+              >Gerada et al., 2026</a
+            >
+          </td>
+          <td>
+            A hospital ABM calibration study addressing gastrointestinal
+            transmission and antibiotic-associated susceptibility
+          </td>
+          <td>
+            A contemporary comparator for any proposed pathogen-specific AMR
+            extension. Abstract/indexed sections establish scope; this review
+            does not grade its full validation design.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      This literature does <strong>not</strong> imply that every published model
+      is trustworthy. Peer review does not abolish uncertain contact
+      definitions, imported parameters, unobserved adherence,
+      under-identification or the difference between fitting and forecasting.
+      AMR-Hub should compare itself with what these studies actually measure and
+      test, not with their most ambitious introductory language.
+    </p>
+    <p>
+      A synthetic hospital COVID-19 ABM is also already published. That
+      establishes precedent for this kind of paper, not evidence that another
+      synthetic model with a new interface is scientifically necessary.
+      Publication strategy should aim to resolve a substantive uncertainty,
+      rather than imitate the weakest precedent that passed review.
+      <a href="https://doi.org/10.1371/journal.pone.0326350"
+        >Michaelides and Sarkadi (2025)</a
+      >.
+    </p>
+    <h3 id="42-routine-data-and-informatics-are-not-empty-territory">
+      4.2 Routine data and informatics are not empty territory
+    </h3>
+    <p>
+      Curtis and colleagues are especially important because they undermine a
+      tempting “first use of routinely collected operational data” narrative.
+      Their EHR observations are proxies, and their validation is explicitly
+      preliminary; those limitations create room for better observation models,
+      but do not erase their priority.
+      <a href="https://doi.org/10.1371/journal.pone.0079906"
+        >Curtis et al. (2013)</a
+      >.
+    </p>
+    <p>
+      At a different resolution, Madhobi and colleagues constructed patient
+      co-location networks across multiple hospitals. Such work demonstrates
+      both the utility and the ambiguity of the word <em>contact</em>: a shared
+      unit-day is an exposure proxy, not a centimetre-scale interaction.
+      AMR-Hub’s extra spatial detail should earn its complexity by improving
+      independently measured outcomes.
+      <a href="https://doi.org/10.1001/jamanetworkopen.2022.25508"
+        >Madhobi et al. (2022)</a
+      >.
+    </p>
+    <p>
+      The open-source, openEHR-based SmICS system has already been evaluated at
+      three sites for infection-control task efficiency and usability. It is not
+      an ABM competitor in every respect, but it is a strong comparator for
+      claims about interoperable hospital software and practical deployment. Its
+      reported usability limitations also illustrate why availability of a
+      dashboard is not evidence that practitioners can use it effectively.
+      <a href="https://doi.org/10.1038/s41746-025-01795-9"
+        >Biermann et al. (2025)</a
+      >.
+    </p>
+    <p>
+      There is also recent work combining genomic, microbiological and
+      patient-mobility information to infer hidden carriers. An AMR-Hub
+      inference manuscript would need to specify whether it estimates movement,
+      exposure, colonisation or transmission sources; these are different
+      inference problems with different data requirements.
+      <a href="https://doi.org/10.1038/s41467-025-65241-w">Pei et al. (2025)</a
+      >.
+    </p>
+    <h3 id="43-general-frameworks-remove-several-easy-novelty-claims">
+      4.3 General frameworks remove several easy novelty claims
+    </h3>
+    <p>
+      GAMA already supports sophisticated spatial ABMs; Menge provides a modular
+      crowd-simulation architecture; Mesa supplies an established Python ABM
+      ecosystem; and FLAME GPU 2 addresses performant general-purpose ABM on
+      GPUs. None is a substitute for every hospital-specific requirement, but
+      their existence makes “Python,” “modularity,” “real geometry” and “GPU”
+      insufficient contributions in isolation.
+      <a href="https://doi.org/10.1007/s10707-018-00339-6"
+        >Taillandier et al. (2019)</a
+      >,
+      <a href="https://doi.org/10.17815/CD.2016.1"
+        >Curtis, Best and Manocha (2016)</a
+      >,
+      <a href="https://doi.org/10.21105/joss.07668">ter Hoeven et al. (2025)</a
+      >, <a href="https://doi.org/10.1002/spe.3207">Richmond et al. (2023)</a>.
+    </p>
+    <p>
+      A fair comparison would implement the same small hospital use case in an
+      existing ecosystem and measure what AMR-Hub actually improves: preparation
+      effort, correctness diagnostics, reproducibility, calibration integration
+      or execution cost. Do not use a comparison table that labels other tools
+      “poor at geometry” without a reproducible test. The existing internal
+      tools review is a useful starting list, not publishable comparative
+      evidence.
+    </p>
+    <p>
+      CAD/plan-to-topology conversion also has prior art. Topological repair and
+      room/door reconstruction have been studied outside healthcare, including
+      floorplan-image parsing and navigation-oriented topology construction.
+      AMR-Hub’s strongest possible geometry argument is
+      <strong>error detection and its downstream scientific consequences</strong
+      >, not the invention of converting plans into rooms and doors.
+      <a href="https://doi.org/10.1080/13658816.2020.1781130"
+        >Wu et al. (2021)</a
+      >, <a href="https://doi.org/10.3390/ijgi12060248">Han et al. (2023)</a>.
+    </p>
+    <p>
+      The Health Data Insight HAI Simulator is further evidence that a GAMA
+      hospital environment with roles, amenities, intervention controls and
+      multiple proposed transmission routes is not unprecedented. Its project
+      page is <strong>grey literature</strong>, not proof of peer-reviewed model
+      validity; it belongs in a software landscape comparison, not a table of
+      validated epidemiological models.
+      <a
+        href="https://healthdatainsight.org.uk/project/healthcare-associated-infection-simulator/"
+        >HDI project description</a
+      >.
+    </p>
+    <h3 id="44-open-code-around-restricted-data-is-established-practice">
+      4.4 Open code around restricted data is established practice
+    </h3>
+    <p>
+      OpenSAFELY demonstrates that open analytical code can run against
+      sensitive records retained in secure infrastructure. Therefore “the code
+      is public but patient data stay in a TRE” is a valuable design principle,
+      not a new methodological discovery. A credible AMR-Hub paper would show
+      how that principle solves the specific problems of geometry, movement
+      calibration, reproducibility and output release.
+      <a href="https://doi.org/10.1038/s41586-020-2521-4"
+        >Williamson et al. (2020)</a
+      >.
+    </p>
+    <p>
+      Nor do simulated trajectories automatically become anonymous because
+      direct identifiers are removed. Human mobility can be highly distinctive.
+      The classic mobility-privacy study is not a numerical risk estimate for
+      AMR-Hub, but it directly defeats an assumption that trajectory outputs are
+      inherently safe to export.
+      <a href="https://doi.org/10.1038/srep01376">de Montjoye et al. (2013)</a>.
+    </p>
+    <h2 id="5-scientific-criticism-of-the-present-implementation">
+      5. Scientific criticism of the present implementation
+    </h2>
+    <h3
+      id="51-the-current-cpu-sweep-cannot-answer-an-amr-transmission-question"
+    >
+      5.1 The current CPU sweep cannot answer an AMR transmission question
+    </h3>
+    <p>
+      The inspected CPU execution path handles tasks, movement, internal needs
+      and recording. Infection status is stored, but I did not find a CPU update
+      that generates new infections. The sweep measures proximity observations
+      and episode summaries after simulation. Those are valid computational
+      outcomes, but none is an observed or modelled count of resistance
+      acquisition.
+    </p>
+    <p>
+      The GPU path uses a hard-coded search radius of 2.0 and immediately
+      changes susceptible agents to infected when it identifies an eligible
+      infected neighbour. It does not, in the inspected kernel, implement a
+      pathogen-specific dose-response, colonisation/infection distinction, hand
+      contamination, antibiotic selection, clearance, environmental persistence
+      or a sampling/diagnosis process. An AMR transmission model need not
+      include every one of these mechanisms; it must justify the subset needed
+      for its question. The current mechanism does not provide that
+      justification. See
+      <a href="../python-code/src/amr_hub_abm/spatial/engine_gpu.py"
+        ><code>engine_gpu.py</code>, proximity kernel and host update</a
+      >.
+    </p>
+    <p>
+      <strong>Required correction to claims:</strong> describe the present CPU
+      work as <em>hospital workflow and contact-opportunity simulation</em>.
+      Reserve pathogen-specific transmission language for a documented,
+      calibrated extension. Modelling spread of an already-resistant organism is
+      a legitimate AMR question without modelling resistance evolution, but even
+      that requires a defined organism and transmission mechanism.
+    </p>
+    <h3 id="52-cpu-and-gpu-are-different-scientific-implementations">
+      5.2 CPU and GPU are different scientific implementations
+    </h3>
+    <p>
+      The GPU uses approximate perpendicular angular drift, target overshoot
+      clamping, ray-based collision checks, float32 staging, a tick/thread-based
+      random stream and batched updates. The CPU uses trigonometric angular
+      perturbation, independent component multipliers, room lookup and
+      endpoint-radius wall checks. The simulation also shuffles agent order.
+      Equal parameter names do not imply equal stochastic processes.
+    </p>
+    <p>
+      More seriously, the GPU proximity kernel filters by floor ID but does not
+      receive building or room identity, or test wall occlusion. Positions are
+      staged with a common z coordinate, and the mesh builder combines walls
+      across buildings/floors. These are
+      <strong
+        >static code findings implying multi-space correctness risks</strong
+      >, not a claim that a particular observed outbreak crossed a wall.
+      Construct dedicated counterexamples before relying on this path. The
+      inspected GPU tests largely exercise mocked initialization and API
+      helpers; they do not establish end-to-end statistical equivalence.
+    </p>
+    <p>
+      <strong>Publication blocker:</strong> speedup claims must compare the same
+      model, including identical outcome definitions and infection semantics. A
+      faster different model is an approximation study, which needs error bounds
+      or empirical error characterization. It is not a transparent acceleration
+      result.
+    </p>
+    <h3 id="53-collision-rejection-does-not-guarantee-rejection-of-movement">
+      5.3 Collision rejection does not guarantee rejection of movement
+    </h3>
+    <p>
+      <code>SpatialQuery.try_move_one_step()</code> returns the last candidate
+      after exhausting the retry loop. In a minimal probe where every room
+      lookup returns <code>None</code>, five failed attempts starting at
+      <code>(0, 0)</code> returned <code>(1, 0)</code>. The GPU code explicitly
+      retains the final failed candidate as well. See
+      <a href="novelty-review/code-probes.json">probe output</a> and
+      <a href="../python-code/src/amr_hub_abm/spatial/engine.py"
+        ><code>engine.py</code></a
+      >.
+    </p>
+    <p>
+      This does not prove that the running sweep frequently generates invalid
+      positions. It proves that “collision-safe movement” is not an invariant of
+      the algorithm. Quantify out-of-bounds positions, wall crossings, retry
+      exhaustion and unresolved-room contacts before interpreting crowding
+      effects. A rare violation can matter disproportionately if it opens a
+      shortcut or changes shared-resource access. Fixing it later should create
+      a new experiment version; do not quietly combine corrected and legacy
+      results.
+    </p>
+    <h3 id="54-stochasticity-couples-two-different-interventions">
+      5.4 “Stochasticity” couples two different interventions
+    </h3>
+    <p>
+      For level <code>s</code>, the CPU proposal adds an angle perturbation with
+      standard deviation <code>s</code> degrees and independently multiplies x
+      and y displacement by <code>1 + Normal(0, s)</code>. Thus the same
+      parameter changes direction and displacement magnitude. At
+      <code>s = 1</code>, the angular perturbation is only one degree while each
+      displacement multiplier has unit standard deviation. Calling this a pure
+      heading-noise study is wrong.
+    </p>
+    <p>
+      A component multiplier reverses sign with probability
+      <code>Phi(-1/s)</code> for <code>s &gt; 0</code>: approximately 0.0032%,
+      2.28%, 9.12% and 15.87% at the four positive sweep levels. These are
+      analytic proposal probabilities, not measured accepted-movement
+      frequencies. Collision filtering and target updates can alter the realised
+      distribution.
+    </p>
+    <p>
+      There is a further structural issue: independent x/y multipliers make the
+      proposal distribution depend on the coordinate axes. A path aligned with
+      the x axis and the same path rotated by 45 degrees do not generally
+      experience the same directional perturbations. This is an analytical
+      consequence of component-wise noise; its effect on hospital outcomes has
+      not been measured. Add rotated-copy geometry tests and compare with noise
+      defined in forward/lateral coordinates.
+    </p>
+    <p>
+      <strong>Required experiment:</strong> separate angular noise, longitudinal
+      speed noise and lateral noise; compare distributions with positive-only
+      speed factors; check timestep scaling; and quantify whether the scientific
+      conclusion survives those choices. The existing coupled sweep can serve as
+      the legacy reference condition.
+    </p>
+    <h3 id="55-speed-and-time-units-need-a-scientific-contract">
+      5.5 Speed and time units need a scientific contract
+    </h3>
+    <p>
+      The synthetic configuration sets fixed speed to
+      <code>0.01</code> coordinate units per timestep and the timestep to one
+      second. If coordinates represent metres, this is 0.01 m/s. Either that is
+      an intentional effective-progress model, or it is not a realistic
+      walking-speed parameter. The paper must say which. CAD extraction
+      tolerances are explicitly in source coordinate units, so units cannot be
+      inferred merely from a “metres” label in the contact CLI.
+    </p>
+    <p>
+      Deadline pacing divides remaining Euclidean distance by remaining time
+      until the planned task start, then reverts to base speed after the
+      deadline. The inspected update has no explicit physiological maximum
+      speed. Moreover, the strategies differ in dispatch timing and
+      opportunities for inserting other tasks; their contrast is not necessarily
+      an isolated speed effect. See
+      <a href="../python-code/src/amr_hub_abm/agent/agent.py"
+        ><code>agent.py</code></a
+      >
+      and
+      <a href="../python-code/src/amr_hub_abm/task/tasklist.py"
+        ><code>tasklist.py</code></a
+      >.
+    </p>
+    <p>
+      Before arguing that one strategy is safer, report speed distributions,
+      route lengths, waiting, lateness, missed/completed tasks and care
+      delivered. A model can reduce contacts by failing to deliver care or by
+      moving implausibly; neither is an acceptable operational improvement.
+    </p>
+    <h3 id="56-contact-measurements-need-observation-semantics">
+      5.6 Contact measurements need observation semantics
+    </h3>
+    <p>
+      The 0.1 m threshold is a modelling choice, not a validated universal
+      definition of an infection-relevant encounter. A point-agent proximity
+      event is not necessarily touch, shared air, hand-mediated exposure or
+      contact with a contaminated object. Existing empirical studies use
+      materially different sensing ranges and sampling intervals; comparisons
+      require an explicit measurement model.
+      <a href="https://doi.org/10.1371/journal.pone.0073970"
+        >Vanhems et al. (2013)</a
+      >.
+    </p>
+    <p>
+      The detector excludes contacts only when both rooms are known and
+      different. If a room is unresolved, a nearby pair can remain in the
+      output. This interacts with the movement issue above. Report the fraction
+      of observations with unresolved spatial classification rather than
+      allowing them to silently contribute to apparently room-aware estimates.
+    </p>
+    <p>
+      The episode convention is
+      <code>number of observations × sampling interval</code>. The probe with
+      observations at <code>t = 0</code> and <code>t = 1</code> yields an
+      episode duration of 2, although the time between endpoints is 1. This can
+      be a legitimate interval-support convention, but the sweep records both
+      initial and terminal states: explain which interval the terminal
+      observation represents and prevent inadvertent exposure beyond the
+      observation window. It is a measurement-definition issue until the
+      intended support is specified, not a claim that every reported episode is
+      incorrectly measured.
+    </p>
+    <p>
+      At a fixed one-second interval, total observation counts and total
+      pair-contact seconds are mathematically redundant under this convention.
+      Presenting them in different panels does not supply independent
+      corroboration. Longest episodes are extreme-value statistics and need
+      distributional inspection, not only means and symmetric confidence
+      intervals.
+    </p>
+    <h3
+      id="57-the-staffing-sweep-mixes-staffing-activity-and-resource-pressure"
+    >
+      5.7 The staffing sweep mixes staffing, activity and resource pressure
+    </h3>
+    <p>
+      The experiment retains four patients and a small shared-resource layout
+      while adding workers with generated schedules. Therefore increasing HCWs
+      changes both the number of possible pairs and the volume/timing of
+      activity in a fixed environment. It is not a controlled staffing-policy
+      comparison at fixed clinical demand.
+    </p>
+    <p>
+      Possible HCW-HCW pairs grow as <code>H(H-1)/2</code>; possible HCW-patient
+      pairs grow as <code>4H</code>. Growth in total contacts is partly built
+      into the design. Changes in pair-type percentages may reflect the changing
+      denominator, not a new behavioural mechanism. Report contacts per possible
+      pair, per active-agent hour and per delivered task alongside totals; also
+      stratify by room and activity. Preserve the original endpoint so
+      normalisation does not conceal absolute burden.
+    </p>
+    <p>
+      The three-workstation synthetic staff room is useful as a stress test. It
+      is not a representative staffing configuration. Add a second design
+      holding total care demand fixed and varying assignment across workers, and
+      a third scaling resource capacity or floor area. Separate staffing from
+      occupancy density, workload and saturation.
+    </p>
+    <p>
+      Thirty seeds estimate conditional Monte Carlo variability. They do not
+      sample hospitals, patients, work rosters or measurement errors. One
+      generated schedule per HCW count cannot support population-level claims
+      about real staffing patterns. Common seeds across conditions may support
+      paired comparisons, but paths can consume random numbers differently; do
+      not assume perfect coupling. Use replicate-level contrasts and report
+      Monte Carlo error separately from parameter, observation and structural
+      uncertainty.
+    </p>
+    <h3 id="58-the-prediction-prototype-does-not-establish-irl-feasibility">
+      5.8 The prediction prototype does not establish IRL feasibility
+    </h3>
+    <p>
+      The event-analysis code has useful baseline machinery, but its strongest
+      printed conclusions are unjustified:
+    </p>
+    <ul>
+      <li>
+        <code>run_learnability_stats()</code> and
+        <code>run_compare_state_variants()</code> randomly split transition
+        pairs. Transitions from the same staff member or shift can enter both
+        train and test sets.
+      </li>
+      <li>
+        <code>run_irl_feasibility()</code> improves on this by splitting whole
+        shifts, but that is not necessarily a held-out staff, ward or
+        future-time evaluation.
+      </li>
+      <li>
+        Occupancy is annotated from touchpoints within a symmetric window
+        extending to <code>t + 5 minutes</code>. That is retrospective
+        information. Using it for online prediction without acknowledging the
+        future window would leak unavailable information.
+      </li>
+      <li>
+        The categorical count model is not a proven ceiling on achievable
+        prediction. Fixed accuracy gains of 0.02 or 0.03 do not establish
+        whether IRL “will work.” Selecting the best representation on the same
+        test set also requires a separate final evaluation set.
+      </li>
+      <li>
+        Time since the first recorded event is a proxy, not a measurement of
+        physiological fatigue; room touchpoints are not continuous occupancy
+        observations.
+      </li>
+    </ul>
+    <p>
+      These are grounded in
+      <a href="../python-code/data_analysis/markov_analyzer.py"
+        ><code>markov_analyzer.py</code></a
+      >
+      and
+      <a href="../python-code/data_analysis/data_wrangler.py"
+        ><code>data_wrangler.py</code></a
+      >. They matter if the output is presented as prediction evidence;
+      retrospective descriptive analysis has different requirements.
+    </p>
+    <p>
+      IRL concerns which rewards can explain behaviour under assumptions about
+      dynamics and decision-making. Predictive structure is not reward
+      identifiability, and poor performance of one finite-sample baseline does
+      not prove that all policy learning is impossible. A defensible learning
+      study should start with observation models, leakage-resistant splits and
+      simple semi-Markov or supervised baselines. Only introduce IRL if
+      transferable behaviour or a particular counterfactual requires it.
+      <a href="https://ai.stanford.edu/~ang/papers/icml00-irl.pdf"
+        >Ng and Russell (2000)</a
+      >.
+    </p>
+    <h3 id="59-tre-readiness-and-anonymisation-are-currently-overclaimed">
+      5.9 TRE readiness and anonymisation are currently overclaimed
+    </h3>
+    <p>
+      A container is not a TRE, an output-release procedure, or a privacy
+      guarantee. The inspected Dockerfile also uses floating base/tool image
+      tags; locking Python dependencies alone does not freeze the entire build.
+      The TRE README’s example entrypoint descriptions differ from the actual
+      Docker entrypoint. These are fixable engineering issues, but
+      publication-quality reproducibility should be demonstrated with a clean
+      offline build/run and recorded image digest.
+    </p>
+    <p>
+      A strong secure-workflow paper would document which inputs remain
+      restricted, which outputs require review, how results are independently
+      recomputed, what disclosure tests are used and how researcher usability is
+      evaluated. Synthetic fixtures support public verification; they do not
+      prove that outputs fitted to real people can leave the TRE.
+      <a href="https://doi.org/10.1038/s41586-020-2521-4"
+        >Williamson et al. (2020)</a
+      >,
+      <a href="https://doi.org/10.1038/srep01376">de Montjoye et al. (2013)</a>.
+    </p>
+    <h2 id="6-which-novelty-claims-could-survive-review">
+      6. Which novelty claims could survive review?
+    </h2>
+    <p>
+      A subsequent
+      <a href="novelty-review/five-criteria-comparison.md"
+        >five-criteria comparison</a
+      >
+      distinguishes current code from the planned BDI and multi-organism
+      programme, alongside competitor capabilities.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Proposed claim</th>
+          <th>Current assessment</th>
+          <th>Evidence needed to strengthen it</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>“A new hospital AMR ABM”</td>
+          <td>
+            Too broad; crowded prior art and incomplete present mechanisms
+          </td>
+          <td>
+            A narrowly defined biological question, explicit mechanism and
+            independent validation
+          </td>
+        </tr>
+        <tr>
+          <td>“An open Python implementation”</td>
+          <td>Useful accessibility, weak scientific novelty</td>
+          <td>
+            Substantial reusable research functionality, design justification
+            and demonstrated use
+          </td>
+        </tr>
+        <tr>
+          <td>“Realistic hospital layouts”</td>
+          <td>Geometry exists; realism not established</td>
+          <td>
+            Topological/metric validation, unit provenance and outcome
+            sensitivity to geometry errors
+          </td>
+        </tr>
+        <tr>
+          <td>“Routine logs reconstruct staff contacts”</td>
+          <td>Direct precedent exists</td>
+          <td>
+            Uncertainty-aware reconstruction with observation-error modelling
+            and independent contact validation
+          </td>
+        </tr>
+        <tr>
+          <td>“Deadline-paced movement improves safety”</td>
+          <td>
+            Unsupported; current outcome is proximity and strategy changes
+            several behaviours
+          </td>
+          <td>
+            Care-quality constraints, empirical movement plausibility,
+            structural alternatives and a justified exposure/infection endpoint
+          </td>
+        </tr>
+        <tr>
+          <td>“Stochasticity changes contact patterns”</td>
+          <td>Expected and probably insufficient alone</td>
+          <td>
+            A generalizable failure boundary, uncertainty decomposition, or
+            reversal of a substantive conclusion across plausible models
+          </td>
+        </tr>
+        <tr>
+          <td>“GPU acceleration”</td>
+          <td>
+            Implemented branch; equivalence and speedup not established here
+          </td>
+          <td>
+            Matched semantics, correctness tests, measured accuracy/performance
+            tradeoff and end-to-end benchmarks
+          </td>
+        </tr>
+        <tr>
+          <td>“TRE-compatible reproducible modelling”</td>
+          <td>Credible engineering direction; not first-in-field</td>
+          <td>
+            Independently repeated deployment and a demonstrated
+            governance/reproducibility contribution
+          </td>
+        </tr>
+        <tr>
+          <td>“Automatic CAD ingestion”</td>
+          <td>Configuration-dependent, partly manual correction workflow</td>
+          <td>
+            A diverse annotated benchmark, topology accuracy, failures and
+            manual-effort accounting
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      <strong>Most defensible present wording:</strong> “AMR-Hub is an open
+      research software framework for task-driven hospital workflow and
+      contact-opportunity simulation, with geometry-preparation tools and
+      support for restricted-data deployment.”
+    </p>
+    <p>
+      <strong>Most promising future methods claim:</strong> “We quantify how
+      incomplete event observations and movement-model assumptions propagate
+      into uncertainty in hospital contact-network estimates.” This becomes
+      novel only if the experiments establish something beyond prior
+      contact-network and structural-model comparisons.
+    </p>
+    <h2 id="6a-comparison-against-the-five-proposed-distinguishing-criteria">
+      6A. Comparison against the five proposed distinguishing criteria
+    </h2>
+    <p>
+      This comparison incorporates the investigator’s stated BDI development
+      plan and multi-organism ambition, while distinguishing them from verified
+      current implementation. RCD means routinely collected data.
+    </p>
+    <h3 id="6a1-criteria-and-fair-interpretation">
+      6A.1 Criteria and fair interpretation
+    </h3>
+    <ol>
+      <li>
+        <strong>Open source:</strong> explicit software licence, distinct from
+        an accessible article or public repository.
+      </li>
+      <li>
+        <strong>Real hospital layout:</strong> distinguish metric geometry from
+        a room/ward hierarchy or patient co-location network. All can be
+        appropriate, but they provide different detail.
+      </li>
+      <li>
+        <strong>Routine staff movement/activity data:</strong> observed
+        operational records collected during care, distinct from dedicated
+        research RTLS deployment, modelled schedules, patient movement records
+        or aggregate hand-hygiene measurements.
+      </li>
+      <li>
+        <strong>BDI:</strong> beliefs, desires and intentions used in an agent
+        reasoning process. Internal variables, task queues and state machines
+        alone do not establish a complete BDI architecture. Absence of
+        documentation is labelled unverified rather than proof of absence.
+      </li>
+      <li>
+        <strong>Multiple strains/pathogens:</strong> distinguish reuse of a
+        contact engine, separate simulations with pathogen-specific parameters,
+        simultaneous competing strains/co-infection, and displaying multiple
+        organisms in surveillance software. These are not interchangeable
+        capabilities.
+      </li>
+    </ol>
+    <h3 id="6a2-comparison-matrix">6A.2 Comparison matrix</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Candidate</th>
+          <th>Open source</th>
+          <th>Real hospital layout</th>
+          <th>Routine staff records driving movement</th>
+          <th>BDI agent reasoning</th>
+          <th>Organism/strain scope</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <strong>AMR-Hub: current code and stated UCLH programme</strong>
+          </td>
+          <td>MIT</td>
+          <td>
+            CAD/DXF conversion and spatial engine implemented; UCLH deployment
+            planned, not independently assessed here
+          </td>
+          <td>
+            Event-to-task ingestion implemented; routine UCLH staff records
+            confirmed by investigator for planned application
+          </td>
+          <td>
+            Supporting needs/task components implemented; complete BDI loop not
+            verified; completion planned
+          </td>
+          <td>
+            Generic contact layer can support multiple organism studies;
+            pathogen-specific transmission and simultaneous multi-strain
+            dynamics not verified
+          </td>
+        </tr>
+        <tr>
+          <td><strong>RTLS_ABM</strong></td>
+          <td>
+            Public AnyLogic model; explicit open-source licence unverified
+          </td>
+          <td>
+            Digitised real hospital floorplan; original CAD format unverified
+          </td>
+          <td>
+            Measured staff/device trajectories from a dedicated UWB RTLS
+            deployment; not demonstrated as pre-existing routine operational
+            records
+          </td>
+          <td>
+            Not documented in inspected sources; movement replay and
+            disease-state logic are not evidence of BDI
+          </td>
+          <td>
+            Published application is C. difficile; adjustable parameters do not
+            demonstrate multiple validated pathogens or interacting strains
+          </td>
+        </tr>
+        <tr>
+          <td><strong>AMRinference</strong></td>
+          <td>Apache-2.0; MATLAB/C</td>
+          <td>
+            Actual patient-location network from administrative records; no
+            metric CAD movement model demonstrated
+          </td>
+          <td>
+            No explicit observed staff movement; patient records supply network
+          </td>
+          <td>
+            No BDI reasoning described; probabilistic carriage inference is a
+            different mechanism
+          </td>
+          <td>
+            CRKP application with genomic information; genomic distinctions are
+            not evidence of concurrent multi-strain dynamics
+          </td>
+        </tr>
+        <tr>
+          <td><strong>H-Outbreak</strong></td>
+          <td>BSD-3-Clause; Python</td>
+          <td>
+            Hospital hierarchy based on a real Spanish hospital; no CAD metric
+            movement demonstrated
+          </td>
+          <td>No; patients are the only agents</td>
+          <td>No BDI described; patient rules and disease-state transitions</td>
+          <td>
+            Paper explicitly assumes one microorganism; CDI application; broader
+            reuse is distinct from demonstrated multi-strain operation
+          </td>
+        </tr>
+        <tr>
+          <td><strong>HDI HAI Simulator</strong></td>
+          <td>
+            Specific model licence/source availability unverified; GAMA itself
+            is open source
+          </td>
+          <td>
+            QGIS floorplan/furniture shapefiles; provenance of a particular real
+            hospital deployment unverified
+          </td>
+          <td>
+            Staff agents and schedules; empirical movement calibration described
+            as future work
+          </td>
+          <td>
+            Unverified for this model. GAMA supports BDI, but platform
+            capability does not establish model use
+          </td>
+          <td>
+            General HAI concept mentioning MRSA/CDI and several routes;
+            calibrated pathogen modules or simultaneous strains not established
+          </td>
+        </tr>
+        <tr>
+          <td><strong>H-ABM</strong></td>
+          <td>Public code/licence not verified</td>
+          <td>
+            Actual hospital room/ward organisation, common rooms and cafeteria;
+            not demonstrated as CAD-resolved walking geometry
+          </td>
+          <td>
+            Staff agents follow rules; observed hand hygiene and other hospital
+            summaries inform parameters, not individual movement trajectories
+          </td>
+          <td>No BDI described; behavioural rules and disease-state model</td>
+          <td>
+            CDI-specific published model; multi-strain dynamics not demonstrated
+          </td>
+        </tr>
+        <tr>
+          <td><strong>SmICS</strong></td>
+          <td>Core Apache-2.0; visualisation licence unverified</td>
+          <td>
+            Actual ward/room stay identifiers and co-location; no physical
+            floorplan simulator demonstrated
+          </td>
+          <td>No staff movement input described</td>
+          <td>
+            Not applicable: surveillance/investigation application, not an agent
+            simulator
+          </td>
+          <td>
+            Multiple organism/resistance findings can be analysed; this is
+            surveillance breadth, not multi-strain transmission simulation
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 id="6a3-verification-of-amr-hub-claims">
+      6A.3 Verification of AMR-Hub claims
+    </h3>
+    <p>
+      <strong>Open source and geometry:</strong>
+      <a href="../LICENSE">MIT licence</a> and
+      <a href="../python-code/docs/floorplan_extraction.md"
+        >floorplan extraction documentation</a
+      >
+      support the first two engineering capabilities. Geometry support is
+      demonstrated by implementation; successful clinical deployment is a
+      separate evidential question.
+    </p>
+    <p>
+      <strong>Routinely collected data:</strong>
+      <a href="../python-code/src/amr_hub_abm/simulation_factory.py"
+        >simulation_factory.py</a
+      >
+      reads and validates location events, then builds agent tasks. The UCLH
+      provenance and planned year-long coverage are investigator-provided
+      context. The public toy input is not the clinical dataset, and absence of
+      that dataset from Git is appropriate.
+    </p>
+    <p>
+      <strong>BDI status:</strong>
+      <a href="../python-code/src/amr_hub_abm/agent/internal_state.py"
+        >internal_state.py</a
+      >
+      implements hunger, toilet need and fatigue, with updates and reset
+      helpers. Its documentation calls this a state-only implementation and
+      describes resets for future task integrations.
+      <a href="../python-code/src/amr_hub_abm/agent/agent.py">agent.py</a> and
+      <a href="../python-code/src/amr_hub_abm/task/tasklist.py">tasklist.py</a>
+      implement lifecycle handlers, due-time/priority selection,
+      suspension/resumption and opportunistic chair tasks. These are reusable
+      foundations. I did not find an explicit belief-update system,
+      competing-desire deliberation, or an intention-selection/reconsideration
+      loop linking needs to decisions. Therefore the verified wording is
+      <strong
+        >“BDI planned, with internal-state and task-execution foundations
+        implemented”</strong
+      >, rather than a completed or experimentally evaluated BDI agent. This
+      conclusion is based on execution-path inspection as well as text search,
+      not class names alone.
+    </p>
+    <p>
+      <strong>Strain scope:</strong>
+      <a href="../python-code/src/amr_hub_abm/agent/agent.py">agent.py</a>
+      contains one <code>infection_status</code> and a generic
+      <code>infection_details</code> dictionary;
+      <a href="../python-code/src/amr_hub_abm/agent/enums.py">enums.py</a>
+      supplies generic susceptible/exposed/infected/recovered states. No
+      operational strain-indexed state or pathogen-specific transmission
+      registry was found. The README describes multiple-pathogen modelling as
+      future development. A generic movement/contact engine is useful across
+      organisms, but does not itself supply organism-specific transmission,
+      resistance mechanisms, mixed colonisation or strain competition.
+    </p>
+    <h3 id="6a4-publication-interpretation">6A.4 Publication interpretation</h3>
+    <p>
+      The proposed combination of open software, CAD-derived geometry, routine
+      staff event inputs, BDI behaviour and organism-specific model extensions
+      is a plausible research programme. It is not currently a five-feature
+      implemented superiority claim. BDI itself is established:
+      <a href="https://gama-platform.org/wiki/BuiltInArchitectures"
+        >GAMA already supplies a BDI architecture</a
+      >. Its contribution here would need to be the hospital-specific decision
+      model and demonstrated benefit over simpler rules.
+    </p>
+    <p>
+      For the present software paper, emphasize open geometry-constrained
+      workflow/contact modelling and event ingestion. For the methods paper,
+      test whether routine staff information improves contact or outcome
+      inference under uncertain patient presence. For a later BDI contribution,
+      compare its predictions and counterfactual behaviour with the existing
+      task scheduler on held-out observations. For a multi-organism
+      contribution, specify whether this means separate parameterised runs or
+      simultaneous strains, then validate the relevant mechanisms. Do not award
+      AMR-Hub planned capabilities while denying competitors comparable
+      extensibility.
+    </p>
+    <h3 id="6a5-primary-sources">6A.5 Primary sources</h3>
+    <ul>
+      <li>
+        RTLS_ABM:
+        <a href="https://github.com/MVL-PATHS/RTLS_ABM">repository</a>,
+        <a href="https://doi.org/10.1145/3765612.3767222">paper</a>.
+      </li>
+      <li>
+        AMRinference:
+        <a href="https://github.com/SenPei-CU/AMRinference">repository</a>,
+        <a href="https://www.nature.com/articles/s41467-025-65241-w">paper</a>.
+      </li>
+      <li>
+        H-Outbreak:
+        <a href="https://github.com/denissekim/H-outbreak">repository</a>,
+        <a href="https://www.nature.com/articles/s41598-023-47296-1">paper</a>.
+      </li>
+      <li>
+        HDI:
+        <a
+          href="https://healthdatainsight.org.uk/project/healthcare-associated-infection-simulator/"
+          >project description</a
+        >; grey literature, not peer-reviewed validation.
+      </li>
+      <li>
+        H-ABM: <a href="https://doi.org/10.1371/journal.pone.0284611">paper</a>.
+      </li>
+      <li>
+        SmICS:
+        <a href="https://www.nature.com/articles/s41746-025-01795-9">paper</a>,
+        <a href="https://github.com/highmed/SmICSCore">Core</a>.
+      </li>
+      <li>
+        BDI semantics/platform capability:
+        <a href="https://gama-platform.org/wiki/1.9.1/BDIAgents_step2"
+          >GAMA BDI tutorial</a
+        >.
+      </li>
+    </ul>
+    <p>
+      Competitor assessments concern the inspected publication/repository
+      versions. “Not documented” and “not verified” must not be converted into
+      categorical absence in a manuscript table without further source
+      inspection or author clarification.
+    </p>
+    <h2 id="7-ranked-publication-routes-and-concrete-study-designs">
+      7. Ranked publication routes and concrete study designs
+    </h2>
+    <p>
+      These are alternative or sequential projects, not a promise of eight
+      papers. Effort categories are relative planning judgments:
+      <em>bounded engineering</em> means an achievable package of corrections
+      and evaluation; <em>substantial methods</em> means new modelling and
+      experiments; <em>data-dependent</em> means timing is dominated by access
+      and validation. No acceptance probability is implied.
+    </p>
+    <h3 id="route-a-research-software-paper-the-nearest-viable-route">
+      Route A — Research software paper: the nearest viable route
+    </h3>
+    <p>
+      <strong>Working title:</strong>
+      <em
+        >AMR-Hub: reproducible task-driven simulation of hospital workflows and
+        contact opportunities.</em
+      >
+    </p>
+    <p>
+      <strong>Contribution:</strong> a documented, reusable pipeline with
+      explicit scientific contracts for event inputs, geometry, task execution
+      and contact outputs. Its value is the ability of another researcher to use
+      and test it for a real research problem. It need not invent ABM, Python or
+      hospital simulation.
+    </p>
+    <p><strong>Minimum evidence package:</strong></p>
+    <ol>
+      <li>
+        Define the supported CPU model and label experimental GPU/transmission
+        features accurately. Resolve or explicitly constrain the correctness
+        issues in Section 5.
+      </li>
+      <li>
+        Supply an ODD description and a STRESS-ABS experiment specification,
+        including time units, update order, noise, resource allocation and
+        measurement conventions. These are established reporting tools, not
+        decorations.
+        <a href="https://doi.org/10.18564/jasss.4259">Grimm et al. (2020)</a>,
+        <a href="https://doi.org/10.1080/17477778.2018.1442155"
+          >Monks et al. (2019)</a
+        >.
+      </li>
+      <li>
+        Demonstrate two materially different synthetic layouts and input
+        schedules, with a short reproducible example and a full experiment
+        manifest.
+      </li>
+      <li>
+        Have a researcher outside the implementation team install, run and adapt
+        an example; record the changes and obstacles. This is a proposed
+        usability test, not a journal-mandated sample size.
+      </li>
+      <li>
+        Explain why the standalone engine is needed alongside Mesa/GAMA, rather
+        than claiming that those frameworks cannot do spatial modelling.
+      </li>
+      <li>
+        Archive a tagged release with a persistent identifier, update existing
+        citation metadata and supply contributor/support information. FAIR4RS is
+        a useful framework for this work.
+        <a href="https://doi.org/10.1038/s41597-022-01710-x"
+          >Barker et al. (2022)</a
+        >.
+      </li>
+    </ol>
+    <p>
+      <strong>Likely venues:</strong> JOSS, SoftwareX or Journal of Open
+      Research Software (JORS). Choose one principal software publication.
+      <strong>Readiness:</strong> closest route, but not ready to market as a
+      validated AMR simulator. <strong>Effort:</strong> bounded engineering plus
+      demonstrable research use. <strong>Likely rejection:</strong> feature
+      inventory without a clear research need; reinvention without
+      justification; clinical language exceeding functionality.
+    </p>
+    <p>
+      <strong>Stop or narrow the claim if:</strong> the only advantage over an
+      existing platform is personal preference, or external users cannot
+      reproduce the examples.
+    </p>
+    <h3
+      id="route-b-structural-uncertainty-in-hospital-contact-models-strongest-synthetic-data-route"
+    >
+      Route B — Structural uncertainty in hospital contact models: strongest
+      synthetic-data route
+    </h3>
+    <p>
+      <strong>Working title:</strong>
+      <em
+        >When movement assumptions change hospital contact estimates: a
+        reproducible study of structural uncertainty.</em
+      >
+    </p>
+    <p>
+      <strong>Question:</strong> are contrasts between staffing/workflow
+      scenarios stable under equally plausible movement, geometry and
+      contact-observation assumptions?
+    </p>
+    <p>
+      This is more valuable than another plot showing that larger staff
+      populations create more pair contacts. The closest methodological
+      comparator is the literature on interaction-structure sensitivity, so the
+      new contribution must involve spatial reconstruction or decision
+      robustness that those simpler models do not resolve.
+      <a href="https://doi.org/10.1371/journal.pcbi.1010352"
+        >Mietchen et al. (2022)</a
+      >.
+    </p>
+    <p>
+      <strong>Study design:</strong> retain the current sweep as a frozen legacy
+      experiment. Build a second, corrected and explicitly versioned model.
+      Compare fixed and deadline-paced travel with at least a
+      schedule-preserving route baseline and a dwell/travel-time model.
+      Independently vary angular and speed noise; include rotated copies of
+      layouts; measure invalid movement, missed tasks and care completion. Cross
+      several layout families, schedule draws and resource-capacity regimes,
+      rather than multiplying seeds for one fixture.
+    </p>
+    <p>
+      Predefine a primary contrast: for example, the difference in contact time
+      per delivered patient-care task between two scheduling policies under a
+      fixed total workload. Report its sign and magnitude across structural
+      alternatives. Use an explicit model-index factor and nested schedule/seed
+      replication; do not treat every timestep or every contact as an
+      independent experimental subject. Sensitivity ranges should be empirically
+      motivated or explicitly labelled exploratory.
+    </p>
+    <p>
+      Include sampling interval, contact distance, unresolved-position handling
+      and endpoint conventions in the measurement layer. A timestep change must
+      preserve physical speed, durations and the intended noise process;
+      otherwise it is not a numerical-convergence experiment.
+    </p>
+    <p>
+      <strong>Minimum publishable result:</strong> a reproducible explanation of
+      when a substantive conclusion survives, fails or becomes unidentified,
+      together with diagnostics that detect that boundary. A null result can be
+      valuable if it establishes robust conditions across a well-motivated
+      range. A result produced solely by the rejected-movement defect is a bug
+      report unless it leads to a broader, independently tested methodological
+      lesson.
+    </p>
+    <p>
+      <strong>Likely venues:</strong> Journal of Simulation, JASSS or PLOS ONE;
+      PLOS Computational Biology only if a substantial biological/methodological
+      insight is established. <strong>Readiness:</strong> promising next
+      project, current sweep insufficient. <strong>Effort:</strong> substantial
+      methods, possible without clinical data.
+      <strong>Likely rejection:</strong> arbitrary ranges, one toy ward, obvious
+      pair-count effects, or conclusions that disappear after fixing basic
+      correctness.
+    </p>
+    <h3
+      id="route-c-routine-event-reconstruction-and-identifiability-priority-methods-route-for-uclh"
+    >
+      Route C — Routine-event reconstruction and identifiability: priority
+      methods route for UCLH
+    </h3>
+    <p>
+      <strong>Working title:</strong>
+      <em
+        >What can routine hospital event logs tell us about contact networks?
+        Identifiability and validation of constrained movement
+        reconstruction.</em
+      >
+    </p>
+    <p>
+      <strong>Question:</strong> how much of a contact network can be inferred
+      from doors, workstation activity, care documentation and rosters, and what
+      remains indeterminate?
+    </p>
+    <p>
+      The most important comparator is Curtis et al.’s EMR-based reconstruction,
+      supplemented by empirical proximity data and recent RTLS integration. The
+      contribution cannot be merely reading another database format.
+      <a href="https://doi.org/10.1371/journal.pone.0079906"
+        >Curtis et al. (2013)</a
+      >,
+      <a href="https://doi.org/10.1371/journal.pone.0073970"
+        >Vanhems et al. (2013)</a
+      >,
+      <a href="https://doi.org/10.1145/3765612.3767222">Thota et al. (2025)</a>.
+    </p>
+    <p>
+      <strong>Stage 1, controlled identification:</strong> start with fully
+      observed synthetic trajectories or an approved sensor dataset; censor it
+      into event streams with controlled missingness, timestamp error and
+      location ambiguity. Test whether the method recovers room occupancy, dwell
+      times, contact duration distributions and role mixing. Include cases with
+      multiple physically feasible trajectories producing the same logs but
+      different contacts. Such counterexamples expose the inferential limit
+      directly.
+    </p>
+    <p>
+      <strong>Stage 2, competing methods:</strong> compare
+      last-observation-carried-forward, feasible shortest-path interpolation,
+      empirical semi-Markov dwell/travel models, schedule-constrained simulation
+      and the proposed uncertainty-aware method. Evaluate whether uncertainty
+      intervals cover the held-out truth; a single plausible animated path is
+      not a successful uncertainty estimate.
+    </p>
+    <p>
+      <strong>Stage 3, independent validation:</strong> train on one time block
+      and evaluate later blocks; hold out staff and, where possible, a ward or
+      site. Compare matched measurement definitions. A sensor range must not be
+      silently substituted for physical touch. Assess failure modes by role,
+      event density and missingness, not only pooled mean error.
+    </p>
+    <p>
+      <strong>Endpoints:</strong> interval coverage and width, occupancy/dwell
+      error, temporal contact precision/recall at a declared resolution,
+      mixing-matrix error, duration-distribution distance and accuracy of a
+      predefined downstream policy contrast. Choose these before inspecting
+      which method looks best. If contacts cannot be identified, publish bounds
+      or calibrated uncertainty rather than claiming recovered truth.
+    </p>
+    <p>
+      <strong>Likely venues:</strong> Journal of Biomedical Informatics, BMC
+      Medical Informatics and Decision Making, or PLOS Computational Biology if
+      methodological substance and biological relevance justify it. npj Digital
+      Medicine is a stretch target conditional on convincing real-world
+      validation and utility. These are editorial-fit judgments, not evidence of
+      current readiness.
+    </p>
+    <p>
+      <strong>Readiness:</strong> best scientific direction, incomplete
+      implementation and validation. <strong>Effort:</strong> substantial
+      methods plus independent observation data.
+      <strong>Likely rejection:</strong> simulated truth generated by the same
+      model used for reconstruction; random transition splits; no observation
+      model; or claiming hidden trajectories are uniquely identified from sparse
+      logs.
+    </p>
+    <h3 id="route-d-geometry-preparation-and-error-propagation">
+      Route D — Geometry preparation and error propagation
+    </h3>
+    <p>
+      <strong>Working title:</strong>
+      <em
+        >From architectural drawings to auditable hospital simulation geometry:
+        topology validation and its effect on contact estimates.</em
+      >
+    </p>
+    <p>
+      <strong>Contribution:</strong> documented repair and diagnostics for
+      clinically meaningful connectivity, with measured preparation effort and
+      downstream consequences. Existing image-parsing and navigation-topology
+      studies require comparison; DWG/DXF-to-YAML conversion alone is not
+      enough.
+      <a href="https://doi.org/10.1080/13658816.2020.1781130"
+        >Wu et al. (2021)</a
+      >, <a href="https://doi.org/10.3390/ijgi12060248">Han et al. (2023)</a>.
+    </p>
+    <p>
+      <strong>Study design:</strong> assemble a legally shareable, annotated set
+      spanning drawing conventions, wall thicknesses, non-orthogonal rooms, open
+      boundaries, ambiguous door symbols and multiple floors. Compare a manually
+      curated reference with naive polygonisation, a reasonable existing
+      conversion baseline and the AMR-Hub workflow. Measure room/door precision
+      and recall, adjacency accuracy, reachability errors, dimensional error and
+      manual correction time. Polygon overlap alone is insufficient: a visually
+      tiny missing doorway can disconnect a ward.
+    </p>
+    <p>
+      Inject controlled geometric defects into otherwise identical models and
+      quantify changes in route feasibility, delay and contact estimates. Report
+      rejected/ambiguous cases and operator decisions. If conversion requires
+      substantial site-specific configuration, count that effort rather than
+      hiding it behind “automatic.”
+    </p>
+    <p>
+      <strong>Likely venues:</strong> SoftwareX/JORS for a reusable converter;
+      ISPRS International Journal of Geo-Information for a substantive spatial
+      method; an applied built-environment venue only with a credible design
+      application. <strong>Readiness:</strong> implementation exists,
+      independent benchmark missing.
+      <strong>Effort:</strong> bounded-to-substantial evaluation, including
+      annotation. <strong>Likely rejection:</strong> a standard geometry
+      pipeline tested only on its development drawing.
+    </p>
+    <h3
+      id="route-e-scientifically-equivalent-gpu-execution-or-quantified-approximation"
+    >
+      Route E — Scientifically equivalent GPU execution or quantified
+      approximation
+    </h3>
+    <p>
+      <strong>Working title:</strong>
+      <em
+        >Correctness and performance trade-offs in GPU-accelerated hospital
+        agent-based simulation.</em
+      >
+    </p>
+    <p>
+      <strong>Contribution:</strong> a defined equivalence contract, or a
+      deliberately approximate solver with characterised error. A generic “we
+      used Warp” paper is weak against existing GPU ABM frameworks.
+      <a href="https://doi.org/10.1002/spe.3207">Richmond et al. (2023)</a>.
+    </p>
+    <p>
+      <strong>First experiment:</strong> construct single-agent, two-agent,
+      wall/door, distinct-room, repeated-floor-ID and
+      overlapping-building-coordinate cases. Test task completion, legal
+      positions and transmission eligibility. Separate deterministic equivalence
+      from distributional equivalence of stochastic outputs. Match random-stream
+      policy where possible; otherwise use meaningful distributional tolerances
+      tied to scientific endpoints.
+    </p>
+    <p>
+      <strong>Benchmark:</strong> include CPU reference, optimised/vectorised
+      CPU where applicable, GPU and a fair established-framework comparison if
+      feasible. Measure warm-up/JIT separately, then report end-to-end time
+      including preparation, task logic, host-device transfer, recording and
+      contact analysis. Vary agents, geometry complexity and recording volume.
+      Report memory, device/software versions, precision and crossover size. A
+      fast kernel may deliver little end-to-end improvement if serial task logic
+      dominates.
+    </p>
+    <p>
+      <strong>Readiness:</strong> currently blocked by semantics and validation
+      gaps. <strong>Effort:</strong> substantial engineering.
+      <strong>Likely venues:</strong> Software: Practice and Experience, a
+      computational-software venue, or a specialist simulation/HPC conference.
+      <strong>Likely rejection:</strong> speedup purchased by changing the
+      model, comparisons with an avoidably slow baseline, or benchmarks too
+      small to establish scaling. Do not publish this before resolving the
+      multiple-space and infection differences.
+    </p>
+    <h3
+      id="route-f-reproducible-simulation-within-secure-research-environments"
+    >
+      Route F — Reproducible simulation within secure research environments
+    </h3>
+    <p>
+      <strong>Working title:</strong>
+      <em
+        >Reproducible hospital simulation across secure research environments:
+        an evaluated open-code workflow.</em
+      >
+    </p>
+    <p>
+      <strong>Contribution:</strong> demonstrated transferability of an actual
+      research workflow under restricted data access, not a Docker recipe.
+      OpenSAFELY and SmICS provide established precedents for secure/open
+      computation and reusable hospital informatics respectively.
+      <a href="https://doi.org/10.1038/s41586-020-2521-4"
+        >Williamson et al. (2020)</a
+      >,
+      <a href="https://doi.org/10.1038/s41746-025-01795-9"
+        >Biermann et al. (2025)</a
+      >.
+    </p>
+    <p>
+      <strong>Study design:</strong> have independent researchers reproduce a
+      specified analysis in at least two deployment contexts, ideally
+      independent TREs. Test offline installation, version capture, input
+      mapping, parameter recovery, run provenance, approved output release and
+      reproducibility across environments. Measure completion rates, preparation
+      time, support interventions and discrepancies. The number of sites is a
+      proposed design target, not a guarantee that two sites alone suffice.
+    </p>
+    <p>
+      Include a threat model and an evaluated release policy for calibrated
+      parameters, networks and trajectories. Distinguish public synthetic
+      fixtures, approved aggregates and restricted microdata. Do not describe
+      data as anonymous solely because identifiers were replaced. A locked
+      dependency file is useful but not a complete provenance record.
+    </p>
+    <p>
+      <strong>Likely venues:</strong> JORS’s research-software practice section,
+      SoftwareX as part of the main software contribution, or a
+      health-informatics venue if deployment evaluation is substantial.
+      <strong>Readiness:</strong> premature as a standalone paper.
+      <strong>Effort:</strong> data/governance-dependent.
+      <strong>Likely rejection:</strong> a generic container deployment with no
+      independent use or measurable advantage.
+    </p>
+    <h3 id="route-g-a-reusable-benchmarkdata-resource">
+      Route G — A reusable benchmark/data resource
+    </h3>
+    <p>
+      <strong>Working title:</strong>
+      <em
+        >A benchmark for hospital movement-to-contact reconstruction under
+        observation and geometry uncertainty.</em
+      >
+    </p>
+    <p>
+      <strong>Contribution:</strong> an externally useful challenge with known
+      truth and independent baseline implementations. A ZIP of trajectories from
+      the present fixture is not enough. A suitable resource could pair multiple
+      synthetic layouts and latent trajectories with deliberately censored event
+      streams, measurement models, reference contacts and predefined train/test
+      splits.
+    </p>
+    <p>
+      Document generator assumptions, licences, seeds, versions, units and each
+      intended use. Prevent circular evaluation by generating test cases from
+      more than the model family used by the leading baseline. Include malformed
+      geometry and hard negative contact cases. Demonstrate usefulness with
+      independent methods and external users. Data quality and reuse are the
+      contribution; “synthetic” alone is neither novelty nor a guarantee of
+      privacy when parameters were fitted to restricted people.
+    </p>
+    <p>
+      <strong>Likely venues:</strong> Scientific Data if the resource meets its
+      technical-validation and reuse standards, or Data in Brief for a narrower
+      data article.
+      <a href="https://www.nature.com/sdata/submission-guidelines"
+        >Scientific Data submission guidance</a
+      >,
+      <a
+        href="https://www.elsevier.com/researcher/author/tools-and-resources/research-elements-journals"
+        >Elsevier Research Elements</a
+      >. <strong>Readiness:</strong> prospective; present outputs are experiment
+      results rather than a general benchmark.
+      <strong>Effort:</strong> substantial dataset design.
+      <strong>Likely rejection:</strong> one-generator, one-layout circular
+      benchmark or a data article duplicating the methods paper without
+      independent reuse value.
+    </p>
+    <h3
+      id="route-h-a-pathogen-specific-operational-or-infection-control-application"
+    >
+      Route H — A pathogen-specific operational or infection-control application
+    </h3>
+    <p>
+      <strong>Working title:</strong>
+      <em
+        >Validated effects of [a specified workflow intervention] on [a
+        specified organism and endpoint] in [a defined hospital setting].</em
+      >
+    </p>
+    <p>
+      Choose the question before expanding the mechanism. Suitable examples
+      might concern staff assignment, shared-equipment workflows or the
+      placement of resources. Model care delivery and feasibility alongside
+      infection-relevant outcomes. A proposal to increase staffing, alter
+      patient contact or rearrange care must represent the corresponding
+      workload and clinical constraints.
+    </p>
+    <p>
+      For a resistant-organism transmission question, define
+      acquisition/colonisation/infection states, transmission routes,
+      importation, persistence and the observation process as needed. Calibrate
+      on one dataset; assess temporal or external validation; test intervention
+      predictions against an independently observed change where possible.
+      Explain the causal assumptions behind counterfactuals. Calibration to
+      baseline incidence alone does not validate the mechanism or the
+      intervention effect.
+      <a href="https://doi.org/10.1093/cid/cix962">Barker et al. (2018)</a>,
+      <a href="https://doi.org/10.1371/journal.pone.0284611"
+        >Scaria et al. (2023)</a
+      >,
+      <a href="https://doi.org/10.1016/j.jhin.2026.06.007"
+        >Gerada et al. (2026)</a
+      >.
+    </p>
+    <p>
+      <strong>Likely venues:</strong> Journal of Hospital Infection or Infection
+      Control &amp; Hospital Epidemiology for a convincing infection-control
+      study; PLOS ONE for a rigorous more limited application. A clinical or
+      digital-health flagship is conditional on independently compelling
+      evidence, not on the software branding.
+    </p>
+    <p>
+      <strong>Readiness:</strong> a concrete planned UCLH application with
+      investigator-confirmed data streams; clinical validation has not yet been
+      demonstrated. The CPU sweep alone does not support transmission claims.
+      <strong>Effort:</strong> substantial, dependent on governed data
+      preparation, endpoint feasibility and interdisciplinary work.
+      <strong>Likely rejection:</strong> proximity presented as infection risk;
+      unidentified fitted parameters; no independent validation; or a policy
+      recommendation that reduces care delivery to reduce contacts.
+    </p>
+    <h2
+      id="7a-revised-study-design-for-the-planned-year-long-uclh-ward-application"
+    >
+      7A. Revised study design for the planned year-long UCLH ward application
+    </h2>
+    <p>
+      This section supersedes any implication that the toy fixture describes the
+      intended clinical evidence base. Its small patient count, generated
+      schedules and simplified layout limit conclusions from that experiment;
+      they are not descriptions of the UCLH ward. Code-level mechanism and
+      measurement concerns still apply wherever the same implementation is used
+      clinically.
+    </p>
+    <h3 id="what-the-confirmed-data-streams-enable">
+      What the confirmed data streams enable
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Investigator-confirmed stream</th>
+          <th>Proposed use</th>
+          <th>
+            Remaining uncertainty to resolve inside the approved environment
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Routinely collected staff location and activity</td>
+          <td>
+            Estimate activity schedules, observed location transitions and
+            workflow variation
+          </td>
+          <td>
+            Sampling frequency, event-triggered versus continuous recording,
+            spatial precision, missingness, linkage across shifts and changes in
+            collection practice
+          </td>
+        </tr>
+        <tr>
+          <td>Ward CAD floorplans</td>
+          <td>Build and verify rooms, doors, barriers and work locations</td>
+          <td>
+            Units, as-built accuracy, temporary closures and changes during the
+            year; a floorplan alone does not record occupancy
+          </td>
+        </tr>
+        <tr>
+          <td>
+            Patient-linked positive and negative clinical testing time series
+          </td>
+          <td>
+            Define longitudinal observed detection outcomes and compare models
+            against held-out observations
+          </td>
+          <td>
+            Specimen versus reporting date, specimen-location attribution,
+            repeat specimens, resistance phenotype, testing indications and
+            volume still need assessment; testing is clinically indicated, not
+            systematic screening
+          </td>
+        </tr>
+        <tr>
+          <td>
+            No patient movement or direct ward admission/discharge records;
+            stays inferred from tests
+          </td>
+          <td>
+            Treat patient presence, locations and turnover as latent quantities
+            constrained by observations
+          </td>
+          <td>
+            First/last tests are not observed admission/discharge boundaries;
+            between-test continuity, transfers, readmissions and never-tested
+            patients are unresolved; aggregate census availability is
+            unconfirmed
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Routine staff records are an important empirical input, but their
+      existence does not establish continuous trajectories or centimetre-scale
+      contact accuracy. First assess their resolution; use room transitions or
+      activity timing as primary movement endpoints if finer contact truth is
+      unavailable. CAD constraints reduce the set of feasible paths without
+      selecting a unique actual path. Routine-data contact reconstruction has
+      precedent; the contribution must be the demonstrated accuracy, uncertainty
+      treatment or scientific utility of this particular method.
+      <a href="https://doi.org/10.1371/journal.pone.0079906"
+        >Curtis et al. (2013)</a
+      >.
+    </p>
+    <h3 id="a-concrete-testable-primary-question">
+      A concrete, testable primary question
+    </h3>
+    <p>
+      <strong>Proposed question:</strong> Does incorporating routine staff
+      workflow and ward geometry improve temporally held-out prediction of a
+      specified organism's observed testing outcomes compared with simpler
+      time-series and aggregate-mixing models, and how sensitive is that
+      improvement to unobserved patient location and testing assumptions?
+    </p>
+    <p>
+      This is a candidate protocol, not a prediction that the spatial ABM will
+      win. If the outcome series is too sparse, or testing practice cannot be
+      represented adequately, prioritise the workflow/reconstruction methods
+      paper and report the infection-outcome analysis as exploratory or
+      infeasible. One year of records supplies repeated observations from one
+      ward; it is not a year of independent experiments or evidence of
+      transportability across hospitals.
+    </p>
+    <p>
+      Keep the biological and observation models distinct. A positive specimen
+      is an observed detection, not a directly observed acquisition time or
+      transmission edge. Define colonisation, clinical infection and resistance
+      status according to the actual organism and available fields. Existing
+      hospital inference work explicitly represents incomplete testing rather
+      than equating recorded detections with all carriers.
+      <a href="https://doi.org/10.1038/s41467-025-65241-w">Pei et al. (2025)</a
+      >. Patient-linked positive and negative clinical tests are confirmed. They
+      support longitudinal detection endpoints, but absence of testing is not a
+      negative result and a negative result is not proof of absence of carriage.
+      Do not label detections as incidence rates without an appropriate
+      denominator or hospital acquisition without supporting timing information.
+    </p>
+    <h3 id="evaluation-that-fits-these-data">
+      Evaluation that fits these data
+    </h3>
+    <ol>
+      <li>
+        <strong>Audit the data before choosing the endpoint.</strong> Produce
+        governed summaries of coverage, event frequency, missing periods, test
+        numbers, repeat positives and changes in workflow or testing. Choose one
+        sufficiently observed organism/outcome first; do not select it because
+        it produces the strongest association.
+      </li>
+      <li>
+        <strong>Validate movement and infection outcomes separately.</strong>
+        Predict held-out recorded staff locations/activities using only
+        information available at prediction time. This assesses prediction of
+        recorded events, not unobserved contacts. Evaluate the testing-outcome
+        model on a separate time block. Matching outcome counts does not
+        uniquely validate the underlying contact network.
+      </li>
+      <li>
+        <strong>Use temporal evaluation.</strong> Plan an early
+        development/calibration period, an intermediate tuning period and an
+        untouched later evaluation period, subject to event counts. Use
+        rolling-origin checks within development where feasible. Fit
+        preprocessing and parameters within each training window. Avoid random
+        event splits and future-window occupancy features. A single annual cycle
+        does not independently establish a seasonal pattern.
+      </li>
+      <li>
+        <strong>Make complexity earn its place.</strong> Compare a simple
+        organism-outcome time-series baseline, an aggregate model using the same
+        available activity/testing covariates, a room-level contact model and
+        the detailed spatial model. Give baselines comparable data access. Use
+        ablations to separate the contribution of staff events, geometry and
+        model complexity; define predictive scores and interval coverage before
+        evaluation.
+      </li>
+      <li>
+        <strong>Represent missing patient movement honestly.</strong> Compare
+        explicit latent occupancy/turnover scenarios, restricted by any
+        legitimately available aggregates. Evaluate whether plausible
+        alternatives change predictions or intervention rankings. Synthetic
+        recovery experiments can test identifiability, but cannot establish
+        which patient history occurred at UCLH. Do not infer who infected whom
+        from these streams alone.
+      </li>
+      <li>
+        <strong>Separate retrospective explanation from forecasting.</strong>
+        Replaying the actual staff activity of an evaluation week uses
+        information that may not have been available before that week. Label
+        this a conditional retrospective evaluation. A prospective forecast must
+        use only known rosters/events or forecast staff activity and propagate
+        its uncertainty.
+      </li>
+    </ol>
+    <p>
+      Hospital-specific validation against observed outcomes is established
+      precedent, so “a real ward” and “one year” are not sufficient novelty
+      claims. The stronger contribution would be a defensible result about
+      whether staff-resolved spatial modelling adds useful information under
+      this particular observation regime, including a rigorous negative result
+      if it does not.
+      <a href="https://doi.org/10.1371/journal.pone.0284611"
+        >Scaria et al. (2023)</a
+      >.
+    </p>
+    <h3
+      id="patient-stays-inferred-from-clinical-testing-a-central-identification-problem"
+    >
+      Patient stays inferred from clinical testing: a central identification
+      problem
+    </h3>
+    <p>
+      The investigator confirms that ward-stay intervals are inferred from
+      testing timelines rather than observed admission/discharge records. This
+      is an explicit modelling assumption, not a recovered administrative fact.
+      A specimen collection date with reliable ward attribution supports
+      presence at that observation time; a result-reporting date or
+      requesting-service label may not. Two ward-attributed tests do not
+      establish uninterrupted residence between them, and first/last tests need
+      not coincide with arrival/departure. Patients who never receive a test are
+      absent from a test-derived roster.
+    </p>
+    <p>
+      Clinical testing is selective. The inference problem therefore has at
+      least three coupled components: patient presence, underlying organism
+      status, and the clinical testing process. Treating a first-to-last-test
+      interval as certain occupancy can make frequently tested patients appear
+      to have greater exposure simply because they have more observations. This
+      is a plausible bias mechanism to investigate, not a measured finding at
+      UCLH. The distinction from prior inference studies that use
+      hospitalization records should be explicit.
+      <a href="https://doi.org/10.1038/s41467-025-65241-w">Pei et al. (2025)</a
+      >.
+    </p>
+    <p>
+      <strong>Proposed analysis:</strong> retain first-to-last-test occupancy as
+      a transparent reference assumption, then compare alternative start/end
+      extensions, breaks between tests and turnover scenarios. Do not choose
+      arbitrary day buffers and describe them as validated stays. Use
+      independent operational information or an approved record-review subset to
+      constrain these alternatives if obtainable; otherwise report sensitivity
+      or partial identification. Full-ward patient-days, untested occupancy and
+      hospital acquisition cannot be recovered uniquely from the stated streams
+      alone.
+    </p>
+    <p>
+      <strong>Prevent information leakage:</strong> a future test used to define
+      a patient's present-day occupancy supplies future information.
+      Retrospective reconstruction may use the full timeline if labelled
+      accordingly. Forecast evaluation must reconstruct presence using
+      information available at each forecast time. Do not use held-out test
+      results to tune occupancy or transmission assumptions before evaluating
+      predictions against those same results. In a joint retrospective model,
+      explicitly model the shared observation process rather than treating
+      reconstructed occupancy as independent ground truth.
+    </p>
+    <p>
+      A feasible initial endpoint is positivity at clinically obtained
+      specimens, conditional on the observed testing schedule and available
+      history. This evaluates prediction among tested patients, not ward-wide
+      prevalence or the number of future positive tests. Predicting detection
+      counts requires a testing-frequency model as well; predicting acquisition
+      requires further assumptions about presence, importation and latent
+      carriage. These are proposed endpoint choices to assess against the
+      available sample size and organism, not promises of identifiability.
+    </p>
+    <h3 id="revised-publication-priority">Revised publication priority</h3>
+    <p>
+      Advance the software paper and the UCLH data/observation specification
+      together. Prioritise Route C as the methods contribution, with Route B
+      supplying controlled uncertainty experiments. Pursue Route H as a separate
+      application only if the outcome information and validation support a
+      distinct scientific claim; otherwise combine the methods and ward
+      evaluation into one stronger paper. Restricted clinical records can
+      support these papers without being placed in the public repository:
+      release code, synthetic analogues and permitted aggregate evidence, and
+      document governed access and reproducibility. No sensitive records were
+      accessed or copied for this revision.
+    </p>
+    <h2 id="8-publication-fit-and-submission-constraints">
+      8. Publication fit and submission constraints
+    </h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Venue / format</th>
+          <th>What would make this project fit</th>
+          <th>Current decision</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>JOSS: research software</strong></td>
+          <td>
+            A mature, reusable, research-used package with clear scope and
+            design decisions
+          </td>
+          <td>
+            Plausible after readiness work. Current guidance requires more than
+            six months of active public history and demonstrated research use.
+            Do not assume Git timestamps prove when the repository became
+            public.
+            <a href="https://joss.readthedocs.io/en/latest/submitting.html"
+              >Official requirements</a
+            >.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>SoftwareX: software and application</strong></td>
+          <td>
+            A detailed, reproducible account of useful research software and its
+            application
+          </td>
+          <td>
+            Strong alternative for Route A or a genuinely independent converter;
+            do not submit the same software story to several venues.
+            <a
+              href="https://www.elsevier.com/researcher/author/tools-and-resources/research-elements-journals"
+              >Publisher description</a
+            >.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <strong
+              >JORS: software metapaper / research-software practice</strong
+            >
+          </td>
+          <td>
+            Reuse and quality assurance; or an independently evaluated practice
+            contribution
+          </td>
+          <td>
+            Plausible for software or an evidenced TRE workflow. These are
+            peer-reviewed formats.
+            <a href="https://openresearchsoftware.metajnl.com/about/submissions"
+              >Author guidance</a
+            >.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Journal of Simulation / JASSS</strong></td>
+          <td>
+            A well-specified methodological result about model structure,
+            uncertainty or simulation behaviour
+          </td>
+          <td>
+            Candidate Route B venues, not a default home for arbitrary sweeps.
+            Reporting standards are necessary but insufficient.
+            <a href="https://doi.org/10.1080/17477778.2018.1442155">STRESS</a>,
+            <a href="https://doi.org/10.18564/jasss.4259">ODD</a>.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>PLOS Computational Biology</strong></td>
+          <td>
+            Significant biological or methodological insight, rigorous methods
+            and substantial evidence
+          </td>
+          <td>
+            Stretch target for Routes B/C/H, not a feature inventory. Its stated
+            publication criteria are more demanding than “the code works.”
+            <a
+              href="https://journals.plos.org/ploscompbiol/s/journal-information"
+              >Journal criteria</a
+            >.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Scientific Data</strong></td>
+          <td>A reusable, well-documented dataset with technical validation</td>
+          <td>
+            Only after building an actual benchmark resource; a results CSV is
+            not automatically a Data Descriptor.
+            <a href="https://www.nature.com/sdata/submission-guidelines"
+              >Official guidance</a
+            >.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Clinical infection-control journals</strong></td>
+          <td>
+            A relevant pathogen/intervention question and credible validation
+          </td>
+          <td>
+            Route H only after a material increase in evidence; see the
+            published CDI modelling/validation examples.
+            <a href="https://doi.org/10.1093/cid/cix962">Barker</a>,
+            <a href="https://doi.org/10.1371/journal.pone.0284611">Scaria</a>,
+            <a href="https://doi.org/10.1016/j.jhin.2026.06.007">Gerada</a>.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Venue rules were checked on the review date; they may change. Fees, word
+      limits, current indexing and turnaround times are intentionally not
+      estimated here. SoftwareX’s detailed guide was access-restricted during
+      this review; the publisher’s accessible Research Elements description
+      supports the scope assessment, not an assertion that every submission
+      requirement has been checked.
+    </p>
+    <p>
+      JOSS currently requires disclosure of AI assistance and human review, and
+      restricts AI use in author–editor/reviewer conversations except
+      translation. This AI-assisted planning document is not a substitute for
+      human scholarly judgement or author correspondence. Any eventual
+      submission should follow the venue’s policy then in force. JOSS also
+      explicitly allows related science/methods publications with disclosure;
+      that supports a distinct software-plus-science portfolio, not duplicate
+      manuscripts.
+      <a href="https://joss.readthedocs.io/en/latest/submitting.html"
+        >JOSS submission guidance</a
+      >.
+    </p>
+    <h2 id="9-a-staged-research-programme-with-decision-gates">
+      9. A staged research programme with decision gates
+    </h2>
+    <h3 id="gate-1-define-and-verify-the-model-before-collecting-more-plots">
+      Gate 1: define and verify the model before collecting more plots
+    </h3>
+    <p>
+      Create an ODD document and a one-page scientific contract: supported
+      agents, task semantics, physical units, time support, stochastic process,
+      scheduling order, spatial constraints and output definitions. Add targeted
+      tests for rejected movement, room/building/floor separation, missing
+      spatial classifications, bounded travel and terminal-interval handling.
+      Decide whether the GPU path is experimental, equivalent or intentionally
+      approximate.
+    </p>
+    <p>
+      Freeze the running sweep’s code and provenance. Complete and report it
+      honestly as a legacy-model sensitivity exercise. If correctness fixes
+      affect its outcomes, rerun a new version; retain both for a transparent
+      comparison. Do not silently replace inconvenient output or retrofit the
+      hypothesis after seeing a favourable trend.
+    </p>
+    <p>
+      <strong>Pass condition:</strong> each scientific outcome has a precise
+      definition and the implementation satisfies the claimed invariants, or
+      documented exceptions constrain the permitted use.
+    </p>
+    <h3 id="gate-2-choose-one-scientific-question-and-an-independent-reference">
+      Gate 2: choose one scientific question and an independent reference
+    </h3>
+    <p>
+      For the planned UCLH study, prioritise Route C using the confirmed staff
+      records and geometry, and establish what those observations can
+      independently validate. Use Route B to test assumptions where ground truth
+      is unavailable; organism-specific testing outcomes offer a separate
+      evaluation target, not direct contact ground truth. Agree with clinical
+      collaborators on the endpoint and the minimum effect worth resolving
+      before running an expensive factorial design.
+    </p>
+    <p>
+      For movement reconstruction, the observation model is essential: an event
+      is evidence of a location or activity at a time, not continuous proof of
+      where a person was between events. Distinguish late documentation, shared
+      workstations, missing badge events, staff role differences and absent
+      off-shift records. A calibrated point estimate that ignores these
+      mechanisms may simply fit their biases.
+    </p>
+    <p>
+      <strong>Pass condition:</strong> the experiment can distinguish success
+      from a plausible but incorrect reconstruction, and the reference is not
+      merely another output of the same simulator.
+    </p>
+    <h3 id="gate-3-compare-meaningful-baselines-and-uncertainty-sources">
+      Gate 3: compare meaningful baselines and uncertainty sources
+    </h3>
+    <p>
+      Implement at least a simple room-level or network baseline and a simple
+      movement reconstruction baseline before a complex learned policy. More
+      geometry and more parameters should improve the intended outcome enough to
+      justify their cost. Use held-out time/staff/site splits as appropriate,
+      with nested tuning and a final untouched test set.
+    </p>
+    <p>
+      For calibration, assess parameter recovery on independent synthetic
+      scenarios, posterior/predictive calibration where applicable, and held-out
+      observed summaries. Modern simulation-based inference tools already exist;
+      calling one is not itself a new statistical contribution.
+      <a href="https://doi.org/10.21105/joss.02505"
+        >Tejero-Cantero et al. (2020)</a
+      >.
+    </p>
+    <p>
+      Separate stochastic replicate variation, schedule/layout variability,
+      parameter uncertainty, observation error and structural choices. Use a
+      pilot to plan replication from precision requirements. Thirty is a design
+      choice, not a universal adequacy threshold. Predefine primary contrasts
+      and distinguish exploratory from confirmatory analyses; do not interpret
+      non-overlapping or overlapping individual confidence intervals as a
+      complete test of a paired difference.
+    </p>
+    <p>
+      <strong>Pass condition:</strong> conclusions survive relevant uncertainty
+      checks or the paper explicitly establishes their limits.
+    </p>
+    <h3 id="gate-4-produce-independently-reusable-evidence">
+      Gate 4: produce independently reusable evidence
+    </h3>
+    <p>
+      Provide a tagged release, input/configuration manifests, a small runnable
+      reproduction and a longer archived experiment. Include supported
+      environment/hardware information and a public synthetic analogue when real
+      data are restricted. An access statement must explain how independent
+      assessment is possible without promising unrestricted release of sensitive
+      records.
+    </p>
+    <p>
+      Have an independent user repeat the main result. Compare their output and
+      document discrepancies. The software paper can then emphasize demonstrated
+      reuse; the methods paper can emphasize the scientific result. ODD, STRESS
+      and FAIR4RS provide complementary reporting and stewardship frameworks,
+      not certifications of truth.
+      <a href="https://doi.org/10.18564/jasss.4259">Grimm</a>,
+      <a href="https://doi.org/10.1080/17477778.2018.1442155">Monks</a>,
+      <a href="https://doi.org/10.1038/s41597-022-01710-x">Barker</a>.
+    </p>
+    <p>
+      <strong>Pass condition:</strong> another researcher can reconstruct the
+      claim and its limits, rather than only reproduce an image.
+    </p>
+    <h2 id="10-likely-reviewer-objections-and-the-evidence-that-answers-them">
+      10. Likely reviewer objections and the evidence that answers them
+    </h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Reviewer objection</th>
+          <th>A substantive answer</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>“Why build this instead of using GAMA or extending Mesa?”</td>
+          <td>
+            A precise unmet requirement, a reproducible baseline implementation,
+            and evidence that the new architecture reduces effort or enables a
+            needed analysis
+          </td>
+        </tr>
+        <tr>
+          <td>“Where is the AMR model?”</td>
+          <td>
+            A defined resistant-organism mechanism with calibrated/validated
+            endpoints, or a narrower movement/contact manuscript
+          </td>
+        </tr>
+        <tr>
+          <td>“Why does adding workers increase contacts?”</td>
+          <td>
+            Normalised outcomes, fixed-workload designs and an analysis
+            separating combinatorics from behaviour
+          </td>
+        </tr>
+        <tr>
+          <td>“Is the noise physiologically meaningful?”</td>
+          <td>
+            Independently parameterised, unit-consistent movement components and
+            empirical or explicitly exploratory ranges
+          </td>
+        </tr>
+        <tr>
+          <td>“Are differences caused by illegal movement?”</td>
+          <td>
+            Invariant diagnostics, corrected-model experiments and a transparent
+            comparison with the legacy implementation
+          </td>
+        </tr>
+        <tr>
+          <td>“Are your 30 replicates independent hospitals?”</td>
+          <td>
+            Explicitly no: report the hierarchy and the conditional scope of the
+            intervals
+          </td>
+        </tr>
+        <tr>
+          <td>
+            “You trained and tested on the same workers or adjacent events.”
+          </td>
+          <td>
+            Staff/time/site holdouts and a final untouched test set, with
+            features restricted to available information
+          </td>
+        </tr>
+        <tr>
+          <td>“Can sparse logs identify centimetre-scale encounters?”</td>
+          <td>
+            Identifiability experiments, observation-error models and calibrated
+            bounds rather than an unsupported unique reconstruction
+          </td>
+        </tr>
+        <tr>
+          <td>“Is GPU speedup measuring the same model?”</td>
+          <td>
+            Semantic tests, distributional agreement or quantified approximation
+            error, and end-to-end timings
+          </td>
+        </tr>
+        <tr>
+          <td>“Is this a digital twin or just a simulation?”</td>
+          <td>
+            Define synchronization, updating, validation and the intended
+            decision loop; omit the digital-twin label if these are absent
+          </td>
+        </tr>
+        <tr>
+          <td>“How can restricted-data results be checked?”</td>
+          <td>
+            Public synthetic reproductions, approved aggregate evidence,
+            governed access and independently repeated computation
+          </td>
+        </tr>
+        <tr>
+          <td>“What is new beyond the closest published paper?”</td>
+          <td>
+            A one-paragraph claim tied to a specific new capability or finding
+            and an experiment that isolates it
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      A sceptical referee would be justified in rejecting a manuscript that
+      substitutes architecture diagrams, many parameters, a dashboard or
+      thousands of runs for these answers. Conversely, resolving one of these
+      problems convincingly could produce a stronger paper than claiming to
+      solve all hospital AMR modelling at once.
+    </p>
+    <h2 id="11-suggested-manuscript-framing">
+      11. Suggested manuscript framing
+    </h2>
+    <h3 id="a-defensible-draft-software-abstract">
+      A defensible draft software abstract
+    </h3>
+    <p>
+      Hospital workflow simulations require consistent representations of
+      spatial geometry, time-stamped activities and interaction measurements,
+      while sensitive operational data may remain within restricted research
+      environments. AMR-Hub is an open-source Python framework for task-driven
+      hospital movement and contact-opportunity simulation. It provides
+      structured spatial and task models, synthetic examples,
+      geometry-preparation utilities and contact-analysis tools. This software
+      contribution describes the supported computational contracts,
+      reproducibility workflow and relationship to existing ABM platforms. The
+      present CPU model generates proximity-based contact outcomes; these should
+      not be interpreted as validated estimates of antimicrobial-resistant
+      infection acquisition. Publication should accompany an archived release,
+      reproducible examples and an independently demonstrated research
+      application.
+      <strong
+        >The final sentence and all validation claims must be rewritten around
+        evidence actually completed before submission.</strong
+      >
+    </p>
+    <h3 id="a-proposed-methods-paper-abstract-structure">
+      A proposed methods-paper abstract structure
+    </h3>
+    <p>
+      <strong>Background:</strong> Sparse routine events do not uniquely
+      determine between-event movement, and different admissible movements may
+      imply different contact networks. <strong>Objective:</strong> quantify how
+      observation sparsity and movement assumptions affect a predefined contact
+      or policy contrast. <strong>Methods:</strong> compare explicit
+      reconstruction models across independent layouts/schedules; censor known
+      trajectories; evaluate against independent observations where available;
+      propagate observation, parameter and structural uncertainty.
+      <strong>Results:</strong> insert measured accuracy, interval coverage,
+      computational cost and robustness results only after analysis.
+      <strong>Conclusion:</strong> state the conditions under which a claim is
+      identifiable, robust or unsupported. Do not pre-write a claim that a more
+      complex model is better.
+    </p>
+    <p>
+      The central editorial choice is whether AMR-Hub is being presented as a
+      reusable instrument, a new inference method, or evidence about hospital
+      practice. Those can support separate contributions, but the validation
+      burden changes at each step. My recommendation is to
+      <strong
+        >finish a narrowly scoped software contribution while concentrating new
+        scientific work on uncertainty and validation of event-to-contact
+        reconstruction</strong
+      >. Treat the current stochasticity sweep as evidence about the behaviour
+      of one model, not as a shortcut to an AMR intervention paper.
+    </p>
+    <h2 id="references">References</h2>
+    <p>
+      The first 30 entries are peer-reviewed research/methods/software
+      publications or conference proceedings. R31 is explicitly grey literature.
+      R32–R36 are official editorial/publisher guidance, not research evidence.
+      Detailed DOI metadata are retained in
+      <a href="novelty-review/reference-metadata.json"
+        >reference-metadata.json</a
+      >.
+    </p>
+    <ol>
+      <li>
+        <strong>R01.</strong> Temime L, Opatowski L, Pannet Y, Brun-Buisson C,
+        Boëlle PY, Guillemot D. (2009).
+        <em>Peripatetic health-care workers as potential superspreaders</em>.
+        Proceedings of the National Academy of Sciences, 106, 18420–18425.
+        <a href="https://doi.org/10.1073/pnas.0900974106">Paper</a>.
+      </li>
+      <li>
+        <strong>R02.</strong> Hornbeck T, Naylor D, Segre AM, Thomas G, Herman
+        T, Polgreen PM. (2012).
+        <em
+          >Using sensor networks to study the effect of peripatetic healthcare
+          workers on the spread of hospital-associated infections</em
+        >. Journal of Infectious Diseases, 206, 1549–1557.
+        <a href="https://doi.org/10.1093/infdis/jis542">Paper</a>.
+      </li>
+      <li>
+        <strong>R03.</strong> Curtis DE, Hlady CS, Kanade G, Pemmaraju SV,
+        Polgreen PM, Segre AM. (2013).
+        <em
+          >Healthcare Worker Contact Networks and the Prevention of
+          Hospital-Acquired Infections</em
+        >. PLOS ONE, 8, e79906.
+        <a href="https://doi.org/10.1371/journal.pone.0079906">Paper</a>.
+      </li>
+      <li>
+        <strong>R04.</strong> Vanhems P et al. (2013).
+        <em
+          >Estimating Potential Infection Transmission Routes in Hospital Wards
+          Using Wearable Proximity Sensors</em
+        >. PLOS ONE, 8, e73970.
+        <a href="https://doi.org/10.1371/journal.pone.0073970">Paper</a>.
+      </li>
+      <li>
+        <strong>R05.</strong> Duval A et al. (2018).
+        <em
+          >Measuring dynamic social contacts in a rehabilitation hospital:
+          effect of wards, patient and staff characteristics</em
+        >. Scientific Reports, 8.
+        <a href="https://doi.org/10.1038/s41598-018-20008-w">Paper</a>.
+      </li>
+      <li>
+        <strong>R06.</strong> Barnes SL, Golden BL, Wasil EA. (2012).
+        <em
+          >Exploring the effects of network structure and healthcare worker
+          behavior on the transmission of hospital-acquired infections</em
+        >. IIE Transactions on Healthcare Systems Engineering, 2, 259–273.
+        <a href="https://doi.org/10.1080/19488300.2012.736120">Paper</a>.
+      </li>
+      <li>
+        <strong>R07.</strong> Mietchen MS, Short CT, Samore MH, Lofgren ET.
+        (2022).
+        <em
+          >Examining the impact of ICU population interaction structure on
+          modeled colonization dynamics of Staphylococcus aureus</em
+        >. PLOS Computational Biology, 18, e1010352.
+        <a href="https://doi.org/10.1371/journal.pcbi.1010352">Paper</a>.
+      </li>
+      <li>
+        <strong>R08.</strong> Barker AK, Alagoz O, Safdar N. (2018; online
+        2017).
+        <em
+          >Interventions to Reduce the Incidence of Hospital-Onset Clostridium
+          difficile Infection: An Agent-Based Modeling Approach to Evaluate
+          Clinical Effectiveness in Adult Acute Care Hospitals</em
+        >. Clinical Infectious Diseases, 66, 1192–1203.
+        <a href="https://doi.org/10.1093/cid/cix962">Paper</a>.
+      </li>
+      <li>
+        <strong>R09.</strong> Scaria E, Safdar N, Alagoz O. (2023).
+        <em
+          >Validating agent-based simulation model of hospital-associated
+          Clostridioides difficile infection using primary hospital data</em
+        >. PLOS ONE, 18, e0284611.
+        <a href="https://doi.org/10.1371/journal.pone.0284611">Paper</a>.
+      </li>
+      <li>
+        <strong>R10.</strong> Caudill L, Lawson B. (2017).
+        <em
+          >A unified inter-host and in-host model of antibiotic resistance and
+          infection spread in a hospital ward</em
+        >. Journal of Theoretical Biology, 421, 112–126.
+        <a href="https://doi.org/10.1016/j.jtbi.2017.03.025">Paper</a>.
+      </li>
+      <li>
+        <strong>R11.</strong> Leclerc QJ, Duval A, Guillemot D, Opatowski L,
+        Temime L. (2024).
+        <em
+          >Using contact network dynamics to implement efficient interventions
+          against pathogen spread in hospital settings: A modelling study</em
+        >. PLOS Medicine, 21, e1004433.
+        <a href="https://doi.org/10.1371/journal.pmed.1004433">Paper</a>.
+      </li>
+      <li>
+        <strong>R12.</strong> Thota RC, Uddin YS, Bani-Yaghoub M, Abourraja MN,
+        Sutkin G, Paschal S. (2025).
+        <em
+          >Enhancing Agent-Based Models with Real-Time Movement Data to Assess
+          Impacts of Biosecurity Interventions on Disease Exposure in Healthcare
+          Settings</em
+        >. Proceedings of ACM BCB 2025, 1–10.
+        <a href="https://doi.org/10.1145/3765612.3767222">Paper</a>.
+      </li>
+      <li>
+        <strong>R13.</strong> Gerada A et al. (2026).
+        <em
+          >Simulating interventions to prevent gastro-intestinal transmission of
+          Clostridioides difficile and antimicrobial-resistant bacteria in
+          healthcare settings: a model calibration study</em
+        >. Journal of Hospital Infection.
+        <a href="https://doi.org/10.1016/j.jhin.2026.06.007">Paper</a>.
+      </li>
+      <li>
+        <strong>R14.</strong> Madhobi KF et al. (2022).
+        <em
+          >Use of Contact Networks to Estimate Potential Pathogen Risk Exposure
+          in Hospitals</em
+        >. JAMA Network Open, 5, e2225508.
+        <a href="https://doi.org/10.1001/jamanetworkopen.2022.25508">Paper</a>.
+      </li>
+      <li>
+        <strong>R15.</strong> Biermann P et al. (2025).
+        <em
+          >An openEHR based infection control system to support monitoring of
+          nosocomial bacterial clusters and contacts</em
+        >. npj Digital Medicine, 8, 385.
+        <a href="https://doi.org/10.1038/s41746-025-01795-9">Paper</a>.
+      </li>
+      <li>
+        <strong>R16.</strong> Pei S, Seeram D, Blumberg S, Shopsin B, Uhlemann
+        AC, Shaman J. (2025).
+        <em
+          >Inferring asymptomatic carriers of antimicrobial-resistant organisms
+          in hospitals using genomic, microbiological and patient mobility
+          data</em
+        >. Nature Communications, 16.
+        <a href="https://doi.org/10.1038/s41467-025-65241-w">Paper</a>.
+      </li>
+      <li>
+        <strong>R17.</strong> Taillandier P et al. (2019; online 2018).
+        <em
+          >Building, composing and experimenting complex spatial models with the
+          GAMA platform</em
+        >. GeoInformatica, 23, 299–322.
+        <a href="https://doi.org/10.1007/s10707-018-00339-6">Paper</a>.
+      </li>
+      <li>
+        <strong>R18.</strong> Curtis S, Best A, Manocha D. (2016).
+        <em>Menge: A Modular Framework for Simulating Crowd Movement</em>.
+        Collective Dynamics, 1, 1–40.
+        <a href="https://doi.org/10.17815/CD.2016.1">Paper</a>.
+      </li>
+      <li>
+        <strong>R19.</strong> ter Hoeven E et al. (2025).
+        <em>Mesa 3: Agent-based modeling with Python in 2025</em>. Journal of
+        Open Source Software, 10, 7668.
+        <a href="https://doi.org/10.21105/joss.07668">Paper</a>.
+      </li>
+      <li>
+        <strong>R20.</strong> Richmond P, Chisholm R, Heywood P, Chimeh MK,
+        Leach M. (2023).
+        <em
+          >FLAME GPU 2: A framework for flexible and performant agent based
+          simulation on GPUs</em
+        >. Software: Practice and Experience, 53, 1659–1680.
+        <a href="https://doi.org/10.1002/spe.3207">Paper</a>.
+      </li>
+      <li>
+        <strong>R21.</strong> Wu Y et al. (2021; online 2020).
+        <em>Indoor mapping and modeling by parsing floor plan images</em>.
+        International Journal of Geographical Information Science, 35,
+        1205–1231.
+        <a href="https://doi.org/10.1080/13658816.2020.1781130">Paper</a>.
+      </li>
+      <li>
+        <strong>R22.</strong> Han L, Qiao H, Li Z, Liu M, Zhang P. (2023).
+        <em
+          >Navigation-Oriented Topological Model Construction Algorithm for
+          Complex Indoor Space</em
+        >. ISPRS International Journal of Geo-Information, 12, 248.
+        <a href="https://doi.org/10.3390/ijgi12060248">Paper</a>.
+      </li>
+      <li>
+        <strong>R23.</strong> Williamson EJ et al. (2020).
+        <em>Factors associated with COVID-19-related death using OpenSAFELY</em
+        >. Nature, 584, 430–436.
+        <a href="https://doi.org/10.1038/s41586-020-2521-4">Paper</a>.
+      </li>
+      <li>
+        <strong>R24.</strong> de Montjoye YA, Hidalgo CA, Verleysen M, Blondel
+        VD. (2013).
+        <em>Unique in the Crowd: The privacy bounds of human mobility</em>.
+        Scientific Reports, 3, 1376.
+        <a href="https://doi.org/10.1038/srep01376">Paper</a>.
+      </li>
+      <li>
+        <strong>R25.</strong> Grimm V et al. (2020).
+        <em
+          >The ODD Protocol for Describing Agent-Based and Other Simulation
+          Models: A Second Update to Improve Clarity, Replication, and
+          Structural Realism</em
+        >. Journal of Artificial Societies and Social Simulation, 23(2), 7.
+        <a href="https://doi.org/10.18564/jasss.4259">Paper</a>.
+      </li>
+      <li>
+        <strong>R26.</strong> Monks T, Currie CSM, Onggo BS, Robinson S, Kunc M,
+        Taylor SJE. (2019; online 2018).
+        <em
+          >Strengthening the reporting of empirical simulation studies:
+          Introducing the STRESS guidelines</em
+        >. Journal of Simulation, 13, 55–67.
+        <a href="https://doi.org/10.1080/17477778.2018.1442155">Paper</a>.
+      </li>
+      <li>
+        <strong>R27.</strong> Barker M et al. (2022).
+        <em>Introducing the FAIR Principles for research software</em>.
+        Scientific Data, 9, 622.
+        <a href="https://doi.org/10.1038/s41597-022-01710-x">Paper</a>.
+      </li>
+      <li>
+        <strong>R28.</strong> Ng AY, Russell S. (2000).
+        <em>Algorithms for Inverse Reinforcement Learning</em>. Proceedings of
+        ICML, 663–670.
+        <a href="https://ai.stanford.edu/~ang/papers/icml00-irl.pdf"
+          >Author-hosted paper</a
+        >.
+      </li>
+      <li>
+        <strong>R29.</strong> Tejero-Cantero A et al. (2020).
+        <em>sbi: A toolkit for simulation-based inference</em>. Journal of Open
+        Source Software, 5, 2505.
+        <a href="https://doi.org/10.21105/joss.02505">Paper</a>.
+      </li>
+      <li>
+        <strong>R30.</strong> Michaelides P, Sarkadi Ş. (2025).
+        <em
+          >Covid-19 in hospitals: Studying influencing factors through
+          agent-based modelling</em
+        >. PLOS ONE, 20, e0326350.
+        <a href="https://doi.org/10.1371/journal.pone.0326350">Paper</a>.
+      </li>
+      <li>
+        <strong>R31.</strong> Health Data Insight.
+        <em>Healthcare Associated Infection Simulator</em>. Project/internship
+        description; <strong>not a peer-reviewed validation paper</strong>.
+        Accessed 29 October 2026.
+        <a
+          href="https://healthdatainsight.org.uk/project/healthcare-associated-infection-simulator/"
+          >Project page</a
+        >.
+      </li>
+      <li>
+        <strong>R32.</strong> Journal of Open Source Software.
+        <em>Submitting a paper to JOSS</em>. Official requirements and policy;
+        accessed 29 October 2026.
+        <a href="https://joss.readthedocs.io/en/latest/submitting.html"
+          >Guidance</a
+        >.
+      </li>
+      <li>
+        <strong>R33.</strong> Journal of Open Research Software.
+        <em>Submissions / Author Guidelines</em>. Official format and review
+        guidance; accessed 29 October 2026.
+        <a href="https://openresearchsoftware.metajnl.com/about/submissions"
+          >Guidance</a
+        >.
+      </li>
+      <li>
+        <strong>R34.</strong> Elsevier. <em>Research Elements journals</em>.
+        Official descriptions of SoftwareX, Software Impacts, MethodsX and Data
+        in Brief; accessed 29 October 2026.
+        <a
+          href="https://www.elsevier.com/researcher/author/tools-and-resources/research-elements-journals"
+          >Publisher page</a
+        >.
+      </li>
+      <li>
+        <strong>R35.</strong> Scientific Data. <em>Submission Guidelines</em>.
+        Official Data Descriptor and technical-validation guidance; accessed 29
+        October 2026.
+        <a href="https://www.nature.com/sdata/submission-guidelines">Guidance</a
+        >.
+      </li>
+      <li>
+        <strong>R36.</strong> PLOS Computational Biology.
+        <em>Journal Information / Criteria for Publication</em>. Official
+        publication criteria; accessed 29 October 2026.
+        <a href="https://journals.plos.org/ploscompbiol/s/journal-information"
+          >Guidance</a
+        >.
+      </li>
+    </ol>
+  </body>
+</html>
