@@ -1,6 +1,7 @@
 """Module for creating simulation instances."""
 
 import logging
+import math
 from pathlib import Path
 from typing import Any
 
@@ -107,6 +108,12 @@ def create_simulation(
         task_durations=task_durations,
         internal_state_config=internal_state_config,
     )
+
+    for agent in agents:
+        agent.routing_buffer_steps = math.ceil(
+            config.pathfinding_buffer_seconds / time_step_length_seconds
+        )
+        agent.routing_door_duration = task_durations.time_needed_door_access
 
     msg = f"Parsed {len(agents)} agents from location time series."
     logger.info(msg)
