@@ -236,6 +236,9 @@ class Agent:
             record_state(agent=self, current_time=current_time)
 
         self.movement_speed = self.base_movement_speed
+        # GPU physics runs even on waiting/service ticks. Only a movement
+        # handler may replace this hold-position target for the current step.
+        self.target_x, self.target_y = self.location.x, self.location.y
         if not self.tasks:
             return
 

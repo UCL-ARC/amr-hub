@@ -1,9 +1,12 @@
 """Tests for inferred door routes, scheduling, and actual task execution."""
 
 import math
+from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pytest
+import warp as wp
 
 from amr_hub_abm.agent.agent import Agent
 from amr_hub_abm.agent.kinematics import MovementStrategy
@@ -11,6 +14,7 @@ from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.spatial.building import Building
 from amr_hub_abm.spatial.door import Door
 from amr_hub_abm.spatial.engine import SpatialQuery
+from amr_hub_abm.spatial.engine_gpu import GPUSpatialQuery
 from amr_hub_abm.spatial.floor import Floor
 from amr_hub_abm.spatial.location import Location
 from amr_hub_abm.spatial.room import Room
@@ -169,3 +173,59 @@ def test_cross_floor(corridor: tuple[Agent, Task, SpatialQuery]) -> None:
     task.location = Location(building="B", floor=1, x=2.5, y=0.5)
     with pytest.raises(SimulationModeError, match="across buildings or floors"):
         plan_journey(agent, task, engine)
+
+
+@pytest.mark.parametrize("device", ["cpu", "cuda:0"])
+def test_gpu_journey_waits_and_resumes(
+    corridor: tuple[Agent, Task, SpatialQuery],
+    device: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Run Warp physics through departure, door service, and final arrival."""
+    if device.startswith("cuda") and not wp.is_cuda_available():
+        pytest.skip("CUDA device unavailable; Warp CPU execution is tested separately.")
+    monkeypatch.setattr(wp.config, "kernel_cache_dir", str(tmp_path / "warp"))
+    agent, task, cpu_engine = corridor
+    journey = plan_journey(agent, task, cpu_engine)
+    assert journey is not None
+    start = agent.location
+    serviced_doors: set[int] = set()
+    movement_ticks = 0
+    with wp.ScopedDevice(device):
+        gpu_engine = GPUSpatialQuery(cpu_engine.space)
+        # Both engines implement the task-facing spatial query interface.
+        task_engine = cast("SpatialQuery", gpu_engine)
+        for time in range(120):
+            before = agent.location
+            # A stale target must never move an agent during a waiting tick.
+            agent.target_x, agent.target_y = 2.5, 0.5
+            agent.perform_task(time, task_engine)
+            assert agent.location == before  # GPU movement is deferred.
+            moving = any(
+                t.progress == TaskProgress.MOVING_TO_LOCATION for t in agent.tasks
+            )
+            for crossing in agent.tasks[1:]:
+                if crossing.progress == TaskProgress.IN_PROGRESS:
+                    serviced_doors.add(id(crossing))
+            gpu_engine.step_physics([agent])
+            if not moving:
+                assert agent.location.x == pytest.approx(before.x, abs=1e-6)
+                assert agent.location.y == pytest.approx(before.y, abs=1e-6)
+            else:
+                movement_ticks += 1
+                assert (
+                    agent.location.distance_to(before)
+                    <= agent.base_movement_speed + 1e-6
+                )
+            if time < journey.departure:
+                assert agent.location.x == pytest.approx(start.x)
+                assert agent.location.y == pytest.approx(start.y)
+                assert len(agent.tasks) == 1
+        assert task.progress == TaskProgress.COMPLETED
+        assert len(serviced_doors) == 2
+        assert movement_ticks > 0
+        assert len(agent.tasks) == 3
+        room = gpu_engine.get_room(agent)
+        assert room is not None
+        assert room.room_id == 30
