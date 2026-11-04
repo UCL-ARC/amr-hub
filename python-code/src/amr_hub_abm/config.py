@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import warnings
 from dataclasses import dataclass
 from enum import StrEnum
@@ -117,6 +118,20 @@ class SimulationConfig:
     internal_state: InternalStateConfig
     location_data: LocationTimeseriesDataConfig
     config_data: Mapping[str, object]
+
+    @property
+    def pathfinding_buffer_seconds(self) -> float:
+        """Return the finite nonnegative departure buffer in seconds."""
+        value = self.config_data.get("pathfinding_buffer_seconds", 0)
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or value < 0
+        ):
+            msg = "pathfinding_buffer_seconds must be finite and nonnegative."
+            raise InvalidDefinitionError(msg)
+        return float(value)
 
     @classmethod
     def from_file(cls, config_path: Path) -> SimulationConfig:
