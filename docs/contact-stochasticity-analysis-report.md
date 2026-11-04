@@ -51,11 +51,11 @@ _Table 1. Mean contact observations per run at stochasticity 0 and 1._
 
 ![Fixed-speed contact metrics across HCW counts](contact-stochasticity/staffing-fixed.png)
 
-_Figure 1. Fixed-speed movement: contact metrics by staffing and stochasticity, with 95% confidence intervals._
+_Figure 1. Fixed-speed movement: contact metrics by staffing and stochasticity, with 95% confidence intervals. Pair-contact duration uses a logarithmic y-axis; the equivalent contact-observation count is omitted._
 
 ![Deadline-paced contact metrics across HCW counts](contact-stochasticity/staffing-deadline_paced.png)
 
-_Figure 2. Deadline-paced movement: contact metrics by staffing and stochasticity, with 95% confidence intervals._
+_Figure 2. Deadline-paced movement: contact metrics by staffing and stochasticity, with 95% confidence intervals. Pair-contact duration uses a logarithmic y-axis; the equivalent contact-observation count is omitted._
 
 ### 3.2 Effect of stochasticity
 
@@ -96,6 +96,8 @@ These patterns are consistent with movement variability interrupting sustained p
 ## 6. Reproducibility
 
 The sweep used generator seed 0 and replicate seeds 20261021–20261050. All 2,100 run identifiers and the 30 replicates per combination were validated; summary means and confidence intervals were checked against raw results. Complete numerical results are retained in the [summary CSV](contact-stochasticity/data/summary.csv). Raw results, checkpoints and the code/input fingerprint manifest remain in the sweep worktree under `python-code/contact_analysis/results/stochasticity-sweep/`.
+
+The staffing figures can be regenerated from the summary CSV using `uv run python contact_analysis/plot_stochasticity_report.py` from `python-code/`.
 
 This report covers stochasticity 0–1 only; the separate stochasticity-10 comparison is excluded.
 
