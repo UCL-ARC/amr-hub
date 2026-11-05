@@ -833,6 +833,7 @@ def save_table_png(
     try:
         table.auto_set_column_width(col=list(range(n_cols)))
     except Exception:
+        # Column auto-sizing is a best-effort formatting step; keep rendering if unsupported/fails.
         pass
 
     footer_parts: list[str] = []
