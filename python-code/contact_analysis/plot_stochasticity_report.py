@@ -31,6 +31,18 @@ def figures(summary: pd.DataFrame, output: Path) -> None:
 
     """
     output.mkdir(parents=True, exist_ok=True)
+    y_limits: dict[str, tuple[float, float]] = {}
+    for metric, _ in PANELS:
+        points = summary[summary.metric == metric]
+        lower = (points["mean"] - points.ci95).min()
+        upper = (points["mean"] + points.ci95).max()
+        if metric == "duration_s":
+            lower = max(lower, points["mean"].min() / 2)
+            y_limits[metric] = (lower / 1.1, upper * 1.1)
+        else:
+            padding = (upper - lower) * 0.05
+            y_limits[metric] = (max(0, lower - padding), upper + padding)
+
     for strategy in ("fixed", "deadline_paced"):
         selected = summary[summary.strategy == strategy]
         counts = sorted(selected.n_hcw.unique())
@@ -52,6 +64,7 @@ def figures(summary: pd.DataFrame, output: Path) -> None:
             if metric == "duration_s":
                 ax.set_yscale("log")
                 ax.set_ylabel("Pair-contact seconds (log scale)")
+            ax.set_ylim(y_limits[metric])
             ax.set_title(label)
             ax.set_xticks(counts)
             ax.set_xlabel("HCWs")

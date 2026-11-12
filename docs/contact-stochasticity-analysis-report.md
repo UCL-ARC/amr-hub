@@ -1,6 +1,6 @@
 # Effect of Movement Stochasticity and Staffing Level on Simulated Contact Patterns
 
-AMR-Hub agent-based model: stochasticity contact analysis report
+AMR-Hub agent-based model: stochasticity contact analysis report (October 2026)
 
 ## Abstract
 
