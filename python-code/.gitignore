@@ -171,6 +171,15 @@ _version.py
 simulation_outputs/
 ../simulation_outputs/
 
+# Local floorplan extraction inputs and generated outputs
+/config.yaml
+/floorplan.dxf
+/floorplan_layer_mapping.json
+/output.yaml
+/output_diagnostic.png
+/local-data/
+/local-output/
+
 # Benchmark and profiling artefacts
 benchmarks/results/
 *.prof

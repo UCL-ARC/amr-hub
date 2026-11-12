@@ -5,6 +5,8 @@ This section provides a comprehensive reference for the AMR-Hub API, detailing t
 - [Agent Dataclass](agent.md)
 - [Exceptions](exceptions.md)
 - [Location Dataclass](location.md)
+- [Data Ingestion](data_ingestion.md)
+- [Model Location Resolution](location_resolution.md)
 - [Building Dataclass](building.md)
 - [Floor Dataclass](floor.md)
 - [Room Dataclass](room.md)

@@ -24,6 +24,7 @@ scope and must be handled before using this module.
 
 from itertools import pairwise
 from math import isfinite
+from typing import Literal
 
 import geopandas as gpd
 import yaml
@@ -33,9 +34,113 @@ from shapely.ops import unary_union
 from yaml.nodes import SequenceNode
 from yaml.representer import SafeRepresenter
 
+from amr_hub_abm.exceptions import InvalidDefinitionError, InvalidDoorError
+from amr_hub_abm.spatial.units import SPATIAL_SCHEMA_VERSION, CoordinateUnit
+from floorplan_extractor.spatial_units import SpatialUnits
+
 
 class FlowList(list):
     """List subtype used to force YAML flow-style serialisation."""
+
+
+def _segment_key(segment: list[float]) -> tuple[tuple[float, float], ...]:
+    """Return an orientation-independent key for a line segment."""
+    if len(segment) != 4:
+        msg = f"Door segments must contain four coordinates. Got {segment}."
+        raise InvalidDoorError(msg)
+    start = (float(segment[0]), float(segment[1]))
+    end = (float(segment[2]), float(segment[3]))
+    return tuple(sorted((start, end)))
+
+
+def apply_door_cardinality_policy(
+    rooms: list[dict],
+    *,
+    singleton_policy: Literal["error", "wall"] = "error",
+) -> list[dict]:
+    """
+    Validate door attachments and handle doors connected to only one room.
+
+    The runtime requires each model door to connect exactly two rooms. A
+    singleton segment can instead be restored to the physical wall geometry
+    when the model intentionally treats the outside as impassable.
+
+    Parameters
+    ----------
+    rooms : list[dict]
+        Room definitions containing ``walls`` and ``doors`` segment lists.
+    singleton_policy : {"error", "wall"}, default="error"
+        Whether a door attached to one room raises an error or is restored as a
+        physical wall segment.
+
+    Returns
+    -------
+    list[dict]
+        Copied room definitions with the selected policy applied.
+
+    Raises
+    ------
+    InvalidDefinitionError
+        If ``singleton_policy`` is unsupported.
+    InvalidDoorError
+        If a door does not connect exactly two rooms and the selected policy
+        cannot resolve it.
+
+    """
+    if singleton_policy not in {"error", "wall"}:
+        msg = f"Unsupported singleton door policy: {singleton_policy}"
+        raise InvalidDefinitionError(msg)
+
+    copied_rooms = [
+        {
+            **room,
+            "walls": [FlowList(wall) for wall in room.get("walls", [])],
+            "doors": [FlowList(door) for door in room.get("doors", [])],
+        }
+        for room in rooms
+    ]
+    attachments: dict[tuple[tuple[float, float], ...], set[int]] = {}
+    for room_index, room in enumerate(copied_rooms):
+        for door in room["doors"]:
+            attachments.setdefault(_segment_key(door), set()).add(room_index)
+
+    over_connected = {
+        segment: room_indexes
+        for segment, room_indexes in attachments.items()
+        if len(room_indexes) > 2
+    }
+    if over_connected:
+        segment, room_indexes = next(iter(over_connected.items()))
+        msg = f"Door segment {segment} is attached to {len(room_indexes)} rooms"
+        raise InvalidDoorError(msg)
+
+    singleton_segments = {
+        segment
+        for segment, room_indexes in attachments.items()
+        if len(room_indexes) == 1
+    }
+    if singleton_segments and singleton_policy == "error":
+        segment = next(iter(singleton_segments))
+        room_index = next(iter(attachments[segment]))
+        room_name = copied_rooms[room_index]["name"]
+        msg = f"Door segment {segment} is attached only to room '{room_name}'"
+        raise InvalidDoorError(msg)
+
+    if singleton_policy == "wall":
+        for room in copied_rooms:
+            retained_doors = []
+            wall_segments = {_segment_key(wall) for wall in room["walls"]}
+            for door in room["doors"]:
+                segment = _segment_key(door)
+                if segment not in singleton_segments:
+                    retained_doors.append(door)
+                    continue
+                if segment not in wall_segments:
+                    room["walls"].append(FlowList(door))
+                    wall_segments.add(segment)
+            room["doors"] = retained_doors
+
+    return copied_rooms
 
 
 def _represent_flow_list(
@@ -231,6 +336,7 @@ def build_yaml_structure(
     building_address: str,
     floor_level: int,
     rooms: list[dict],
+    spatial_units: SpatialUnits,
 ) -> dict:
     """
     Construct a YAML-ready building data structure from room definitions.
@@ -257,6 +363,8 @@ def build_yaml_structure(
         Floor identifier to associate with the provided rooms.
     rooms : list[dict]
         List of room definitions produced by `polygons_to_rooms`.
+    spatial_units : floorplan_extractor.spatial_units.SpatialUnits
+        Explicit conversion from source coordinates to canonical metres.
 
     Returns
     -------
@@ -264,6 +372,12 @@ def build_yaml_structure(
         Nested dictionary structured as:
 
         {
+            "schema_version": 1,
+            "coordinate_unit": "m",
+            "coordinate_provenance": {
+                "source_unit": str,
+                "units_per_metre": float,
+            },
             "building": {
                 "name": str,
                 "address": str,
@@ -277,15 +391,57 @@ def build_yaml_structure(
         }
 
     """
+    canonical_rooms = [_room_to_canonical_metres(room, spatial_units) for room in rooms]
     return {
+        "schema_version": SPATIAL_SCHEMA_VERSION,
+        "coordinate_unit": CoordinateUnit.METRE.value,
+        "coordinate_provenance": {
+            "source_unit": spatial_units.source_unit,
+            "units_per_metre": spatial_units.units_per_metre,
+        },
         "building": {
             "name": building_name,
             "address": building_address,
             "floors": [
                 {
                     "level": floor_level,
-                    "rooms": rooms,
+                    "rooms": canonical_rooms,
                 }
             ],
-        }
+        },
     }
+
+
+def _room_to_canonical_metres(
+    room: dict,
+    spatial_units: SpatialUnits,
+) -> dict:
+    """Copy one room definition and convert all known spatial values to SI units."""
+    converted = dict(room)
+    for field_name in ("walls", "doors", "openings"):
+        values = room.get(field_name)
+        if isinstance(values, list) and all(
+            isinstance(value, list) for value in values
+        ):
+            converted[field_name] = [
+                FlowList(spatial_units.to_metres(coordinate) for coordinate in value)
+                for value in values
+            ]
+
+    contents = room.get("contents")
+    if isinstance(contents, list):
+        converted_contents = []
+        for content in contents:
+            converted_content = dict(content)
+            position = content.get("position")
+            if isinstance(position, list):
+                converted_content["position"] = [
+                    spatial_units.to_metres(coordinate) for coordinate in position
+                ]
+            converted_contents.append(converted_content)
+        converted["contents"] = converted_contents
+
+    area = room.get("area")
+    if isinstance(area, (int, float)) and not isinstance(area, bool):
+        converted["area"] = spatial_units.area_to_square_metres(area)
+    return converted

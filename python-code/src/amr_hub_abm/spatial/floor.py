@@ -96,7 +96,8 @@ class Floor:
         agents: list[Agent] | None = None,
         *,
         trajectory: bool = False,
-        **kwargs: dict,
+        door_color: str = "brown",
+        door_width: float = 2.0,
     ) -> None:
         """
         Plot the floor layout including rooms and doors.
@@ -109,13 +110,17 @@ class Floor:
             A list of agents to plot on the floor. Defaults to None.
         trajectory : bool, optional
             Whether to plot the trajectories of the agents. Defaults to False.
+        door_color : str, optional
+            Colour used to plot doors. Defaults to ``"brown"``.
+        door_width : float, optional
+            Line width used to plot doors. Defaults to 2.0.
 
         """
         if agents is None:
             agents = []
 
         for room in self.rooms:
-            plot_room(room, ax, **kwargs)
+            plot_room(room, ax, door_color=door_color, door_width=door_width)
             plot_agents_in_room(room, ax, agents, trajectory=trajectory)
 
     def add_pseudo_rooms(self) -> None:

@@ -8,6 +8,7 @@ import pytest
 from amr_hub_abm.exceptions import InvalidDoorError
 from amr_hub_abm.read_space_input import SpaceInputReader
 from amr_hub_abm.spatial.floor import Floor
+from amr_hub_abm.spatial.units import CoordinateUnit
 
 
 @pytest.fixture
@@ -23,6 +24,7 @@ def test_successful_reading(space_input_reader: SpaceInputReader) -> None:
     """Test successful reading of space input."""
     assert space_input_reader is not None
     assert type(space_input_reader) is SpaceInputReader
+    assert space_input_reader.coordinate_unit is CoordinateUnit.METRE
 
 
 def test_buildings_and_floors(space_input_reader: SpaceInputReader) -> None:

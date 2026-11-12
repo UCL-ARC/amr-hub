@@ -9,6 +9,7 @@ import pytest
 import yaml
 from shapely.geometry import LineString, Point, Polygon
 
+from amr_hub_abm.exceptions import InvalidDefinitionError
 from floorplan_extractor.dxf_polygon_extraction import (
     DoorAttachmentConfig,
     ExtractionConfig,
@@ -37,6 +38,7 @@ from floorplan_extractor.dxf_polygon_extraction import (
     construct_open_boundaries,
     extract_polygons,
 )
+from floorplan_extractor.spatial_units import SpatialUnits
 
 # Constants
 POLYGON_LAYER_NAME: str = "WALLS"
@@ -78,6 +80,7 @@ SHARED_WALL_MIN_OVERLAP_LENGTH: float = 250.0
 SHARED_WALL_CANONICAL_LINE: str = "midline"
 DOOR_LAYER_NAME: str = "DOORS"
 DOOR_ENTITY_HANDLE: str = "door-1"
+METRE_UNITS = SpatialUnits(source_unit="metres", units_per_metre=1.0)
 
 
 def _polygon_config() -> PolygonExtractionConfig:
@@ -210,6 +213,10 @@ def _canonical_segments(polygon: Polygon) -> set[tuple[tuple[float, float], ...]
 
 def _base_config_data() -> dict[str, Any]:
     return {
+        "spatial_units": {
+            "source_unit": "millimetres",
+            "units_per_metre": 1000.0,
+        },
         "polygons": {
             "polygon_layer_name": POLYGON_LAYER_NAME,
             "label_layer_name": LABEL_LAYER_NAME,
@@ -217,7 +224,7 @@ def _base_config_data() -> dict[str, Any]:
             "polygon_label_target": POLYGON_LABEL_TARGET,
             "floor_filter": FLOOR_FILTER,
             "excluded_room_numbers": [],
-        }
+        },
     }
 
 
@@ -232,6 +239,10 @@ def test_config_from_yaml(tmp_path: Path) -> None:
 
     assert isinstance(config, ExtractionConfig)
     assert isinstance(config.polygons, PolygonExtractionConfig)
+    assert config.spatial_units == SpatialUnits(
+        source_unit="millimetres",
+        units_per_metre=1000.0,
+    )
 
     assert config.polygons.polygon_layer_name == POLYGON_LAYER_NAME
     assert config.polygons.label_layer_name == LABEL_LAYER_NAME
@@ -243,6 +254,66 @@ def test_config_from_yaml(tmp_path: Path) -> None:
     assert config.doors is None
     assert config.shared_walls is None
     assert config.open_boundaries is None
+
+
+@pytest.mark.parametrize(
+    ("spatial_units", "error_type", "match"),
+    [
+        (None, TypeError, "must be a mapping"),
+        ({"units_per_metre": 1000.0}, KeyError, "source_unit"),
+        ({"source_unit": "millimetres"}, KeyError, "units_per_metre"),
+        (
+            {"source_unit": "millimetres", "units_per_metre": True},
+            InvalidDefinitionError,
+            "positive finite number",
+        ),
+        (
+            {"source_unit": "millimetres", "units_per_metre": 0},
+            InvalidDefinitionError,
+            "positive finite number",
+        ),
+        (
+            {"source_unit": "millimetres", "units_per_metre": -1},
+            InvalidDefinitionError,
+            "positive finite number",
+        ),
+        (
+            {"source_unit": "millimetres", "units_per_metre": float("inf")},
+            InvalidDefinitionError,
+            "positive finite number",
+        ),
+        (
+            {"source_unit": " ", "units_per_metre": 1000.0},
+            InvalidDefinitionError,
+            "non-empty string",
+        ),
+    ],
+)
+def test_config_from_yaml_rejects_invalid_spatial_units(
+    tmp_path: Path,
+    spatial_units: object,
+    error_type: type[Exception],
+    match: str,
+) -> None:
+    """Source-unit conversion must be complete, explicit, and valid."""
+    config_data = _base_config_data()
+    config_data["spatial_units"] = spatial_units
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
+
+    with pytest.raises(error_type, match=match):
+        config_from_yaml(config_path)
+
+
+def test_config_from_yaml_requires_spatial_units(tmp_path: Path) -> None:
+    """Unitless extraction configuration is rejected rather than inferred."""
+    config_data = _base_config_data()
+    del config_data["spatial_units"]
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config_data), encoding="utf-8")
+
+    with pytest.raises(KeyError, match="spatial_units"):
+        config_from_yaml(config_path)
 
 
 def test_config_from_yaml_loads_open_boundary_config(tmp_path: Path) -> None:
@@ -733,6 +804,7 @@ def test_extract_polygons_constructs_open_boundary_after_shared_wall_normalisati
     )
     config = ExtractionConfig(
         polygons=_polygon_config(),
+        spatial_units=METRE_UNITS,
         shared_walls=_shared_wall_config(enabled=True),
         open_boundaries=_open_boundary_config(("101", "102")),
     )
@@ -1017,6 +1089,7 @@ def test_extract_polygons_applies_enabled_shared_wall_normalisation(
     )
     config = ExtractionConfig(
         polygons=_polygon_config(),
+        spatial_units=METRE_UNITS,
         door_layer_name=DOOR_LAYER_NAME,
         doors=DoorAttachmentConfig(),
         shared_walls=_shared_wall_config(enabled=True),
@@ -1050,6 +1123,7 @@ def test_extract_polygons_preserves_shape_when_shared_walls_disabled(
     )
     config = ExtractionConfig(
         polygons=_polygon_config(),
+        spatial_units=METRE_UNITS,
         door_layer_name=DOOR_LAYER_NAME,
         doors=DoorAttachmentConfig(),
         shared_walls=_shared_wall_config(enabled=False),
@@ -1349,6 +1423,7 @@ def test_extract_polygons_applies_merges_before_shared_walls(
     )
     config = ExtractionConfig(
         polygons=_polygon_config(),
+        spatial_units=METRE_UNITS,
         shared_walls=_shared_wall_config(enabled=True),
         polygon_additions=[
             PolygonAdditionConfig(
