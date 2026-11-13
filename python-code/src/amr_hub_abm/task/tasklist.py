@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from amr_hub_abm.agent.kinematics import MovementStrategy
 from amr_hub_abm.config import sim_config
+from amr_hub_abm.task.routing import perform_journey, plan_journey
 from amr_hub_abm.task.task import TaskProgress
 
 if TYPE_CHECKING:
@@ -87,7 +88,7 @@ def perform_suspended_task(
     return True
 
 
-def perform_to_be_started_task(
+def perform_to_be_started_task(  # noqa: PLR0911
     agent: Agent, current_time: int, engine: SpatialQuery
 ) -> bool:
     """Perform a to-be-started task and return True if a task was performed."""
@@ -107,6 +108,18 @@ def perform_to_be_started_task(
         )
         return False
     assert task.location is not None  # noqa: S101
+
+    journey = plan_journey(agent, task, engine)
+    if journey is not None:
+        if current_time < journey.departure:
+            # Waiting here avoids an idle task consuming the departure window.
+            return True
+        if not task.on_dispatch(agent=agent):
+            return True
+        task.fixed_speed = True
+        agent.journey = journey
+        agent.tasks.extend(journey.crossings)
+        return perform_journey(agent, current_time, engine)
 
     task_start_time = task.time_due - task.time_needed
     if agent.movement_strategy == MovementStrategy.DEADLINE_PACED:
