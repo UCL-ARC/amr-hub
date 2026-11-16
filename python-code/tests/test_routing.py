@@ -5,12 +5,21 @@ from pathlib import Path
 from typing import cast
 
 import numpy as np
+import pandas as pd
 import pytest
 import warp as wp
 
-from amr_hub_abm.agent.agent import Agent
-from amr_hub_abm.agent.kinematics import MovementStrategy
+from amr_hub_abm.agent.agent import Agent, AgentType
+from amr_hub_abm.agent.kinematics import AgentKinematicsConfig, MovementStrategy
+from amr_hub_abm.config import (
+    LocationTimeseriesDataConfig,
+    LocationTimeseriesDataFormat,
+    sim_config,
+)
 from amr_hub_abm.exceptions import SimulationModeError
+from amr_hub_abm.location_data import read_location_timeseries
+from amr_hub_abm.read_space_input import SpaceInputReader
+from amr_hub_abm.simulation_factory import parse_location_timeseries
 from amr_hub_abm.spatial.building import Building
 from amr_hub_abm.spatial.door import Door
 from amr_hub_abm.spatial.engine import SpatialQuery
@@ -21,6 +30,53 @@ from amr_hub_abm.spatial.room import Room
 from amr_hub_abm.spatial.wall import Wall
 from amr_hub_abm.task.routing import plan_journey, room_graph
 from amr_hub_abm.task.task import Task, TaskDoorAccess, TaskProgress
+
+
+def test_staff_room_to_ward_without_recorded_doors() -> None:
+    """Infer both crossings from a staff-room-to-ward location timeseries."""
+    rng = np.random.default_rng(42)
+    space = SpaceInputReader(Path("tests/inputs/buildings.yml"), rng)
+    data = read_location_timeseries(
+        LocationTimeseriesDataConfig(
+            format=LocationTimeseriesDataFormat.CSV,
+            path=Path("tests/inputs/location_timeseries_missing_door_events.csv"),
+        )
+    )
+    assert data["event_type"].tolist() == ["workstation", "attend_patient"]
+    agents = parse_location_timeseries(
+        timeseries_data=data,
+        rooms=space.rooms,
+        start_time=pd.Timestamp("2024-01-01 06:55:00"),
+        total_time_steps=1200,
+        time_scaling_factor=1,
+        rng_generator=rng,
+        agent_kinematics=AgentKinematicsConfig(
+            movement_speed=0.01,
+            stochasticity=0.0,
+            interaction_radius=0.01,
+            max_movement_attempts=5,
+            movement_strategy=MovementStrategy.DEADLINE_PACED,
+        ),
+        task_durations=sim_config.task_durations,
+    )
+    hcw = next(a for a in agents if a.agent_type == AgentType.HEALTHCARE_WORKER)
+    engine = SpatialQuery(space.buildings)
+    room = engine.get_room(hcw)
+    assert room is not None
+    assert room.name == "Staff Room"
+    assert len(hcw.tasks) == 2
+    assert not any(isinstance(task, TaskDoorAccess) for task in hcw.tasks)
+
+    journey = plan_journey(hcw, hcw.tasks[1], engine)
+    assert journey is not None
+    room_names = {room.room_id: room.name for room in space.rooms}
+    assert [room_names[idx] for idx in journey.room_ids] == [
+        "Staff Room",
+        "Corridor",
+        "Ward",
+    ]
+    assert len(journey.crossings) == 2
+    assert all(crossing.inferred for crossing in journey.crossings)
 
 
 @pytest.fixture
