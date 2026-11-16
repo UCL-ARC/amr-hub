@@ -26,6 +26,8 @@ class Journey:
 
     Crossings are inferred prerequisites of the original target task and must
     execute in route order, independently of ordinary task-priority selection.
+    Each crossing's deadline is its estimated completion time along that route,
+    including travel and door service, clamped to zero for pre-simulation times.
     The target retains its observed deadline. Timing estimates determine when
     to depart; they do not guarantee arrival on time under stochastic movement.
 
@@ -153,9 +155,17 @@ def plan_journey(agent: Agent, task: Task, engine: SpatialQuery) -> Journey | No
     distances = tuple(
         a.distance_to(b) for a, b in pairwise(points) if a is not None and b is not None
     )
-    steps = sum(math.ceil(d / speed) for d in distances)
+    leg_steps = tuple(math.ceil(d / speed) for d in distances)
+    steps = sum(leg_steps)
     steps += len(crossings) * (agent.routing_door_duration + 1)
     departure = task.time_due - task.time_needed - steps - agent.routing_buffer_steps
+    completion = departure
+    for crossing, travel_steps in zip(crossings, leg_steps[:-1], strict=True):
+        completion += travel_steps + crossing.time_needed
+        # Preserve the destination deadline even when the route is already late.
+        # Task deadlines cannot precede the start of the simulation.
+        crossing.time_due = max(0, completion)
+        completion += 1  # Dispatch the next leg after completing this crossing.
     return Journey(task, tuple(crossings), tuple(path), distances, steps, departure)
 
 

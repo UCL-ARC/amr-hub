@@ -118,7 +118,10 @@ def perform_to_be_started_task(  # noqa: PLR0911
             return True
         task.fixed_speed = True
         agent.journey = journey
-        agent.tasks.extend(journey.crossings)
+        target_index = next(
+            i for i, candidate in enumerate(agent.tasks) if candidate is task
+        )
+        agent.tasks[target_index:target_index] = journey.crossings
         return perform_journey(agent, current_time, engine)
 
     task_start_time = task.time_due - task.time_needed

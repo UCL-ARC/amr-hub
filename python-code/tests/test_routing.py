@@ -152,6 +152,16 @@ def test_route_and_timing(corridor: tuple[Agent, Task, SpatialQuery]) -> None:
         journey.travel_steps == sum(math.ceil(d / 0.1) for d in journey.distances) + 6
     )
     assert journey.departure == 95 - journey.travel_steps - 3
+    first, second = journey.crossings
+    assert (
+        first.time_due == journey.departure + math.ceil(journey.distances[0] / 0.1) + 2
+    )
+    assert (
+        second.time_due
+        == first.time_due + 1 + math.ceil(journey.distances[1] / 0.1) + 2
+    )
+    assert second.time_due + 1 + math.ceil(journey.distances[2] / 0.1) + 3 == 95
+    assert first.time_due < second.time_due < task.time_due
     assert list(room_graph(engine.space[0].floors[0])) == [10, 20, 30]
 
 
@@ -175,18 +185,38 @@ def test_wait_then_cross_in_order(corridor: tuple[Agent, Task, SpatialQuery]) ->
     assert task.progress == TaskProgress.COMPLETED
     assert sorted(set(rooms)) == [10, 20, 30]
     assert len(agent.tasks) == 3
-    assert all(t.inferred for t in agent.tasks[1:])
+    assert all(t.inferred for t in agent.tasks[:-1])
+    assert agent.tasks[-1] is task
+    assert [t.time_due for t in agent.tasks] == sorted(t.time_due for t in agent.tasks)
     assert task.lateness_steps == 0
 
 
 def test_late_departure(corridor: tuple[Agent, Task, SpatialQuery]) -> None:
     """Late journeys preserve observed deadlines and report actual lateness."""
     agent, task, engine = corridor
+    journey = plan_journey(agent, task, engine)
+    assert journey is not None
     for time in range(95, 150):
         agent.perform_task(time, engine)
     assert task.time_due == 100
     assert task.progress == TaskProgress.COMPLETED
     assert task.lateness_steps > 0
+    assert [t.time_due for t in agent.tasks[:-1]] == [
+        crossing.time_due for crossing in journey.crossings
+    ]
+
+
+def test_crossing_deadlines_before_simulation_start(
+    corridor: tuple[Agent, Task, SpatialQuery],
+) -> None:
+    """Clamp infeasible early crossing deadlines without shifting the target."""
+    agent, task, engine = corridor
+    task.time_due = 5
+    journey = plan_journey(agent, task, engine)
+    assert journey is not None
+    assert journey.departure < 0
+    assert [crossing.time_due for crossing in journey.crossings] == [0, 0]
+    assert task.time_due == 5
 
 
 def test_recorded_door_approach(corridor: tuple[Agent, Task, SpatialQuery]) -> None:
@@ -261,7 +291,7 @@ def test_gpu_journey_waits_and_resumes(
             moving = any(
                 t.progress == TaskProgress.MOVING_TO_LOCATION for t in agent.tasks
             )
-            for crossing in agent.tasks[1:]:
+            for crossing in (task for task in agent.tasks if task.inferred):
                 if crossing.progress == TaskProgress.IN_PROGRESS:
                     serviced_doors.add(id(crossing))
             gpu_engine.step_physics([agent])
