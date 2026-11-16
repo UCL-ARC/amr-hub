@@ -19,6 +19,7 @@ from amr_hub_abm.spatial.floor import Floor
 from amr_hub_abm.spatial.furniture import Content, ContentType
 from amr_hub_abm.spatial.location import Location
 from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.spatial.units import SPATIAL_SCHEMA_VERSION, CoordinateUnit
 from amr_hub_abm.spatial.wall import Wall
 
 if TYPE_CHECKING:
@@ -64,6 +65,8 @@ class SpaceInputReader:
     buildings: list[Building] = field(init=False, default_factory=list)
 
     topological: bool = field(init=False, default=False)
+    schema_version: int = field(init=False)
+    coordinate_unit: CoordinateUnit = field(init=False)
 
     def __post_init__(self) -> None:
         """
@@ -279,6 +282,12 @@ class SpaceInputReader:
         msg = f"Loaded space input data from {self.input_path}"
         logger.info(msg)
 
+        if not isinstance(self.data, dict):
+            msg = "Spatial input must contain a YAML mapping."
+            raise InvalidDefinitionError(msg)
+
+        self._validate_spatial_metadata()
+
         if "building" not in self.data:
             msg = "The input data must contain a 'building' key."
             logger.error(msg)
@@ -293,6 +302,37 @@ class SpaceInputReader:
             rooms_data = floor_data["rooms"]
             for room_data in rooms_data:
                 self.validate_room_data(room_data)
+
+    def _validate_spatial_metadata(self) -> None:
+        """Require a versioned canonical metre contract for spatial input."""
+        schema_version = self.data.get("schema_version")
+        if type(schema_version) is not int or schema_version != SPATIAL_SCHEMA_VERSION:
+            msg = (
+                f"Spatial input schema_version must be {SPATIAL_SCHEMA_VERSION}; "
+                f"got {schema_version!r}"
+            )
+            raise InvalidDefinitionError(msg)
+
+        coordinate_unit = self.data.get("coordinate_unit")
+        if not isinstance(coordinate_unit, str):
+            expected_unit = CoordinateUnit.METRE.value
+            msg = (
+                f"Spatial input coordinate_unit must be {expected_unit!r}; "
+                f"got {coordinate_unit!r}"
+            )
+            raise InvalidDefinitionError(msg)
+        try:
+            parsed_unit = CoordinateUnit(coordinate_unit)
+        except ValueError:
+            expected_unit = CoordinateUnit.METRE.value
+            msg = (
+                f"Spatial input coordinate_unit must be {expected_unit!r}; "
+                f"got {coordinate_unit!r}"
+            )
+            raise InvalidDefinitionError(msg) from None
+
+        self.schema_version = schema_version
+        self.coordinate_unit = parsed_unit
 
     def create_room(
         self, room_data: dict, room_id: int, building_name: str, floor_level: int

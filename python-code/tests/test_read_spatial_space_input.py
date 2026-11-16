@@ -5,6 +5,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+import yaml
 
 from amr_hub_abm.exceptions import (
     InvalidDefinitionError,
@@ -12,6 +13,7 @@ from amr_hub_abm.exceptions import (
     InvalidRoomError,
 )
 from amr_hub_abm.read_space_input import SpaceInputReader
+from amr_hub_abm.spatial.units import SPATIAL_SCHEMA_VERSION, CoordinateUnit
 
 
 @pytest.fixture
@@ -27,6 +29,38 @@ def test_successful_reading(space_input_reader: SpaceInputReader) -> None:
     """Test successful reading of space input."""
     assert space_input_reader is not None
     assert type(space_input_reader) is SpaceInputReader
+    assert space_input_reader.schema_version == SPATIAL_SCHEMA_VERSION
+    assert space_input_reader.coordinate_unit is CoordinateUnit.METRE
+
+
+@pytest.mark.parametrize(
+    ("schema_version", "coordinate_unit", "match"),
+    [
+        (None, "m", "schema_version"),
+        (True, "m", "schema_version"),
+        (2, "m", "schema_version"),
+        (1, None, "coordinate_unit"),
+        (1, "mm", "coordinate_unit"),
+        (1, "metres", "coordinate_unit"),
+    ],
+)
+def test_spatial_metadata_is_required(
+    tmp_path: Path,
+    schema_version: object,
+    coordinate_unit: object,
+    match: str,
+) -> None:
+    """Runtime input rejects ambiguous or unsupported spatial-unit contracts."""
+    data = {
+        "schema_version": schema_version,
+        "coordinate_unit": coordinate_unit,
+        "building": {"name": "Test", "address": "Test", "floors": []},
+    }
+    input_path = tmp_path / "building.yml"
+    input_path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    with pytest.raises(InvalidDefinitionError, match=match):
+        SpaceInputReader(input_path, np.random.default_rng())
 
 
 def test_buildings_and_floors(space_input_reader: SpaceInputReader) -> None:

@@ -10,6 +10,8 @@ from shapely.geometry import Polygon
 
 from amr_hub_abm.exceptions import InvalidDoorError
 from amr_hub_abm.read_space_input import SpaceInputReader
+from amr_hub_abm.spatial.units import SPATIAL_SCHEMA_VERSION, CoordinateUnit
+from floorplan_extractor.spatial_units import SpatialUnits
 from floorplan_extractor.yaml_construction import (
     FlowList,
     _polygon_to_walls,
@@ -36,6 +38,7 @@ FLOOR_LEVEL: int = 1
 
 ROOM_NAME_COLUMN: str = "room_name"
 ROOM_NAME: str = "Room A"
+METRE_UNITS = SpatialUnits(source_unit="metres", units_per_metre=1.0)
 
 
 def test_polygon_to_walls_valid_polygon() -> None:
@@ -86,8 +89,15 @@ def test_build_yaml_structure_schema() -> None:
         building_address=BUILDING_ADDRESS,
         floor_level=FLOOR_LEVEL,
         rooms=rooms,
+        spatial_units=METRE_UNITS,
     )
 
+    assert data["schema_version"] == SPATIAL_SCHEMA_VERSION
+    assert data["coordinate_unit"] == CoordinateUnit.METRE
+    assert data["coordinate_provenance"] == {
+        "source_unit": "metres",
+        "units_per_metre": 1.0,
+    }
     assert "building" in data
     assert data["building"]["name"] == BUILDING_NAME
     assert data["building"]["floors"][0]["level"] == FLOOR_LEVEL
@@ -181,12 +191,19 @@ def test_open_boundary_round_trip_creates_shared_floor_connection(
         {
             ROOM_NAME_COLUMN: ["101", "CORRIDOR"],
             "doors": [
-                [[5.0, 0.0, 5.0, 10.0]],
-                [[5.0, 0.0, 5.0, 10.0]],
+                [[5000.0, 0.0, 5000.0, 10000.0]],
+                [[5000.0, 0.0, 5000.0, 10000.0]],
             ],
             "geometry": [
-                Polygon([(0.0, 0.0), (5.0, 0.0), (5.0, 10.0), (0.0, 10.0)]),
-                Polygon([(5.0, 0.0), (10.0, 0.0), (10.0, 10.0), (5.0, 10.0)]),
+                Polygon([(0.0, 0.0), (5000.0, 0.0), (5000.0, 10000.0), (0.0, 10000.0)]),
+                Polygon(
+                    [
+                        (5000.0, 0.0),
+                        (10000.0, 0.0),
+                        (10000.0, 10000.0),
+                        (5000.0, 10000.0),
+                    ]
+                ),
             ],
         },
         geometry="geometry",
@@ -197,6 +214,10 @@ def test_open_boundary_round_trip_creates_shared_floor_connection(
         building_address=BUILDING_ADDRESS,
         floor_level=FLOOR_LEVEL,
         rooms=rooms,
+        spatial_units=SpatialUnits(
+            source_unit="millimetres",
+            units_per_metre=1000.0,
+        ),
     )
     register_yaml_representers()
     input_path = tmp_path / "open-boundary.yml"
@@ -215,6 +236,8 @@ def test_open_boundary_round_trip_creates_shared_floor_connection(
     assert floor.edge_set == {(0, 1), (1, 0)}
     assert floor.adjacency_matrix.tolist() == [[0, 1], [1, 0]]
     assert all(len(room["walls"]) == 3 for room in rooms)
+    assert reader.schema_version == SPATIAL_SCHEMA_VERSION
+    assert reader.coordinate_unit is CoordinateUnit.METRE
 
 
 def test_door_serialisation_excludes_span_from_physical_walls() -> None:
@@ -274,6 +297,7 @@ def test_opening_serialisation_excludes_span_from_physical_walls() -> None:
         building_address=BUILDING_ADDRESS,
         floor_level=FLOOR_LEVEL,
         rooms=rooms,
+        spatial_units=METRE_UNITS,
     )
     register_yaml_representers()
     dumped = yaml.safe_dump(data, sort_keys=False)
@@ -282,3 +306,38 @@ def test_opening_serialisation_excludes_span_from_physical_walls() -> None:
     serialised_rooms = loaded["building"]["floors"][0]["rooms"]
     assert all(len(room["walls"]) == 3 for room in serialised_rooms)
     assert all(room["openings"] == [opening] for room in serialised_rooms)
+
+
+def test_build_yaml_structure_converts_all_spatial_values_to_metres() -> None:
+    """Canonical YAML scales geometry, content positions, and areas exactly once."""
+    rooms = [
+        {
+            "name": ROOM_NAME,
+            "walls": [FlowList([0.0, 0.0, 5000.0, 0.0])],
+            "doors": [FlowList([5000.0, 0.0, 5000.0, 1500.0])],
+            "openings": [FlowList([0.0, 1000.0, 0.0, 3000.0])],
+            "contents": [{"type": "bed", "position": [2500.0, 1000.0]}],
+            "area": 50_000_000.0,
+        }
+    ]
+    units = SpatialUnits(source_unit="millimetres", units_per_metre=1000.0)
+
+    data = build_yaml_structure(
+        building_name=BUILDING_NAME,
+        building_address=BUILDING_ADDRESS,
+        floor_level=FLOOR_LEVEL,
+        rooms=rooms,
+        spatial_units=units,
+    )
+
+    [room] = data["building"]["floors"][0]["rooms"]
+    assert room["walls"] == [[0.0, 0.0, 5.0, 0.0]]
+    assert room["doors"] == [[5.0, 0.0, 5.0, 1.5]]
+    assert room["openings"] == [[0.0, 1.0, 0.0, 3.0]]
+    assert room["contents"][0]["position"] == [2.5, 1.0]
+    assert room["area"] == 50.0
+    assert data["coordinate_provenance"] == {
+        "source_unit": "millimetres",
+        "units_per_metre": 1000.0,
+    }
+    assert rooms[0]["walls"] == [[0.0, 0.0, 5000.0, 0.0]]

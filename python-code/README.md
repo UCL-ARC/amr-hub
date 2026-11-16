@@ -115,6 +115,16 @@ deterministically using the explicit `event_sequence` column. The synthetic test
 database at `tests/inputs/location_timeseries.duckdb` is an example of schema
 version 1.
 
+Building YAML is also versioned and must declare `coordinate_unit: m`. All
+runtime coordinates and distances are metres, and topological room areas are
+square metres. Floorplan extraction requires an explicit source-unit conversion
+and writes canonical metre geometry; see the
+[spatial-unit contract](https://github.com/UCL-ARC/amr-hub/blob/main/python-code/docs/spatial_units.md).
+
+`agent_movement_speed` currently means metres per simulation timestep rather
+than metres per second. `length_of_timestep_in_seconds` controls elapsed time
+per timestep but is not applied automatically to movement speed.
+
 Legacy CSV input remains available during the migration period:
 
 ```yaml
