@@ -6,12 +6,12 @@ In order to begin tracking the infection dynamics of the organisms and strains t
 
 ## Stages of Infection [1, 2]
 
-1. **Exposure (Via Chain of Infection)**
+1. **Exposure (via Chain of Infection)**
    - Susceptible host comes into contact with causative agent (pathogen) in a reservoir (environment that can sustain the pathogen).
      - Susceptibility of host can depend on immune response/deficiency (affected by antibodies, age, etc.) and strain of pathogen.
      - Most common reservoirs: humans, animals, water, food, environmental surfaces.
    - Causative agent leaves its reservoir through a portal of exit (e.g. bodily fluids) and enters the host through a portal of entry (e.g. respiratory tract, intestines, wounds).
-     - Transmission occurs if a pathogen can survive the entry/exit, which is why contact (direct or indirect) is the most common mode of transmission.
+     - Transmission occurs if a pathogen can survive the entry/exit process and successfully adhere to (i.e. colonise) the cells of the body, which is why contact (direct or indirect) is the most common mode of transmission.
 2. **Incubation Stage**
    - Pathogen has successfully entered host and begins to multiply. Host remains asymptomatic.
 3. **Prodromal Stage**
