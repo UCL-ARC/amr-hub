@@ -22,8 +22,23 @@ In order to begin tracking the infection dynamics of the organisms and strains t
 5. **Convalescence Stage**
    - Period of recovery and healing. Symptoms fade and host system attempts to return to baseline.
 
+## Infectious Disease Modelling
+
+A common way to monitor infections is by using `SEIR` (`susceptible`, `exposed`, `infectious`, `recovered`) states [3], or some variation thereof (`SIR`, `SIRS`, `SIS`, `SEIS`, `SEIRS`, etc.). Models that include the `exposed` phase account for the incubation stage where an individual is infected but not infectious, and models that include the `recovered` phase account for some level of resistance or immunity upon recovery.
+
+```mermaid
+flowchart LR
+   S[Susceptible] --> E[Exposed]
+   E --> I[Infectious]
+   I --> R[Recovered]
+```
+
+`SEIR` is a useful model for understanding epidemic waves, but state transition equations generally use fixed values and there is a lack of consideration for symptoms and preventative measures.
+
 ## References
 
 [1] Bowen, C. (2024). Clinical Nursing Skills, 6.1: Infection cycle. LibreTexts. <https://med.libretexts.org/Bookshelves/Nursing/Clinical_Nursing_Skills_(OpenStax)/06%3A_Infection_Prevention_Techniques_and_Safety_in_the_Clinical_Setting/6.01%3A_Infection_Cycle>.
 
 [2] Ernstmeyer, K., & Christman, E. (Eds.). (2024). Nursing Fundamentals 2e, 9.4 Infection. Open RN | WisTech Open. <https://wtcs.pressbooks.pub/nursingfundamentals/chapter/9-4-infection/>.
+
+[3] Bjørnstad, O.N., Shea, K., Krzywinski, M. and Altman, N. (2020). The SEIRS model for infectious disease dynamics. Nature Methods 17, 557-558. <https://www.nature.com/articles/s41592-020-0856-2>.
