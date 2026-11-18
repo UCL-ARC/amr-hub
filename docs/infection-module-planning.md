@@ -2,7 +2,7 @@
 
 ## Overview
 
-In order to begin tracking the infection dynamics of the organisms and strains that have been identified to be of interest, AMR-Hub is in need of a proper infection module that keeps track of all organisms and their properties, tests for pathogen identification, facilitates the spread of infections, and updates disease progression every step. Below is a brief foray into the way infections are typically represented within medical and research contexts, and how the AMR-Hub infection module can progress in light of this.
+In order to begin tracking the infection dynamics of the organisms and strains that have been identified to be of interest, AMR-Hub is in need of a proper infection module that keeps track of select organisms and their properties, tests for pathogen identification, models the spread of infections, and updates disease progression every time step. Below is a brief foray into the way infections are typically represented within medical and research contexts, and how the AMR-Hub infection module can progress in light of this.
 
 ## Stages of Infection [1, 2]
 
@@ -24,7 +24,7 @@ In order to begin tracking the infection dynamics of the organisms and strains t
 
 ## Infectious Disease Modelling
 
-A common way to monitor infections is by using `SEIR` (`susceptible`, `exposed`, `infectious`, `recovered`) states [3], or some variation thereof (`SIR`, `SIRS`, `SIS`, `SEIS`, `SEIRS`, etc.). Models that include the `exposed` phase account for the incubation stage where an individual is infected but not infectious, and models that include the `recovered` phase account for some level of resistance or immunity upon recovery.
+A common way to monitor infections is by using `SEIR` (`susceptible`, `exposed`, `infectious`, `recovered`) states [3], or some variation thereof (`SIR`, `SIRS`, `SIS`, `SEIS`, `SEIRS`, etc.). Models that include the `exposed` state account for the incubation stage where an individual is infected but not infectious, and models that include the `recovered` state account for some level of resistance or immunity upon recovery.
 
 ```mermaid
 flowchart LR
@@ -33,7 +33,7 @@ flowchart LR
    I --> R[Recovered]
 ```
 
-`SEIR` is a useful model for understanding epidemic waves, but state transition equations generally use fixed values and there is a lack of consideration for symptoms and preventative measures.
+`SEIR` is a useful model for understanding epidemic waves, but state transition equations generally use fixed parameter/probability values and there is a lack of consideration for symptoms and preventative measures.
 
 ## References
 
