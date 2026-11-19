@@ -1,0 +1,4131 @@
+[
+  {
+    "DOI": "10.1371/journal.pone.0079906",
+    "title": [
+      "Healthcare Worker Contact Networks and the Prevention of Hospital-Acquired Infections"
+    ],
+    "author": [
+      {
+        "given": "Donald E.",
+        "family": "Curtis",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Christopher S.",
+        "family": "Hlady",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Gaurav",
+        "family": "Kanade",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Sriram V.",
+        "family": "Pemmaraju",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Philip M.",
+        "family": "Polgreen",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Alberto M.",
+        "family": "Segre",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["PLoS ONE"],
+    "published": {
+      "date-parts": [[2013, 12, 30]]
+    },
+    "published-online": {
+      "date-parts": [[2013, 12, 30]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1371/journal.pone.0079906",
+    "volume": "8",
+    "issue": "12",
+    "page": "e79906",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1371/journal.pone.0073970",
+    "title": [
+      "Estimating Potential Infection Transmission Routes in Hospital Wards Using Wearable Proximity Sensors"
+    ],
+    "author": [
+      {
+        "given": "Philippe",
+        "family": "Vanhems",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Alain",
+        "family": "Barrat",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Ciro",
+        "family": "Cattuto",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jean-François",
+        "family": "Pinton",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Nagham",
+        "family": "Khanafer",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Corinne",
+        "family": "Régis",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Byeul-a",
+        "family": "Kim",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Brigitte",
+        "family": "Comte",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Nicolas",
+        "family": "Voirin",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["PLoS ONE"],
+    "published": {
+      "date-parts": [[2013, 9, 11]]
+    },
+    "published-online": {
+      "date-parts": [[2013, 9, 11]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1371/journal.pone.0073970",
+    "volume": "8",
+    "issue": "9",
+    "page": "e73970",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1038/s41598-018-20008-w",
+    "title": [
+      "Measuring dynamic social contacts in a rehabilitation hospital: effect of wards, patient and staff characteristics"
+    ],
+    "author": [
+      {
+        "given": "Audrey",
+        "family": "Duval",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Thomas",
+        "family": "Obadia",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Lucie",
+        "family": "Martinet",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-5367-8232",
+        "authenticated-orcid": false,
+        "given": "Pierre-Yves",
+        "family": "Boëlle",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Eric",
+        "family": "Fleury",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Didier",
+        "family": "Guillemot",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Lulla",
+        "family": "Opatowski",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Laura",
+        "family": "Temime",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "name": "I-Bird study group",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Anne Sophie",
+        "family": "Alvarez",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Audrey",
+        "family": "Baraffe",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Mariano",
+        "family": "Beiró",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Inga",
+        "family": "Bertucci",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Camille",
+        "family": "Cyncynatus",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Florence",
+        "family": "Dannet",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Marie Laure",
+        "family": "Delaby",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Pierre",
+        "family": "Denys",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Matthieu Domenech",
+        "family": "de Cellès",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Antoine",
+        "family": "Fraboulet",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jean-Louis",
+        "family": "Gaillard",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jean-Louis",
+        "family": "Herrmann",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Boris",
+        "family": "Labrador",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jennifer",
+        "family": "Lasley",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Christine",
+        "family": "Lawrence",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Judith",
+        "family": "Legrand",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Odile",
+        "family": "Le Minor",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Caroline",
+        "family": "Ligier",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Karine",
+        "family": "Mignon",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Catherine",
+        "family": "Sacleux",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jérôme",
+        "family": "Salomon",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Marie",
+        "family": "Perard",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Laure",
+        "family": "Petit",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Laeticia",
+        "family": "Remy",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Anne",
+        "family": "Thiebaut",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Damien",
+        "family": "Thomas",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Philippe",
+        "family": "Tronchet",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Isabelle",
+        "family": "Villain",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Scientific Reports"],
+    "published": {
+      "date-parts": [[2018, 1, 26]]
+    },
+    "published-online": {
+      "date-parts": [[2018, 1, 26]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1038/s41598-018-20008-w",
+    "volume": "8",
+    "issue": "1",
+    "page": null,
+    "article-number": "1686"
+  },
+  {
+    "DOI": "10.1371/journal.pmed.1004433",
+    "title": [
+      "Using contact network dynamics to implement efficient interventions against pathogen spread in hospital settings: A modelling study"
+    ],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0003-4761-001X",
+        "authenticated-orcid": true,
+        "given": "Quentin J.",
+        "family": "Leclerc",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-1376-4101",
+        "authenticated-orcid": true,
+        "given": "Audrey",
+        "family": "Duval",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Didier",
+        "family": "Guillemot",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-8348-700X",
+        "authenticated-orcid": true,
+        "given": "Lulla",
+        "family": "Opatowski",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-8850-5403",
+        "authenticated-orcid": true,
+        "given": "Laura",
+        "family": "Temime",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["PLOS Medicine"],
+    "published": {
+      "date-parts": [[2024, 7, 30]]
+    },
+    "published-online": {
+      "date-parts": [[2024, 7, 30]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1371/journal.pmed.1004433",
+    "volume": "21",
+    "issue": "7",
+    "page": "e1004433",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1145/3765612.3767222",
+    "title": [
+      "Enhancing Agent-Based Models with Real-Time Movement Data to Assess Impacts of Biosecurity Interventions on Disease Exposure in Healthcare Settings"
+    ],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0009-0000-3495-1080",
+        "authenticated-orcid": false,
+        "given": "Ravi Chandra",
+        "family": "Thota",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "University of Missouri - Kansas City, Kansas City, MO, USA"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0003-2184-0140",
+        "authenticated-orcid": false,
+        "given": "Yusuf Sarwar",
+        "family": "Uddin",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "University of Missouri - Kansas City, Kansas City, MO, USA"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Majid",
+        "family": "Bani-Yaghoub",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "University of Missouri-Kansas City, Kansas City, MO, USA"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Mohamed Nezar",
+        "family": "Abourraja",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "KTH Royal Institute of Technology, Stockholm, Sweden"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Gary",
+        "family": "Sutkin",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "University of Missouri - Kansas City, Kansas City, MO, USA"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0009-0007-6124-7153",
+        "authenticated-orcid": false,
+        "given": "Susanna",
+        "family": "Paschal",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "University of Missouri - Kansas City, Kansas City, MO, USA"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "container-title": [
+      "Proceedings of the 16th ACM International Conference on Bioinformatics, Computational Biology, and Health Informatics"
+    ],
+    "published": {
+      "date-parts": [[2025, 10, 12]]
+    },
+    "published-online": {
+      "date-parts": [[2025, 12, 10]]
+    },
+    "published-print": {
+      "date-parts": [[2025, 10, 12]]
+    },
+    "type": "proceedings-article",
+    "URL": "https://doi.org/10.1145/3765612.3767222",
+    "volume": null,
+    "issue": null,
+    "page": "1-10",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1371/journal.pone.0284611",
+    "title": [
+      "Validating agent-based simulation model of hospital-associated Clostridioides difficile infection using primary hospital data"
+    ],
+    "author": [
+      {
+        "given": "Elizabeth",
+        "family": "Scaria",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Nasia",
+        "family": "Safdar",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-5133-1382",
+        "authenticated-orcid": true,
+        "given": "Oguzhan",
+        "family": "Alagoz",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "container-title": ["PLOS ONE"],
+    "published": {
+      "date-parts": [[2023, 4, 21]]
+    },
+    "published-online": {
+      "date-parts": [[2023, 4, 21]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1371/journal.pone.0284611",
+    "volume": "18",
+    "issue": "4",
+    "page": "e0284611",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1371/journal.pcbi.1010352",
+    "title": [
+      "Examining the impact of ICU population interaction structure on modeled colonization dynamics of Staphylococcus aureus"
+    ],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0002-1979-6374",
+        "authenticated-orcid": true,
+        "given": "Matthew S.",
+        "family": "Mietchen",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-2183-3509",
+        "authenticated-orcid": true,
+        "given": "Christopher T.",
+        "family": "Short",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Matthew",
+        "family": "Samore",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0003-2052-7240",
+        "authenticated-orcid": true,
+        "given": "Eric T.",
+        "family": "Lofgren",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "name": "CDC Modeling Infectious Diseases in Healthcare Program (MInD-Healthcare)",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "container-title": ["PLOS Computational Biology"],
+    "published": {
+      "date-parts": [[2022, 7, 25]]
+    },
+    "published-online": {
+      "date-parts": [[2022, 7, 25]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1371/journal.pcbi.1010352",
+    "volume": "18",
+    "issue": "7",
+    "page": "e1010352",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1080/19488300.2012.736120",
+    "title": [
+      "Exploring the effects of network structure and healthcare worker behavior on the transmission of hospital-acquired infections"
+    ],
+    "author": [
+      {
+        "given": "Sean",
+        "family": "Barnes",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Bruce",
+        "family": "Golden",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Edward",
+        "family": "Wasil",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "container-title": ["IIE Transactions on Healthcare Systems Engineering"],
+    "published": {
+      "date-parts": [[2012, 10]]
+    },
+    "published-online": null,
+    "published-print": {
+      "date-parts": [[2012, 10]]
+    },
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1080/19488300.2012.736120",
+    "volume": "2",
+    "issue": "4",
+    "page": "259-273",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1038/s41746-025-01795-9",
+    "title": [
+      "An openEHR based infection control system to support monitoring of nosocomial bacterial clusters and contacts"
+    ],
+    "author": [
+      {
+        "given": "Pascal",
+        "family": "Biermann",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Claas",
+        "family": "Baier",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Ann Christin",
+        "family": "Vietor",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Benedikt",
+        "family": "Zacher",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Tom",
+        "family": "Baumgartl",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Tatiana",
+        "family": "von Landesberger",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Michael",
+        "family": "Behnke",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Michael",
+        "family": "Storck",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Markus",
+        "family": "Petzold",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Martin",
+        "family": "Kaase",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "name": "HiGHmed lnfection Control Study Group",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Sarah",
+        "family": "Ballout",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Tim",
+        "family": "Eckmanns",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Petra",
+        "family": "Gastmeier",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Julian",
+        "family": "Varghese",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Vanessa M.",
+        "family": "Eichel",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Nicolas",
+        "family": "Reinoso-Schiller",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Sabine",
+        "family": "Hanß",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Tibor",
+        "family": "Kesztyüs",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Alexander",
+        "family": "Dalpke",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Max",
+        "family": "Klass",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Angela",
+        "family": "Merzweiler",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jennifer Daniela Elke",
+        "family": "Hoos",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Peter",
+        "family": "Brunnecker",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Alexander",
+        "family": "Mellmann",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Hauke",
+        "family": "Tönnies",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Cora",
+        "family": "Drenkhahn",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Benjamin",
+        "family": "Gebel",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Joshua",
+        "family": "Wiedekopf",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Tatiana",
+        "family": "von Landesberger",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Dirk",
+        "family": "Schlüter",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Michael",
+        "family": "Marschollek",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Simone",
+        "family": "Scheithauer",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Antje",
+        "family": "Wulff",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["npj Digital Medicine"],
+    "published": {
+      "date-parts": [[2025, 6, 30]]
+    },
+    "published-online": {
+      "date-parts": [[2025, 6, 30]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1038/s41746-025-01795-9",
+    "volume": "8",
+    "issue": "1",
+    "page": null,
+    "article-number": "385"
+  },
+  {
+    "DOI": "10.1038/s41467-025-65241-w",
+    "title": [
+      "Inferring asymptomatic carriers of antimicrobial-resistant organisms in hospitals using genomic, microbiological and patient mobility data"
+    ],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0002-7072-2995",
+        "authenticated-orcid": false,
+        "given": "Sen",
+        "family": "Pei",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Dwayne",
+        "family": "Seeram",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-5495-4238",
+        "authenticated-orcid": false,
+        "given": "Seth",
+        "family": "Blumberg",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Bo",
+        "family": "Shopsin",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-9798-4768",
+        "authenticated-orcid": false,
+        "given": "Anne-Catrin",
+        "family": "Uhlemann",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-7216-7809",
+        "authenticated-orcid": false,
+        "given": "Jeffrey",
+        "family": "Shaman",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Nature Communications"],
+    "published": {
+      "date-parts": [[2025, 11, 19]]
+    },
+    "published-online": {
+      "date-parts": [[2025, 11, 19]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1038/s41467-025-65241-w",
+    "volume": "16",
+    "issue": "1",
+    "page": null,
+    "article-number": "10140"
+  },
+  {
+    "DOI": "10.1007/s10707-018-00339-6",
+    "title": [
+      "Building, composing and experimenting complex spatial models with the GAMA platform"
+    ],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0003-2939-4827",
+        "authenticated-orcid": false,
+        "given": "Patrick",
+        "family": "Taillandier",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Benoit",
+        "family": "Gaudou",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Arnaud",
+        "family": "Grignard",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Quang-Nghi",
+        "family": "Huynh",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Nicolas",
+        "family": "Marilleau",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Philippe",
+        "family": "Caillou",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Damien",
+        "family": "Philippon",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Alexis",
+        "family": "Drogoul",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["GeoInformatica"],
+    "published": {
+      "date-parts": [[2018, 12, 23]]
+    },
+    "published-online": {
+      "date-parts": [[2018, 12, 23]]
+    },
+    "published-print": {
+      "date-parts": [[2019, 4]]
+    },
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1007/s10707-018-00339-6",
+    "volume": "23",
+    "issue": "2",
+    "page": "299-322",
+    "article-number": null
+  },
+  {
+    "DOI": "10.17815/cd.2016.1",
+    "title": ["Menge: A Modular Framework for Simulating Crowd Movement"],
+    "author": [
+      {
+        "given": "Sean",
+        "family": "Curtis",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Andrew",
+        "family": "Best",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Dinesh",
+        "family": "Manocha",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Collective Dynamics"],
+    "published": {
+      "date-parts": [[2016, 3, 15]]
+    },
+    "published-online": {
+      "date-parts": [[2016, 3, 15]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.17815/cd.2016.1",
+    "volume": "1",
+    "issue": null,
+    "page": null,
+    "article-number": "A1"
+  },
+  {
+    "DOI": "10.1002/spe.3207",
+    "title": [
+      "FLAME GPU 2: A framework for flexible and performant agent based simulation on GPUs"
+    ],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0002-4657-5518",
+        "authenticated-orcid": false,
+        "given": "Paul",
+        "family": "Richmond",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "The Department of Computer Science University of Sheffield  Sheffield UK"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0003-3379-9042",
+        "authenticated-orcid": false,
+        "given": "Robert",
+        "family": "Chisholm",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "The Department of Computer Science University of Sheffield  Sheffield UK"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-9277-8394",
+        "authenticated-orcid": false,
+        "given": "Peter",
+        "family": "Heywood",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "The Department of Computer Science University of Sheffield  Sheffield UK"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-2561-7926",
+        "authenticated-orcid": false,
+        "given": "Mozhgan Kabiri",
+        "family": "Chimeh",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "NVIDIA  Bristol UK"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-8901-5609",
+        "authenticated-orcid": false,
+        "given": "Matthew",
+        "family": "Leach",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "The Department of Computer Science University of Sheffield  Sheffield UK"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Software: Practice and Experience"],
+    "published": {
+      "date-parts": [[2023, 5, 16]]
+    },
+    "published-online": {
+      "date-parts": [[2023, 5, 16]]
+    },
+    "published-print": {
+      "date-parts": [[2023, 8]]
+    },
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1002/spe.3207",
+    "volume": "53",
+    "issue": "8",
+    "page": "1659-1680",
+    "article-number": null
+  },
+  {
+    "DOI": "10.21105/joss.07668",
+    "title": ["Mesa 3: Agent-based modeling with Python in 2025"],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0009-0002-0805-3425",
+        "authenticated-orcid": false,
+        "given": "Ewout",
+        "family": "ter Hoeven",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "Delft University of Technology (Faculty of Technology, Policy and Management), the Netherlands"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-9447-2954",
+        "authenticated-orcid": false,
+        "given": "Jan",
+        "family": "Kwakkel",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Delft University of Technology (Faculty of Technology, Policy and Management), the Netherlands"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-9242-8500",
+        "authenticated-orcid": false,
+        "given": "Vincent",
+        "family": "Hess",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Independent Researcher, Germany"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0003-1576-0283",
+        "authenticated-orcid": false,
+        "given": "Thomas",
+        "family": "Pike",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "George Mason University (Department of Computational Social Science), United States"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-9879-2138",
+        "authenticated-orcid": false,
+        "given": "Boyu",
+        "family": "Wang",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "University at Buffalo (Department of Geography), United States"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0009-0002-6902-111X",
+        "authenticated-orcid": false,
+        "family": "rht",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Independent Researcher"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-8300-7384",
+        "authenticated-orcid": false,
+        "given": "Jackie",
+        "family": "Kazil",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "George Mason University (Department of Computational Social Science), United States"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Journal of Open Source Software"],
+    "published": {
+      "date-parts": [[2025, 3, 28]]
+    },
+    "published-online": null,
+    "published-print": {
+      "date-parts": [[2025, 3, 28]]
+    },
+    "type": "journal-article",
+    "URL": "https://doi.org/10.21105/joss.07668",
+    "volume": "10",
+    "issue": "107",
+    "page": "7668",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1038/s41586-020-2521-4",
+    "title": [
+      "Factors associated with COVID-19-related death using OpenSAFELY"
+    ],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0001-6905-876X",
+        "authenticated-orcid": false,
+        "given": "Elizabeth J.",
+        "family": "Williamson",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0003-4932-6135",
+        "authenticated-orcid": false,
+        "given": "Alex J.",
+        "family": "Walker",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Krishnan",
+        "family": "Bhaskaran",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Seb",
+        "family": "Bacon",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0003-0113-2593",
+        "authenticated-orcid": false,
+        "given": "Chris",
+        "family": "Bates",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Caroline E.",
+        "family": "Morton",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Helen J.",
+        "family": "Curtis",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Amir",
+        "family": "Mehrkar",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-1100-079X",
+        "authenticated-orcid": false,
+        "given": "David",
+        "family": "Evans",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Peter",
+        "family": "Inglesby",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jonathan",
+        "family": "Cockburn",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0003-0576-2015",
+        "authenticated-orcid": false,
+        "given": "Helen I.",
+        "family": "McDonald",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Brian",
+        "family": "MacKenna",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-8848-9493",
+        "authenticated-orcid": false,
+        "given": "Laurie",
+        "family": "Tomlinson",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Ian J.",
+        "family": "Douglas",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-1408-7907",
+        "authenticated-orcid": false,
+        "given": "Christopher T.",
+        "family": "Rentsch",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Rohini",
+        "family": "Mathur",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Angel Y. S.",
+        "family": "Wong",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Richard",
+        "family": "Grieve",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-9002-9098",
+        "authenticated-orcid": false,
+        "given": "David",
+        "family": "Harrison",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Harriet",
+        "family": "Forbes",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Anna",
+        "family": "Schultze",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Richard",
+        "family": "Croker",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "John",
+        "family": "Parry",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Frank",
+        "family": "Hester",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Sam",
+        "family": "Harper",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Rafael",
+        "family": "Perera",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Stephen J. W.",
+        "family": "Evans",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Liam",
+        "family": "Smeeth",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-5127-4728",
+        "authenticated-orcid": false,
+        "given": "Ben",
+        "family": "Goldacre",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Nature"],
+    "published": {
+      "date-parts": [[2020, 7, 8]]
+    },
+    "published-online": {
+      "date-parts": [[2020, 7, 8]]
+    },
+    "published-print": {
+      "date-parts": [[2020, 8, 20]]
+    },
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1038/s41586-020-2521-4",
+    "volume": "584",
+    "issue": "7821",
+    "page": "430-436",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1038/srep01376",
+    "title": ["Unique in the Crowd: The privacy bounds of human mobility"],
+    "author": [
+      {
+        "given": "Yves-Alexandre",
+        "family": "de Montjoye",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "César A.",
+        "family": "Hidalgo",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Michel",
+        "family": "Verleysen",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Vincent D.",
+        "family": "Blondel",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Scientific Reports"],
+    "published": {
+      "date-parts": [[2013, 3, 25]]
+    },
+    "published-online": {
+      "date-parts": [[2013, 3, 25]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1038/srep01376",
+    "volume": "3",
+    "issue": "1",
+    "page": null,
+    "article-number": "1376"
+  },
+  {
+    "DOI": "10.18564/jasss.4259",
+    "title": [
+      "The ODD Protocol for Describing Agent-Based and Other Simulation Models: A Second Update to Improve Clarity, Replication, and Structural Realism"
+    ],
+    "author": [
+      {
+        "given": "Volker",
+        "family": "Grimm",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Steven F.",
+        "family": "Railsback",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Christian E.",
+        "family": "Vincenot",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Uta",
+        "family": "Berger",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Cara",
+        "family": "Gallagher",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Donald L.",
+        "family": "DeAngelis",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Bruce",
+        "family": "Edmonds",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jiaqi",
+        "family": "Ge",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jarl",
+        "family": "Giske",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jürgen",
+        "family": "Groeneveld",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Alice S.A.",
+        "family": "Johnston",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Alexander",
+        "family": "Milles",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jacob",
+        "family": "Nabe-Nielsen",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "J. Gareth",
+        "family": "Polhill",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Viktoriia",
+        "family": "Radchuk",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Marie-Sophie",
+        "family": "Rohwäder",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Richard A.",
+        "family": "Stillman",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jan C.",
+        "family": "Thiele",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Daniel",
+        "family": "Ayllón",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": [
+      "Journal of Artificial Societies and Social Simulation"
+    ],
+    "published": {
+      "date-parts": [[2020]]
+    },
+    "published-online": {
+      "date-parts": [[2020]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.18564/jasss.4259",
+    "volume": "23",
+    "issue": "2",
+    "page": null,
+    "article-number": "7"
+  },
+  {
+    "DOI": "10.1080/17477778.2018.1442155",
+    "title": [
+      "Strengthening the reporting of empirical simulation studies: Introducing the STRESS guidelines"
+    ],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0003-2631-4481",
+        "authenticated-orcid": false,
+        "given": "Thomas",
+        "family": "Monks",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "NIHR CLAHRC Wessex, Faculty of Health Sciences, University of Southampton, Southampton, UK"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-7016-3652",
+        "authenticated-orcid": false,
+        "given": "Christine S. M.",
+        "family": "Currie",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Mathematical Sciences, University of Southampton, Southampton, UK"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-5899-304X",
+        "authenticated-orcid": false,
+        "given": "Bhakti Stephan",
+        "family": "Onggo",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Trinity Business School, Trinity College Dublin, Dublin, Ireland"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-6016-0167",
+        "authenticated-orcid": false,
+        "given": "Stewart",
+        "family": "Robinson",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "School of Business and Economics, Loughborough University, Loughborough, UK"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Martin",
+        "family": "Kunc",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Warwick Business School, University of Warwick, Coventry, UK"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-8252-0189",
+        "authenticated-orcid": false,
+        "given": "Simon J. E.",
+        "family": "Taylor",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Department of Computer Science, Brunel University, London, UK"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Journal of Simulation"],
+    "published": {
+      "date-parts": [[2018, 3, 6]]
+    },
+    "published-online": {
+      "date-parts": [[2018, 3, 6]]
+    },
+    "published-print": {
+      "date-parts": [[2019, 1, 2]]
+    },
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1080/17477778.2018.1442155",
+    "volume": "13",
+    "issue": "1",
+    "page": "55-67",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1038/s41597-022-01710-x",
+    "title": ["Introducing the FAIR Principles for research software"],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0002-3623-172X",
+        "authenticated-orcid": false,
+        "given": "Michelle",
+        "family": "Barker",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-8876-7606",
+        "authenticated-orcid": false,
+        "given": "Neil P.",
+        "family": "Chue Hong",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-5934-7525",
+        "authenticated-orcid": false,
+        "given": "Daniel S.",
+        "family": "Katz",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0003-1953-5606",
+        "authenticated-orcid": false,
+        "given": "Anna-Lena",
+        "family": "Lamprecht",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-5565-7577",
+        "authenticated-orcid": false,
+        "given": "Carlos",
+        "family": "Martinez-Ortiz",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-0222-4273",
+        "authenticated-orcid": false,
+        "given": "Fotis",
+        "family": "Psomopoulos",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jennifer",
+        "family": "Harrow",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0003-3986-0510",
+        "authenticated-orcid": false,
+        "given": "Leyla Jael",
+        "family": "Castro",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Morane",
+        "family": "Gruenpeter",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-8990-1985",
+        "authenticated-orcid": false,
+        "given": "Paula Andrea",
+        "family": "Martinez",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-9448-4023",
+        "authenticated-orcid": false,
+        "given": "Tom",
+        "family": "Honeyman",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Scientific Data"],
+    "published": {
+      "date-parts": [[2022, 10, 14]]
+    },
+    "published-online": {
+      "date-parts": [[2022, 10, 14]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1038/s41597-022-01710-x",
+    "volume": "9",
+    "issue": "1",
+    "page": null,
+    "article-number": "622"
+  },
+  {
+    "DOI": "10.21105/joss.02505",
+    "title": ["sbi: A toolkit for simulation-based inference"],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0002-8768-4227",
+        "authenticated-orcid": false,
+        "given": "Alvaro",
+        "family": "Tejero-Cantero",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0003-4979-7092",
+        "authenticated-orcid": false,
+        "given": "Jan",
+        "family": "Boelts",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-3573-0404",
+        "authenticated-orcid": false,
+        "given": "Michael",
+        "family": "Deistler",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0003-4320-4663",
+        "authenticated-orcid": false,
+        "given": "Jan-Matthis",
+        "family": "Lueckmann",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-9333-7777",
+        "authenticated-orcid": false,
+        "given": "Conor",
+        "family": "Durkan",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-6987-4836",
+        "authenticated-orcid": false,
+        "given": "Pedro",
+        "family": "Gonçalves",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-8515-0459",
+        "authenticated-orcid": false,
+        "given": "David",
+        "family": "Greenberg",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-5154-8912",
+        "authenticated-orcid": false,
+        "given": "Jakob",
+        "family": "Macke",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Journal of Open Source Software"],
+    "published": {
+      "date-parts": [[2020, 8, 21]]
+    },
+    "published-online": null,
+    "published-print": {
+      "date-parts": [[2020, 8, 21]]
+    },
+    "type": "journal-article",
+    "URL": "https://doi.org/10.21105/joss.02505",
+    "volume": "5",
+    "issue": "52",
+    "page": "2505",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1080/13658816.2020.1781130",
+    "title": ["Indoor mapping and modeling by parsing floor plan images"],
+    "author": [
+      {
+        "given": "Yijie",
+        "family": "Wu",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "School of Geography and Information Engineering, China University of Geosciences, Wuhan, China"
+          },
+          {
+            "name": "China University of Geosciences, National Engineering Research Center for Geographic Information System, Wuhan, China"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jianga",
+        "family": "Shang",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "School of Geography and Information Engineering, China University of Geosciences, Wuhan, China"
+          },
+          {
+            "name": "China University of Geosciences, National Engineering Research Center for Geographic Information System, Wuhan, China"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Pan",
+        "family": "Chen",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "School of Geography and Information Engineering, China University of Geosciences, Wuhan, China"
+          },
+          {
+            "name": "China University of Geosciences, National Engineering Research Center for Geographic Information System, Wuhan, China"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-8766-0487",
+        "authenticated-orcid": false,
+        "given": "Sisi",
+        "family": "Zlatanova",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "GRID, Faculty of Built Environment, University of New South Wales, Sydney, Australia"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Xuke",
+        "family": "Hu",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "GIScience Research Group, Institute of Geography, Heidelberg University, Heidelberg, Germany"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-6117-2071",
+        "authenticated-orcid": false,
+        "given": "Zhiyong",
+        "family": "Zhou",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "GIScience Center, Department of Geography, University of Zurich, Zurich, Switzerland"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": [
+      "International Journal of Geographical Information Science"
+    ],
+    "published": {
+      "date-parts": [[2020, 7, 8]]
+    },
+    "published-online": {
+      "date-parts": [[2020, 7, 8]]
+    },
+    "published-print": {
+      "date-parts": [[2021, 6, 3]]
+    },
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1080/13658816.2020.1781130",
+    "volume": "35",
+    "issue": "6",
+    "page": "1205-1231",
+    "article-number": null
+  },
+  {
+    "DOI": "10.3390/ijgi12060248",
+    "title": [
+      "Navigation-Oriented Topological Model Construction Algorithm for Complex Indoor Space"
+    ],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0002-6427-0785",
+        "authenticated-orcid": false,
+        "given": "Litao",
+        "family": "Han",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "College of Geodesy and Geomatics, Shandong University of Science and Technology, Qingdao 266590, China"
+          },
+          {
+            "name": "Key Laboratory of Geomatics and Digital Technology of Shandong Province, Shandong University of Science and Technology, Qingdao 266590, China"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Hu",
+        "family": "Qiao",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "College of Geodesy and Geomatics, Shandong University of Science and Technology, Qingdao 266590, China"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0003-0804-3972",
+        "authenticated-orcid": false,
+        "given": "Zeyu",
+        "family": "Li",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "College of Geodesy and Geomatics, Shandong University of Science and Technology, Qingdao 266590, China"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Mengfan",
+        "family": "Liu",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "College of Geodesy and Geomatics, Shandong University of Science and Technology, Qingdao 266590, China"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Pengfei",
+        "family": "Zhang",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "College of Geodesy and Geomatics, Shandong University of Science and Technology, Qingdao 266590, China"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "container-title": ["ISPRS International Journal of Geo-Information"],
+    "published": {
+      "date-parts": [[2023, 6, 18]]
+    },
+    "published-online": {
+      "date-parts": [[2023, 6, 18]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.3390/ijgi12060248",
+    "volume": "12",
+    "issue": "6",
+    "page": "248",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1371/journal.pone.0326350",
+    "title": [
+      "Covid-19 in hospitals: Studying influencing factors through agent-based modelling"
+    ],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0009-0002-5505-1588",
+        "authenticated-orcid": true,
+        "given": "Philippos",
+        "family": "Michaelides",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Ştefan",
+        "family": "Sarkadi",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "container-title": ["PLOS One"],
+    "published": {
+      "date-parts": [[2025, 6, 18]]
+    },
+    "published-online": {
+      "date-parts": [[2025, 6, 18]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1371/journal.pone.0326350",
+    "volume": "20",
+    "issue": "6",
+    "page": "e0326350",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1073/pnas.0900974106",
+    "title": ["Peripatetic health-care workers as potential superspreaders"],
+    "author": [
+      {
+        "given": "Laura",
+        "family": "Temime",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "Conservatoire National des Arts et Métiers, F-75141 Paris, France;"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Lulla",
+        "family": "Opatowski",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Institut National de la Santé et de la Recherche Médicale, U 657, F-75015 Paris, France;"
+          },
+          {
+            "name": "Institut Pasteur, PhEMI, F-75015 Paris, France;"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Yohan",
+        "family": "Pannet",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Conservatoire National des Arts et Métiers, F-75141 Paris, France;"
+          },
+          {
+            "name": "Institut Pasteur, PhEMI, F-75015 Paris, France;"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Christian",
+        "family": "Brun-Buisson",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Institut National de la Santé et de la Recherche Médicale, U 657, F-75015 Paris, France;"
+          },
+          {
+            "name": "Faculté de Médecine, Université du Val de Marne, F-94000 Creteil, France;"
+          },
+          {
+            "name": "Assistance Publique-Hôpitaux de Paris, Hôpital Henri Mondor, Service de Réanimation Médicale, F-94000 Creteil, France;"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Pierre Yves",
+        "family": "Boëlle",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Institut National de la Santé et de la Recherche Médicale, U 707, F-75015 Paris, France;"
+          },
+          {
+            "name": "Université Pierre et Marie Curie-Paris 6, UMR-S 707, Paris, France;"
+          },
+          {
+            "name": "Assistance Publique-Hôpitaux de Paris, Hôpital Saint-Antoine, F-75012 Paris, France;"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Didier",
+        "family": "Guillemot",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Institut National de la Santé et de la Recherche Médicale, U 657, F-75015 Paris, France;"
+          },
+          {
+            "name": "Institut Pasteur, PhEMI, F-75015 Paris, France;"
+          },
+          {
+            "name": "Faculté de Médecine Paris Ile de France Ouest, Université Versailles Saint Quentin, F-78035 Versailles, France; and"
+          },
+          {
+            "name": "Assistance Publique-Hôpitaux de Paris, Hôpital Raymond Poincaré, Service de Médecine Aigue, F-92380 Garches, France"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Proceedings of the National Academy of Sciences"],
+    "published": {
+      "date-parts": [[2009, 10, 27]]
+    },
+    "published-online": {
+      "date-parts": [[2009, 10, 27]]
+    },
+    "published-print": {
+      "date-parts": [[2009, 10, 27]]
+    },
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1073/pnas.0900974106",
+    "volume": "106",
+    "issue": "43",
+    "page": "18420-18425",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1093/infdis/jis542",
+    "title": [
+      "Using Sensor Networks to Study the Effect of Peripatetic Healthcare Workers on the Spread of Hospital-Associated Infections"
+    ],
+    "author": [
+      {
+        "given": "T.",
+        "family": "Hornbeck",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "D.",
+        "family": "Naylor",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "A. M.",
+        "family": "Segre",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "G.",
+        "family": "Thomas",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "T.",
+        "family": "Herman",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "P. M.",
+        "family": "Polgreen",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Journal of Infectious Diseases"],
+    "published": {
+      "date-parts": [[2012, 10, 8]]
+    },
+    "published-online": {
+      "date-parts": [[2012, 10, 8]]
+    },
+    "published-print": {
+      "date-parts": [[2012, 11, 15]]
+    },
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1093/infdis/jis542",
+    "volume": "206",
+    "issue": "10",
+    "page": "1549-1557",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1093/cid/cix962",
+    "title": [
+      "Interventions to Reduce the Incidence of Hospital-Onset Clostridium difficile Infection: An Agent-Based Modeling Approach to Evaluate Clinical Effectiveness in Adult Acute Care Hospitals"
+    ],
+    "author": [
+      {
+        "given": "Anna K",
+        "family": "Barker",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "Department of Population Health Sciences, School of Medicine and Public Health, Madison, Wisconsin"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Oguzhan",
+        "family": "Alagoz",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Department of Population Health Sciences, School of Medicine and Public Health, Madison, Wisconsin"
+          },
+          {
+            "name": "Department of Industrial and Systems Engineering, College of Engineering, Madison, Wisconsin"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Nasia",
+        "family": "Safdar",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Division of Infectious Diseases, Department of Medicine, School of Medicine and Public Health, University of Wisconsin–Madison, Madison, Wisconsin"
+          },
+          {
+            "name": "William S. Middleton Memorial Veterans Hospital, Madison, Wisconsin"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Clinical Infectious Diseases"],
+    "published": {
+      "date-parts": [[2017, 11, 3]]
+    },
+    "published-online": {
+      "date-parts": [[2017, 11, 3]]
+    },
+    "published-print": {
+      "date-parts": [[2018, 4, 3]]
+    },
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1093/cid/cix962",
+    "volume": "66",
+    "issue": "8",
+    "page": "1192-1203",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1016/j.jtbi.2017.03.025",
+    "title": [
+      "A unified inter-host and in-host model of antibiotic resistance and infection spread in a hospital ward"
+    ],
+    "author": [
+      {
+        "given": "Lester",
+        "family": "Caudill",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Barry",
+        "family": "Lawson",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Journal of Theoretical Biology"],
+    "published": {
+      "date-parts": [[2017, 5]]
+    },
+    "published-online": null,
+    "published-print": {
+      "date-parts": [[2017, 5]]
+    },
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1016/j.jtbi.2017.03.025",
+    "volume": "421",
+    "issue": null,
+    "page": "112-126",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1016/j.jhin.2026.06.007",
+    "title": [
+      "Simulating interventions to prevent gastro-intestinal transmission of Clostridioides difficile and antimicrobial-resistant bacteria in healthcare settings: a model calibration study"
+    ],
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0002-6743-4271",
+        "authenticated-orcid": false,
+        "given": "A.",
+        "family": "Gerada",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Y.",
+        "family": "Zhong",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "C.",
+        "family": "Brookfield",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "A.",
+        "family": "Howard",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "N.",
+        "family": "Reza",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "C.",
+        "family": "Rosato",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "P.L.",
+        "family": "Green",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "W.",
+        "family": "Hope",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "container-title": ["Journal of Hospital Infection"],
+    "published": {
+      "date-parts": [[2026, 9]]
+    },
+    "published-online": null,
+    "published-print": {
+      "date-parts": [[2026, 9]]
+    },
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1016/j.jhin.2026.06.007",
+    "volume": "175",
+    "issue": null,
+    "page": "1-8",
+    "article-number": null
+  },
+  {
+    "DOI": "10.1001/jamanetworkopen.2022.25508",
+    "title": [
+      "Use of Contact Networks to Estimate Potential Pathogen Risk Exposure in Hospitals"
+    ],
+    "author": [
+      {
+        "given": "Kaniz Fatema",
+        "family": "Madhobi",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "School of Electrical Engineering and Computer Science, Washington State University, Pullman"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Ananth",
+        "family": "Kalyanaraman",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "School of Electrical Engineering and Computer Science, Washington State University, Pullman"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Deverick J.",
+        "family": "Anderson",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Duke Center for Antimicrobial Stewardship and Infection Prevention, Duke University School of Medicine, Durham, North Carolina"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Elizabeth",
+        "family": "Dodds Ashley",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Duke Center for Antimicrobial Stewardship and Infection Prevention, Duke University School of Medicine, Durham, North Carolina"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Rebekah W.",
+        "family": "Moehring",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Duke Center for Antimicrobial Stewardship and Infection Prevention, Duke University School of Medicine, Durham, North Carolina"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Eric T.",
+        "family": "Lofgren",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Paul G. Allen School for Global Health, Washington State University, Pullman"
+          }
+        ],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "container-title": ["JAMA Network Open"],
+    "published": {
+      "date-parts": [[2022, 8, 5]]
+    },
+    "published-online": {
+      "date-parts": [[2022, 8, 5]]
+    },
+    "published-print": null,
+    "type": "journal-article",
+    "URL": "https://doi.org/10.1001/jamanetworkopen.2022.25508",
+    "volume": "5",
+    "issue": "8",
+    "page": "e2225508",
+    "article-number": null
+  }
+]

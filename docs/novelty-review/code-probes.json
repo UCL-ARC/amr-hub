@@ -1,0 +1,22 @@
+{
+  "collision_retry_probe": {
+    "initial_coordinates": [0, 0],
+    "all_room_queries_rejected": true,
+    "attempts": 5,
+    "returned_coordinates": [1.0, 0.0],
+    "interpretation": "Final rejected proposal is returned, not initial position."
+  },
+  "duration_probe": {
+    "sample_times": [0, 1],
+    "elapsed_between_samples": 1,
+    "episode": {
+      "agent_a": "1",
+      "agent_b": "2",
+      "start_time": 0,
+      "end_time": 1,
+      "duration": 2,
+      "observations": 2
+    },
+    "interpretation": "Duration is sample count times interval; endpoint support needs explicit convention."
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "audit_date": "2026-10-29",
+  "revision": "dc3b0d620025211232f39e535e45792363a91af2",
+  "files": {
+    "README.md": "5622b2a4a67602af58541cebd350ad9a8fd4c6bfad7f7bab32e5aafe5906f433",
+    "python-code/CITATION.cff": "6beffb47df24c77512c43695ba26de3a84cfd81d4d8df743d540f59d84246d60",
+    "python-code/src/amr_hub_abm/simulation.py": "a10202fac2069c1a199839d2bfae43c67f1310b8cf5e7e9742c99b8707f576df",
+    "python-code/src/amr_hub_abm/spatial/engine.py": "0b2b365ff6a1335f89910f6c16b72b4dd51adb97f2a7ffd5c4900aaf6e2a3b0d",
+    "python-code/src/amr_hub_abm/spatial/engine_gpu.py": "19dfeeb7e0dee8dfe75b06278b13503a68f348c7df2f5be5370a22d3d2983fa6",
+    "python-code/src/amr_hub_abm/agent/agent.py": "b07a84f29aa59e593f670742399f6ec88b6d29364b445bdb1ec8d960eaf9e020",
+    "python-code/src/amr_hub_abm/contact_analysis.py": "7160cbe6d3e6c94d97de99025289a3fdd7af450e3c4e8226b5bfc9d4da8970af",
+    "python-code/src/amr_hub_abm/task/tasklist.py": "84f0764505a81bd6aba1b0d070dd9a79ab4acde83f0b34893c0bcbdc7f0ea4f9",
+    "python-code/data_analysis/markov_analyzer.py": "3be84ce3c50629e5941919fcc5bdf8f14464ef5836b3070848a5963797781622",
+    "python-code/data_analysis/data_wrangler.py": "59abc7dfb2303fcd5c133de9853545a109d8a5db7d21574872cf2a9e93168ebd",
+    "python-code/docs/floorplan_extraction.md": "67465579f5e2366c13be347e4be3783cd793a3800adc22964c8ee3c927ebb4c3",
+    "docker/tre/Dockerfile": "589f380cc64eb49f450dfca8e6d8627bb056c6328f31b9963f81d78e6e323f1f",
+    "docker/tre/README.md": "091395723963eb44f07076eed15da4350ba644984cb242863427c9cdceb50e7a",
+    "python-code/tests/test_spatial_gpu.py": "64e6930c7d7c17a70d958fec65f7a2f119a3ed0aa739d75acff5b7a6d19ad18b",
+    "python-code/tests/inputs/simulation_config.yml": "dd6a35eb7c6710bc08cee2ab91f9fb243f096c183b0c8d084ba196a608e09e73"
+  },
+  "scope": "Read-only audit of main and inspection of separate stochasticity worktree; no simulation code changes."
+}
