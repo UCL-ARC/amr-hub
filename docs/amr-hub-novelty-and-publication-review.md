@@ -1,8 +1,8 @@
-# AMR-Hub: novelty, scientific weaknesses and publication strategy
+# AMR-Hub: a modular hospital ABM platform — novelty and publication strategy
 
 ## Summary
 
-The novelty review concludes that AMR-Hub has credible publication potential as infrastructure for hospital workflow and contact modelling, but the audited version does not yet support claims of validated AMR transmission prediction. Combining movement, floorplans and infection modelling has substantial precedent; the strongest potential contribution is a reproducible way to reconstruct contact networks from imperfect routine hospital records and geometry, while quantifying how modelling assumptions affect conclusions. Realising that contribution requires resolving movement and contact-measurement issues, clarifying CPU/GPU differences, and validating against independent observations. The recommended path is a focused software paper, followed by a methods paper on reconstruction or uncertainty, and an empirical UCLH ward study with predefined outcomes and held-out evaluation, explicitly accounting for uncertain patient stays and clinical testing patterns.
+This review assesses AMR-Hub as a platform for building hospital agent-based models from interoperable **floorplan, activity and infection modules**. Its publication potential lies in providing a reproducible framework in which hospital geometry, observed or modelled activity, and infection mechanisms can be specified and evaluated as distinct but composable parts. The audited version supports important pieces of the floorplan and activity layers, but does not yet support claims of validated AMR transmission prediction: infection mechanisms are incomplete and differ between CPU and GPU paths. Combining movement, floorplans and infection modelling has substantial precedent, so the platform's contribution must be demonstrated through its module contracts, reuse, and ability to make assumptions and uncertainty explicit. Realising that contribution requires resolving movement and contact-measurement issues, defining the module interfaces, and validating each layer against appropriate independent observations. The recommended path is a focused platform/software paper, followed by a methods paper on reconstruction or uncertainty, and an empirical UCLH ward study with predefined outcomes and held-out evaluation, explicitly accounting for uncertain patient stays and clinical testing patterns.
 
 Critical research and publication assessment — draft, 29 October 2026
 
@@ -14,19 +14,19 @@ Critical research and publication assessment — draft, 29 October 2026
 
 ## 1. Executive assessment
 
-AMR-Hub has a credible route to peer-reviewed publication, but its strongest present contribution is **research infrastructure for hospital workflow and contact modelling**, not a validated model of antimicrobial resistance transmission. A manuscript claiming the latter now would substantially overstate the evidence.
+AMR-Hub has a credible route to peer-reviewed publication as a **modular platform for hospital ABMs**, with floorplan, activity and infection capabilities that can be developed and assessed separately. Its strongest present contribution is research infrastructure for hospital workflow and contact modelling, not a validated model of antimicrobial resistance transmission. A manuscript claiming the latter now would substantially overstate the evidence.
 
-Hospital infection ABMs, heterogeneous healthcare-worker contact networks, data-driven contact reconstruction, architectural environments, and GPU ABM frameworks all have substantial precedent. In particular, EHR-derived staff contact networks were published in 2013; sensor-informed hospital transmission ABMs predate that; and a 2025 paper already combines high-resolution staff/device trajectories, a hospital floorplan and an infection model. “We combine movement, geometry and infection” will not survive a serious literature review. [Temime et al. (2009)][R01], [Hornbeck et al. (2012)][R02], [Curtis et al. (2013)][R03], [Thota et al. (2025)][R12].
+Hospital infection ABMs, heterogeneous healthcare-worker contact networks, data-driven contact reconstruction, architectural environments, and GPU ABM frameworks all have substantial precedent. In particular, EHR-derived staff contact networks were published in 2013; sensor-informed hospital transmission ABMs predate that; and a 2025 paper already combines high-resolution staff/device trajectories, a hospital floorplan and an infection model. “We combine movement, geometry and infection” will not survive a serious literature review. A platform claim therefore needs more than naming three modules: it must specify their boundaries and shared contracts, show how they compose, and demonstrate useful, reproducible model-building workflows. [Temime et al. (2009)][R01], [Hornbeck et al. (2012)][R02], [Curtis et al. (2013)][R03], [Thota et al. (2025)][R12].
 
-The defensible opportunity is narrower and more interesting: **an auditable, uncertainty-aware route from imperfect routine hospital events and imperfect geometry to contact-network estimates, with explicit tests of when modelling choices change scientific conclusions.** This is a candidate contribution, not a priority claim. AMR-Hub currently supplies parts of that route; it does not yet demonstrate the full inference and validation argument.
+The defensible opportunity is a modular platform that makes the route from floorplan inputs and activity records to contact estimates auditable, then allows a separately specified infection module to use those estimates. A particularly promising contribution is **an uncertainty-aware route from imperfect routine hospital events and imperfect geometry to contact-network estimates, with explicit tests of when modelling choices change scientific conclusions.** This is a candidate contribution, not a priority claim. AMR-Hub currently supplies parts of the floorplan and activity modules; it does not yet demonstrate the full inference and validation argument or a validated infection module.
 
 My recommended portfolio is:
 
-1. **One software paper**, after narrowing the scope, correcting scientific contract problems and demonstrating reuse. This is the nearest route.
+1. **One platform/software paper**, after defining module contracts, correcting scientific contract problems and demonstrating reuse. This is the nearest route.
 2. **One substantive methods paper** on movement/contact reconstruction or structural uncertainty. The present sweep can motivate it, but cannot alone establish a general result.
 3. **One empirical UCLH ward study**, using the planned year of staff records, geometry and organism-specific test results, with a predefined endpoint and temporally held-out evaluation. Patient movement and the testing observation process are central uncertainties.
 
-Geometry extraction, GPU execution, a benchmark dataset and TRE deployment could support additional papers **only if each produces an independently evaluated contribution**. They should not become six thin papers describing pieces of the same implementation.
+Floorplan extraction, activity reconstruction, infection modelling, GPU execution, a benchmark dataset and TRE deployment could support additional papers **only if each produces an independently evaluated contribution**. They should not become thin papers describing modules or implementation pieces without independent value.
 
 **Blunt verdict:** there is potentially publishable work here, but the present evidence does not justify “novel AMR digital twin,” “realistic transmission prediction,” “validated GPU acceleration,” or “learned staff decision-making.” More simulation runs cannot compensate for an unvalidated mechanism.
 
@@ -40,23 +40,25 @@ The review used accessible abstracts and selected full-text sections. Not every 
 
 The code audit followed the actual CPU and GPU execution paths, task movement, contact measurements, geometry conversion, the event-analysis prototype and the TRE container. Two small non-mutating probes confirmed retry and duration semantics; their outputs are preserved in [code-probes.json](novelty-review/code-probes.json). File fingerprints and the audited revision are in [code-audit-manifest.json](novelty-review/code-audit-manifest.json). This is not a full security assessment, clinical validation study or exhaustive defect hunt.
 
-## 3. What the software currently supports
+## 3. Platform architecture and current module readiness
 
-| Area                       | Evidence in the repository                                                                                                                    | Publication implication                                                                                                                  |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Workflow-driven simulation | Factory-created simulations, event inputs, task lifecycle hooks, resource occupancy, explicit RNG use and interchangeable movement strategies | A useful software contribution if the behavioural contract is specified and reproducible                                                 |
-| Spatial representation     | Building/floor/room hierarchy, walls, doors, furniture, spatial queries and topological input support                                         | Necessary infrastructure; neither hierarchy nor geometric realism is novel by itself                                                     |
-| CAD preparation            | DXF polygonisation, label attachment, configured corrections, shared-wall normalisation, door/open-boundary construction and diagnostics      | A potentially useful _quality-controlled conversion workflow_, but not evidence of fully automatic extraction across arbitrary hospitals |
-| Contact analysis           | Building/floor-aware proximity detection, exclusion of different known rooms, episode construction, pair types and network outputs            | Supports contact-opportunity studies; does not itself estimate acquisition, colonisation or infection                                    |
-| CPU infection dynamics     | Infection-status fields and demonstration seeding exist; no infection-update step was found in the inspected CPU loop                         | The CPU sweep is not an AMR transmission experiment                                                                                      |
-| GPU infection dynamics     | A separate same-floor proximity kernel identifies an infected neighbour; host code directly changes susceptible status to infected            | A demonstration mechanism, scientifically different from the CPU path; not pathogen-specific AMR dynamics                                |
-| Event-data analysis        | Shift reconstruction, mappings, occupancy/time proxies, categorical Markov baselines and “IRL feasibility” diagnostics                        | A prototype for studying observation and prediction, not a trained or validated IRL system                                               |
-| TRE deployment             | Container recipe, locked dependencies and instructions for offline use                                                                        | Deployment infrastructure; no inspected evidence establishes disclosure safety or reproducible multi-TRE deployment                      |
-| Software sustainability    | Public development structure, tests, documentation, MIT licence and `python-code/CITATION.cff`                                                | Positive software-publication evidence; these do not validate the model scientifically                                                   |
+The platform's intended structure is three composable modules around a shared simulation core: a **floorplan module** for building geometry and spatial constraints; an **activity module** for routine or generated events, agent tasks and movement; and an **infection module** for organism-specific states, transmission and observation. This is a framing for the platform-development programme, not a claim that all three modules are complete or scientifically equivalent across backends.
+
+| Platform module or layer  | Evidence in the repository                                                                                                                    | Publication implication                                                                                                                  |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Activity                  | Factory-created simulations, event inputs, task lifecycle hooks, resource occupancy, explicit RNG use and interchangeable movement strategies | A useful platform module if its behavioural contract is specified and reproducible                                                       |
+| Floorplan representation  | Building/floor/room hierarchy, walls, doors, furniture, spatial queries and topological input support                                         | Necessary infrastructure; neither hierarchy nor geometric realism is novel by itself                                                     |
+| Floorplan preparation     | DXF polygonisation, label attachment, configured corrections, shared-wall normalisation, door/open-boundary construction and diagnostics      | A potentially useful _quality-controlled conversion workflow_, but not evidence of fully automatic extraction across arbitrary hospitals |
+| Activity-to-contact link  | Building/floor-aware proximity detection, exclusion of different known rooms, episode construction, pair types and network outputs            | Supports contact-opportunity studies; does not itself estimate acquisition, colonisation or infection                                    |
+| CPU infection module      | Infection-status fields and demonstration seeding exist; no infection-update step was found in the inspected CPU loop                         | The CPU sweep is not an AMR transmission experiment                                                                                      |
+| GPU infection module      | A separate same-floor proximity kernel identifies an infected neighbour; host code directly changes susceptible status to infected            | A demonstration mechanism, scientifically different from the CPU path; not pathogen-specific AMR dynamics                                |
+| Activity-data analysis    | Shift reconstruction, mappings, occupancy/time proxies, categorical Markov baselines and “IRL feasibility” diagnostics                        | A prototype for studying observation and prediction, not a trained or validated IRL system                                               |
+| Deployment and governance | Container recipe, locked dependencies and instructions for offline use                                                                        | Deployment infrastructure; no inspected evidence establishes disclosure safety or reproducible multi-TRE deployment                      |
+| Shared platform core      | Public development structure, tests, documentation, MIT licence and `python-code/CITATION.cff`                                                | Positive software-publication evidence; these do not validate the model scientifically                                                   |
 
 The distinction between CPU and GPU is not cosmetic. In [`simulation.py`](../python-code/src/amr_hub_abm/simulation.py), the GPU branch invokes an additional physics step after CPU task handling. In [`engine_gpu.py`](../python-code/src/amr_hub_abm/spatial/engine_gpu.py), that step also performs transmission. A paper must not describe a single invariant scientific model that merely switches computational backends unless that equivalence has been established.
 
-The project README describes several agent roles, anonymised outputs and infection propagation more broadly than the inspected implementation demonstrates. Currently, [`agent/enums.py`](../python-code/src/amr_hub_abm/agent/enums.py) distinguishes generic, patient and healthcare-worker agents; adding a label for a visitor or cleaner would not by itself establish a realistic role-specific model. The manuscript should use a capability table similar to this one instead of presenting the project roadmap as completed functionality.
+The project README describes several agent roles, anonymised outputs and infection propagation more broadly than the inspected implementation demonstrates. Currently, [`agent/enums.py`](../python-code/src/amr_hub_abm/agent/enums.py) distinguishes generic, patient and healthcare-worker agents; adding a label for a visitor or cleaner would not by itself establish a realistic role-specific activity module. The manuscript should use a capability table similar to this one instead of presenting the platform roadmap as completed functionality.
 
 ## 4. The literature that most directly limits novelty claims
 
@@ -110,7 +112,7 @@ OpenSAFELY demonstrates that open analytical code can run against sensitive reco
 
 Nor do simulated trajectories automatically become anonymous because direct identifiers are removed. Human mobility can be highly distinctive. The classic mobility-privacy study is not a numerical risk estimate for AMR-Hub, but it directly defeats an assumption that trajectory outputs are inherently safe to export. [de Montjoye et al. (2013)][R24].
 
-## 5. Scientific criticism of the present implementation
+## 5. Scientific readiness and integration risks across modules
 
 ### 5.1 The current CPU sweep cannot answer an AMR transmission question
 
@@ -192,23 +194,25 @@ A container is not a TRE, an output-release procedure, or a privacy guarantee. T
 
 A strong secure-workflow paper would document which inputs remain restricted, which outputs require review, how results are independently recomputed, what disclosure tests are used and how researcher usability is evaluated. Synthetic fixtures support public verification; they do not prove that outputs fitted to real people can leave the TRE. [Williamson et al. (2020)][R23], [de Montjoye et al. (2013)][R24].
 
-## 6. Which novelty claims could survive review?
+## 6. Which platform and module claims could survive review?
 
 A subsequent [five-criteria comparison](novelty-review/five-criteria-comparison.md) distinguishes current code from the planned BDI and multi-organism programme, alongside competitor capabilities.
 
-| Proposed claim                            | Current assessment                                                                | Evidence needed to strengthen it                                                                                               |
-| ----------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| “A new hospital AMR ABM”                  | Too broad; crowded prior art and incomplete present mechanisms                    | A narrowly defined biological question, explicit mechanism and independent validation                                          |
-| “An open Python implementation”           | Useful accessibility, weak scientific novelty                                     | Substantial reusable research functionality, design justification and demonstrated use                                         |
-| “Realistic hospital layouts”              | Geometry exists; realism not established                                          | Topological/metric validation, unit provenance and outcome sensitivity to geometry errors                                      |
-| “Routine logs reconstruct staff contacts” | Direct precedent exists                                                           | Uncertainty-aware reconstruction with observation-error modelling and independent contact validation                           |
-| “Deadline-paced movement improves safety” | Unsupported; current outcome is proximity and strategy changes several behaviours | Care-quality constraints, empirical movement plausibility, structural alternatives and a justified exposure/infection endpoint |
-| “Stochasticity changes contact patterns”  | Expected and probably insufficient alone                                          | A generalizable failure boundary, uncertainty decomposition, or reversal of a substantive conclusion across plausible models   |
-| “GPU acceleration”                        | Implemented branch; equivalence and speedup not established here                  | Matched semantics, correctness tests, measured accuracy/performance tradeoff and end-to-end benchmarks                         |
-| “TRE-compatible reproducible modelling”   | Credible engineering direction; not first-in-field                                | Independently repeated deployment and a demonstrated governance/reproducibility contribution                                   |
-| “Automatic CAD ingestion”                 | Configuration-dependent, partly manual correction workflow                        | A diverse annotated benchmark, topology accuracy, failures and manual-effort accounting                                        |
+| Proposed claim                                                                   | Current assessment                                                                                                            | Evidence needed to strengthen it                                                                                               |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| “A modular hospital ABM platform with floorplan, activity and infection modules” | A useful framing, but module completeness and integration are uneven; infection mechanisms are incomplete and backends differ | Explicit module contracts, interoperable examples, module-specific validation and an independently demonstrated end-to-end use |
+| “An open Python implementation”                                                  | Useful accessibility, weak scientific novelty                                                                                 | Substantial reusable research functionality, design justification and demonstrated use                                         |
+| “Realistic hospital layouts”                                                     | Geometry exists; realism not established                                                                                      | Topological/metric validation, unit provenance and outcome sensitivity to geometry errors                                      |
+| “Routine logs reconstruct staff contacts”                                        | Direct precedent exists                                                                                                       | Uncertainty-aware reconstruction with observation-error modelling and independent contact validation                           |
+| “Deadline-paced movement improves safety”                                        | Unsupported; current outcome is proximity and strategy changes several behaviours                                             | Care-quality constraints, empirical movement plausibility, structural alternatives and a justified exposure/infection endpoint |
+| “Stochasticity changes contact patterns”                                         | Expected and probably insufficient alone                                                                                      | A generalizable failure boundary, uncertainty decomposition, or reversal of a substantive conclusion across plausible models   |
+| “GPU acceleration”                                                               | Implemented branch; equivalence and speedup not established here                                                              | Matched semantics, correctness tests, measured accuracy/performance tradeoff and end-to-end benchmarks                         |
+| “TRE-compatible reproducible modelling”                                          | Credible engineering direction; not first-in-field                                                                            | Independently repeated deployment and a demonstrated governance/reproducibility contribution                                   |
+| “Automatic CAD ingestion”                                                        | Configuration-dependent, partly manual correction workflow                                                                    | A diverse annotated benchmark, topology accuracy, failures and manual-effort accounting                                        |
 
-**Most defensible present wording:** “AMR-Hub is an open research software framework for task-driven hospital workflow and contact-opportunity simulation, with geometry-preparation tools and support for restricted-data deployment.”
+**Most defensible present wording:** “AMR-Hub is an open research software platform for hospital ABMs, with implemented floorplan and activity capabilities, contact-opportunity analysis, and an infection module that remains incomplete and requires scientific validation.”
+
+**Most promising future platform claim:** “AMR-Hub provides interoperable floorplan, activity and infection modules for reproducible hospital ABMs.” This requires explicit interfaces and reusable examples; the existence of three feature areas alone is not a contribution.
 
 **Most promising future methods claim:** “We quantify how incomplete event observations and movement-model assumptions propagate into uncertainty in hospital contact-network estimates.” This becomes novel only if the experiments establish something beyond prior contact-network and structural-model comparisons.
 
@@ -268,22 +272,22 @@ Competitor assessments concern the inspected publication/repository versions. �
 
 These are alternative or sequential projects, not a promise of eight papers. Effort categories are relative planning judgments: _bounded engineering_ means an achievable package of corrections and evaluation; _substantial methods_ means new modelling and experiments; _data-dependent_ means timing is dominated by access and validation. No acceptance probability is implied.
 
-### Route A — Research software paper: the nearest viable route
+### Route A — Modular platform software paper: the nearest viable route
 
-**Working title:** _AMR-Hub: reproducible task-driven simulation of hospital workflows and contact opportunities._
+**Working title:** _AMR-Hub: a modular platform for hospital agent-based models of floorplans, activity and infection._
 
-**Contribution:** a documented, reusable pipeline with explicit scientific contracts for event inputs, geometry, task execution and contact outputs. Its value is the ability of another researcher to use and test it for a real research problem. It need not invent ABM, Python or hospital simulation.
+**Contribution:** a documented, reusable platform that composes a floorplan module (geometry and spatial constraints), an activity module (event inputs, tasks and movement) and an infection module (organism states, transmission and observation) through explicit scientific and software contracts. The modules should remain usable and testable independently where appropriate, while integrated examples show how outputs from one layer become inputs to the next. Its value is the ability of another researcher to use and test it for a real research problem. It need not invent ABM, Python or hospital simulation.
 
 **Minimum evidence package:**
 
-1. Define the supported CPU model and label experimental GPU/transmission features accurately. Resolve or explicitly constrain the correctness issues in Section 5.
+1. Define the shared platform core and the inputs, outputs, assumptions and validation status of each floorplan, activity and infection module. Label experimental GPU/transmission features accurately and resolve or explicitly constrain the correctness issues in Section 5.
 2. Supply an ODD description and a STRESS-ABS experiment specification, including time units, update order, noise, resource allocation and measurement conventions. These are established reporting tools, not decorations. [Grimm et al. (2020)][R25], [Monks et al. (2019)][R26].
 3. Demonstrate two materially different synthetic layouts and input schedules, with a short reproducible example and a full experiment manifest.
 4. Have a researcher outside the implementation team install, run and adapt an example; record the changes and obstacles. This is a proposed usability test, not a journal-mandated sample size.
-5. Explain why the standalone engine is needed alongside Mesa/GAMA, rather than claiming that those frameworks cannot do spatial modelling.
+5. Explain why the modular platform is needed alongside Mesa/GAMA, and compare the effort and capabilities required to compose the same floorplan, activity and infection use case rather than claiming that those frameworks cannot do spatial modelling.
 6. Archive a tagged release with a persistent identifier, update existing citation metadata and supply contributor/support information. FAIR4RS is a useful framework for this work. [Barker et al. (2022)][R27].
 
-**Likely venues:** JOSS, SoftwareX or Journal of Open Research Software (JORS). Choose one principal software publication. **Readiness:** closest route, but not ready to market as a validated AMR simulator. **Effort:** bounded engineering plus demonstrable research use. **Likely rejection:** feature inventory without a clear research need; reinvention without justification; clinical language exceeding functionality.
+**Likely venues:** JOSS, SoftwareX or Journal of Open Research Software (JORS). Choose one principal software publication. **Readiness:** closest route, but not ready to market as a validated AMR simulator or as three complete modules. **Effort:** bounded engineering plus demonstrable research use. **Likely rejection:** feature inventory without clear module contracts or research need; reinvention without justification; clinical language exceeding functionality.
 
 **Stop or narrow the claim if:** the only advantage over an existing platform is personal preference, or external users cannot reproduce the examples.
 
@@ -305,7 +309,7 @@ Include sampling interval, contact distance, unresolved-position handling and en
 
 **Likely venues:** Journal of Simulation, JASSS or PLOS ONE; PLOS Computational Biology only if a substantial biological/methodological insight is established. **Readiness:** promising next project, current sweep insufficient. **Effort:** substantial methods, possible without clinical data. **Likely rejection:** arbitrary ranges, one toy ward, obvious pair-count effects, or conclusions that disappear after fixing basic correctness.
 
-### Route C — Routine-event reconstruction and identifiability: priority methods route for UCLH
+### Route C — Activity module: routine-event reconstruction and identifiability, priority methods route for UCLH
 
 **Working title:** _What can routine hospital event logs tell us about contact networks? Identifiability and validation of constrained movement reconstruction._
 
@@ -325,7 +329,7 @@ The most important comparator is Curtis et al.’s EMR-based reconstruction, sup
 
 **Readiness:** best scientific direction, incomplete implementation and validation. **Effort:** substantial methods plus independent observation data. **Likely rejection:** simulated truth generated by the same model used for reconstruction; random transition splits; no observation model; or claiming hidden trajectories are uniquely identified from sparse logs.
 
-### Route D — Geometry preparation and error propagation
+### Route D — Floorplan module: geometry preparation and error propagation
 
 **Working title:** _From architectural drawings to auditable hospital simulation geometry: topology validation and its effect on contact estimates._
 
@@ -371,7 +375,7 @@ Document generator assumptions, licences, seeds, versions, units and each intend
 
 **Likely venues:** Scientific Data if the resource meets its technical-validation and reuse standards, or Data in Brief for a narrower data article. [Scientific Data submission guidance][R35], [Elsevier Research Elements][R34]. **Readiness:** prospective; present outputs are experiment results rather than a general benchmark. **Effort:** substantial dataset design. **Likely rejection:** one-generator, one-layout circular benchmark or a data article duplicating the methods paper without independent reuse value.
 
-### Route H — A pathogen-specific operational or infection-control application
+### Route H — Infection module: a pathogen-specific operational or infection-control application
 
 **Working title:** _Validated effects of [a specified workflow intervention] on [a specified organism and endpoint] in [a defined hospital setting]._
 
@@ -431,7 +435,7 @@ A feasible initial endpoint is positivity at clinically obtained specimens, cond
 
 ### Revised publication priority
 
-Advance the software paper and the UCLH data/observation specification together. Prioritise Route C as the methods contribution, with Route B supplying controlled uncertainty experiments. Pursue Route H as a separate application only if the outcome information and validation support a distinct scientific claim; otherwise combine the methods and ward evaluation into one stronger paper. Restricted clinical records can support these papers without being placed in the public repository: release code, synthetic analogues and permitted aggregate evidence, and document governed access and reproducibility. No sensitive records were accessed or copied for this revision.
+Advance the platform software paper and the UCLH data/observation specification together. Define and test the floorplan and activity modules first, while specifying the infection module's biological and observation contracts before making transmission claims. Prioritise Route C as the activity/reconstruction methods contribution, with Route B supplying controlled uncertainty experiments. Pursue Route H as a separate infection-module application only if the outcome information and validation support a distinct scientific claim; otherwise combine the methods and ward evaluation into one stronger paper. Restricted clinical records can support these papers without being placed in the public repository: release code, synthetic analogues and permitted aggregate evidence, and document governed access and reproducibility. No sensitive records were accessed or copied for this revision.
 
 ## 8. Publication fit and submission constraints
 
@@ -451,9 +455,9 @@ JOSS currently requires disclosure of AI assistance and human review, and restri
 
 ## 9. A staged research programme with decision gates
 
-### Gate 1: define and verify the model before collecting more plots
+### Gate 1: define module contracts before collecting more plots
 
-Create an ODD document and a one-page scientific contract: supported agents, task semantics, physical units, time support, stochastic process, scheduling order, spatial constraints and output definitions. Add targeted tests for rejected movement, room/building/floor separation, missing spatial classifications, bounded travel and terminal-interval handling. Decide whether the GPU path is experimental, equivalent or intentionally approximate.
+Create an ODD document and a platform contract defining shared agent/time semantics and the interfaces among the floorplan, activity and infection modules. Specify supported agents, task semantics, physical units, stochastic process, scheduling order, spatial constraints and output definitions. Add targeted tests for rejected movement, room/building/floor separation, missing spatial classifications, bounded travel and terminal-interval handling. Decide whether the GPU path is experimental, equivalent or intentionally approximate.
 
 Freeze the running sweep’s code and provenance. Complete and report it honestly as a legacy-model sensitivity exercise. If correctness fixes affect its outcomes, rerun a new version; retain both for a transparent comparison. Do not silently replace inconvenient output or retrofit the hypothesis after seeing a favourable trend.
 
@@ -487,34 +491,34 @@ Have an independent user repeat the main result. Compare their output and docume
 
 ## 10. Likely reviewer objections and the evidence that answers them
 
-| Reviewer objection                                               | A substantive answer                                                                                                                                    |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| “Why build this instead of using GAMA or extending Mesa?”        | A precise unmet requirement, a reproducible baseline implementation, and evidence that the new architecture reduces effort or enables a needed analysis |
-| “Where is the AMR model?”                                        | A defined resistant-organism mechanism with calibrated/validated endpoints, or a narrower movement/contact manuscript                                   |
-| “Why does adding workers increase contacts?”                     | Normalised outcomes, fixed-workload designs and an analysis separating combinatorics from behaviour                                                     |
-| “Is the noise physiologically meaningful?”                       | Independently parameterised, unit-consistent movement components and empirical or explicitly exploratory ranges                                         |
-| “Are differences caused by illegal movement?”                    | Invariant diagnostics, corrected-model experiments and a transparent comparison with the legacy implementation                                          |
-| “Are your 30 replicates independent hospitals?”                  | Explicitly no: report the hierarchy and the conditional scope of the intervals                                                                          |
-| “You trained and tested on the same workers or adjacent events.” | Staff/time/site holdouts and a final untouched test set, with features restricted to available information                                              |
-| “Can sparse logs identify centimetre-scale encounters?”          | Identifiability experiments, observation-error models and calibrated bounds rather than an unsupported unique reconstruction                            |
-| “Is GPU speedup measuring the same model?”                       | Semantic tests, distributional agreement or quantified approximation error, and end-to-end timings                                                      |
-| “Is this a digital twin or just a simulation?”                   | Define synchronization, updating, validation and the intended decision loop; omit the digital-twin label if these are absent                            |
-| “How can restricted-data results be checked?”                    | Public synthetic reproductions, approved aggregate evidence, governed access and independently repeated computation                                     |
-| “What is new beyond the closest published paper?”                | A one-paragraph claim tied to a specific new capability or finding and an experiment that isolates it                                                   |
+| Reviewer objection                                                 | A substantive answer                                                                                                                                                                                        |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| “Why build this platform instead of using GAMA or extending Mesa?” | A precise unmet requirement for composing floorplan, activity and infection modules, a reproducible baseline implementation, and evidence that the architecture reduces effort or enables a needed analysis |
+| “Where is the AMR model?”                                          | A defined resistant-organism mechanism with calibrated/validated endpoints, or a narrower movement/contact manuscript                                                                                       |
+| “Why does adding workers increase contacts?”                       | Normalised outcomes, fixed-workload designs and an analysis separating combinatorics from behaviour                                                                                                         |
+| “Is the noise physiologically meaningful?”                         | Independently parameterised, unit-consistent movement components and empirical or explicitly exploratory ranges                                                                                             |
+| “Are differences caused by illegal movement?”                      | Invariant diagnostics, corrected-model experiments and a transparent comparison with the legacy implementation                                                                                              |
+| “Are your 30 replicates independent hospitals?”                    | Explicitly no: report the hierarchy and the conditional scope of the intervals                                                                                                                              |
+| “You trained and tested on the same workers or adjacent events.”   | Staff/time/site holdouts and a final untouched test set, with features restricted to available information                                                                                                  |
+| “Can sparse logs identify centimetre-scale encounters?”            | Identifiability experiments, observation-error models and calibrated bounds rather than an unsupported unique reconstruction                                                                                |
+| “Is GPU speedup measuring the same model?”                         | Semantic tests, distributional agreement or quantified approximation error, and end-to-end timings                                                                                                          |
+| “Is this a digital twin or just a simulation?”                     | Define synchronization, updating, validation and the intended decision loop; omit the digital-twin label if these are absent                                                                                |
+| “How can restricted-data results be checked?”                      | Public synthetic reproductions, approved aggregate evidence, governed access and independently repeated computation                                                                                         |
+| “What is new beyond the closest published paper?”                  | A one-paragraph claim tied to a specific new capability or finding and an experiment that isolates it                                                                                                       |
 
 A sceptical referee would be justified in rejecting a manuscript that substitutes architecture diagrams, many parameters, a dashboard or thousands of runs for these answers. Conversely, resolving one of these problems convincingly could produce a stronger paper than claiming to solve all hospital AMR modelling at once.
 
 ## 11. Suggested manuscript framing
 
-### A defensible draft software abstract
+### A defensible draft platform-software abstract
 
-Hospital workflow simulations require consistent representations of spatial geometry, time-stamped activities and interaction measurements, while sensitive operational data may remain within restricted research environments. AMR-Hub is an open-source Python framework for task-driven hospital movement and contact-opportunity simulation. It provides structured spatial and task models, synthetic examples, geometry-preparation utilities and contact-analysis tools. This software contribution describes the supported computational contracts, reproducibility workflow and relationship to existing ABM platforms. The present CPU model generates proximity-based contact outcomes; these should not be interpreted as validated estimates of antimicrobial-resistant infection acquisition. Publication should accompany an archived release, reproducible examples and an independently demonstrated research application. **The final sentence and all validation claims must be rewritten around evidence actually completed before submission.**
+Hospital agent-based models require coordinated representations of floorplans, time-stamped activity and infection processes, while sensitive operational data may remain within restricted research environments. AMR-Hub is an open-source Python platform being developed around interoperable floorplan, activity and infection modules. Its current capabilities include structured spatial and task models, synthetic examples, geometry-preparation utilities and contact-analysis tools; pathogen-specific infection dynamics and equivalence between CPU and GPU paths are not established. This software contribution describes the module contracts, reproducibility workflow and relationship to existing ABM platforms. Proximity-based contact outcomes should not be interpreted as validated estimates of antimicrobial-resistant infection acquisition. Publication should accompany an archived release, reproducible examples and an independently demonstrated research application. **The final sentence and all validation claims must be rewritten around evidence actually completed before submission.**
 
 ### A proposed methods-paper abstract structure
 
 **Background:** Sparse routine events do not uniquely determine between-event movement, and different admissible movements may imply different contact networks. **Objective:** quantify how observation sparsity and movement assumptions affect a predefined contact or policy contrast. **Methods:** compare explicit reconstruction models across independent layouts/schedules; censor known trajectories; evaluate against independent observations where available; propagate observation, parameter and structural uncertainty. **Results:** insert measured accuracy, interval coverage, computational cost and robustness results only after analysis. **Conclusion:** state the conditions under which a claim is identifiable, robust or unsupported. Do not pre-write a claim that a more complex model is better.
 
-The central editorial choice is whether AMR-Hub is being presented as a reusable instrument, a new inference method, or evidence about hospital practice. Those can support separate contributions, but the validation burden changes at each step. My recommendation is to **finish a narrowly scoped software contribution while concentrating new scientific work on uncertainty and validation of event-to-contact reconstruction**. Treat the current stochasticity sweep as evidence about the behaviour of one model, not as a shortcut to an AMR intervention paper.
+The central editorial choice is whether AMR-Hub is being presented as a reusable platform, a new inference method, or evidence about hospital practice. Those can support separate contributions, but the validation burden changes at each step. My recommendation is to **define and demonstrate the floorplan, activity and infection module contracts in a narrowly scoped platform contribution, while concentrating new scientific work on uncertainty and validation of activity-to-contact reconstruction**. Treat the current stochasticity sweep as evidence about the behaviour of one model, not as a shortcut to an AMR intervention paper.
 
 ## References
 
