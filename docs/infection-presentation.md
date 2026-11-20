@@ -142,9 +142,9 @@ flowchart LR
 
 ---
 
-## Kim, Canovas-Segura, Jimeno-Almazán et al., 2023
+## Kim et al., 2023
 
-![image h:450](infection-figures/kim-canovas-segura-jimeno-almazan-et-al-2023.png)
+![image h:450](infection-figures/kim-et-al-2023.png)
 
 ---
 
