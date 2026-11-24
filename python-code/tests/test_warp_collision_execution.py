@@ -2,10 +2,12 @@
 
 from dataclasses import replace
 from math import nan
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 import warp as wp
+from shapely.geometry import LineString, Polygon
 
 from amr_hub_abm.agent.enums import InfectionStatus
 from amr_hub_abm.exceptions import SimulationModeError
@@ -110,6 +112,83 @@ def test_live_wall_changes_affect_next_step(device: str, change: str) -> None:
                             wall.thickness = 1.25
         engine.step_physics([scene.agent])
     assert scene.agent.location.x == (2.5 if change == "remove" else 1.5)
+
+
+def test_unchanged_geometry_is_constructed_only_at_load(device: str) -> None:
+    """Repeated path queries and ordinary single ticks must reuse wall polygons."""
+    scene = make_scene(doorway=True)
+    with (
+        wp.ScopedDevice(device),
+        patch(
+            "amr_hub_abm.spatial.wall.shapely.geometry.LineString",
+            wraps=LineString,
+        ) as wall_lines,
+    ):
+        engine = GPUSpatialQuery(scene.engine.space)
+        constructed = wall_lines.call_count
+        assert constructed > 0
+        engine.head_to_point(scene.agent, (2.5, 1.0))
+        for _ in range(3):
+            assert engine.is_path_safe(scene.agent, (2.5, 1.0))
+            engine.step_physics([scene.agent])
+        assert wall_lines.call_count == constructed
+    assert scene.agent.location.x == 2.5
+
+
+def test_edit_rebuilds_only_the_affected_floor(device: str) -> None:
+    """Refresh edited walls once, keeping the other floor's geometry prepared."""
+    scene, other = make_scene(doorway=True), make_scene(doorway=True)
+    scene.engine.space[0].floors.append(Floor(1, other.rooms))
+    with (
+        wp.ScopedDevice(device),
+        patch(
+            "amr_hub_abm.spatial.wall.shapely.geometry.LineString",
+            wraps=LineString,
+        ) as wall_lines,
+    ):
+        engine = GPUSpatialQuery(scene.engine.space)
+        constructed = wall_lines.call_count
+        for room in scene.rooms:
+            assert room.walls is not None
+            room.walls.append(Wall((2.0, 0.5), (2.0, 1.5)))
+        expected_rebuilds = sum(len(room.walls or []) for room in scene.rooms)
+        engine.head_to_point(scene.agent, (2.5, 1.0))
+        assert not engine.is_path_safe(scene.agent, (2.5, 1.0))
+        engine.step_physics([scene.agent])
+        assert wall_lines.call_count == constructed + expected_rebuilds
+    assert scene.agent.location.x == 1.5
+
+
+@pytest.mark.parametrize("invalid", ["wall", "region"])
+def test_invalid_edit_fails_before_advancement_and_can_be_repaired(
+    device: str, invalid: str
+) -> None:
+    """An invalid cache refresh cannot return old geometry or advance a batch."""
+    scene = make_scene(doorway=True)
+    initial = scene.agent.location
+    region = scene.rooms[0].region
+    assert scene.rooms[0].walls is not None
+    wall = scene.rooms[0].walls[0]
+    thickness = wall.thickness
+    with wp.ScopedDevice(device):
+        engine = GPUSpatialQuery(scene.engine.space)
+        engine.head_to_point(scene.agent, (2.5, 1.0))
+        if invalid == "wall":
+            wall.thickness = nan
+        else:
+            scene.rooms[0].region = Polygon([(0, 0), (1, 1), (0, 1), (1, 0)])
+        with pytest.raises(SimulationModeError):
+            engine.is_path_safe(scene.agent, (2.5, 1.0))
+        with pytest.raises(SimulationModeError):
+            engine.step_physics([scene.agent], batch_steps=3)
+        assert engine.current_tick == 0
+        assert not engine.telemetry
+        assert not engine.transmission_events
+        assert scene.agent.location == initial
+        wall.thickness = thickness
+        scene.rooms[0].region = region
+        engine.step_physics([scene.agent])
+    assert scene.agent.location.x == 2.5
 
 
 @pytest.mark.parametrize("stationary", [False, True])

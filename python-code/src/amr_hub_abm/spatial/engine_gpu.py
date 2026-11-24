@@ -23,7 +23,7 @@ import pandas as pd
 import warp as wp
 
 from amr_hub_abm.exceptions import SimulationModeError
-from amr_hub_abm.spatial.collision import snapshot_collision_geometry
+from amr_hub_abm.spatial.collision import CollisionGeometryCache
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -170,11 +170,13 @@ class GPUSpatialQuery:
 
     Positions and collision geometry remain float64. The float32 HashGrid copy
     is used only for proximity, never for deciding or applying movement. Live
-    geometry is reread on each call; concurrent edits during a call are unsupported.
+    geometry is prepared once and reused until its source changes; concurrent
+    edits during a call are unsupported.
     """
 
     # ------------------------------------------------------------------------------
     __slots__ = (
+        "_collision_geometry",
         "_device",
         "_floor_np",
         # Persistent GPU buffers (allocated once, reused every step to avoid
@@ -222,7 +224,7 @@ class GPUSpatialQuery:
         self.space = space
         self._device = wp.get_device()
         self.max_movement_attempts = max_movement_attempts
-        snapshot_collision_geometry(space)
+        self._collision_geometry = CollisionGeometryCache(space)
 
         # ------------------------------------------------------------------------------
         # Retain the legacy centreline mesh for diagnostic compatibility only.
@@ -425,8 +427,8 @@ class GPUSpatialQuery:
     # Main Function that advances the simulation in time
     # ------------------------------------------------------------------------------
     def is_path_safe(self, agent: Agent, end: tuple[float, float]) -> bool:
-        """Check a path against live geometry in this agent's building/floor."""
-        geometry = snapshot_collision_geometry(self.space).get(
+        """Check a path against up-to-date prepared geometry for this context."""
+        geometry = self._collision_geometry.get_contexts(self.space).get(
             (agent.location.building, agent.location.floor)
         )
         return geometry is not None and geometry.allows(
@@ -468,15 +470,16 @@ class GPUSpatialQuery:
         Validate each physics substep before applying movement or transmission.
 
         Invalid movement parameters/unknown contexts stay put; nonfinite initial
-        positions raise before advancing any agent. Geometry is snapshotted from
-        live objects per call. The engine is bound to its construction device;
+        positions raise before advancing any agent. Prepared geometry is reused;
+        only changed floors are rebuilt before a call advances any agent.
+        The engine is bound to its construction device;
         create another engine to change device. Each substep records telemetry
         and infection events exactly as separate one-tick calls would.
         """
         batch_steps = self._validate_physics_inputs(agents, batch_steps)
         if not agents or batch_steps <= 0:
             return
-        contexts = snapshot_collision_geometry(self.space)
+        contexts = self._collision_geometry.get_contexts(self.space)
         context_ids = {key: index for index, key in enumerate(contexts)}
         self._ensure_gpu_buffers(len(agents))
         for _step in range(batch_steps):
