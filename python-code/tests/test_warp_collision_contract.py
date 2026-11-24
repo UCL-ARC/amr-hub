@@ -1,4 +1,4 @@
-"""Tests-first W1a audit; failures describe unfixed Warp collision contracts."""
+"""Shared collision contracts from W1a, applied at W1b's enforcement boundary."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from tests.warp_collision_audit import (
     StepCase,
     build_scene,
     path_allowed,
-    ray_hit,
+    path_blocked,
     standard_step,
     warp_step,
 )
@@ -59,7 +59,7 @@ def test_shared_step_contract(
         with wp.ScopedDevice("cpu" if backend == "warp-cpu" else "cuda:0"):
             engine = GPUSpatialQuery(scene.engine.space, case.attempts)
             engine.head_to_point(scene.agent, case.end if case.angle == 0 else proposed)
-            hit = ray_hit(engine, start, proposed) if start != proposed else None
+            hit = path_blocked(engine, scene.agent, proposed)
             actual = warp_step(engine, scene.agent)
     record_property(
         "observation",
@@ -71,7 +71,7 @@ def test_shared_step_contract(
                 "actual": actual,
                 "allowed": allowed,
                 "actual_path_safe": path_allowed(build_scene(case)[0], actual),
-                "mesh_ray_hit": hit,
+                "path_rejected": hit,
                 "float32_proposal": [
                     float(v) for v in np.array(proposed, dtype=np.float32)
                 ],
@@ -106,7 +106,7 @@ def test_nonfinite_proposal_rejected(
             engine = GPUSpatialQuery(scene.engine.space)
             engine.head_to_point(scene.agent, (1.5, 1.0))
             scene.agent.movement_speed = invalid
-            actual = warp_step(engine, scene.agent, direct=True)
+            actual = warp_step(engine, scene.agent)
     record_property("observed_coordinates", repr(actual))
     assert actual == start
 
@@ -121,7 +121,7 @@ def test_unrelated_context_not_in_collision_query(backend: str, context: str) ->
     else:
         with wp.ScopedDevice("cpu" if backend == "warp-cpu" else "cuda:0"):
             engine = GPUSpatialQuery(scene.engine.space)
-            assert not ray_hit(engine, case.start, proposed)
+            assert not path_blocked(engine, scene.agent, proposed)
 
 
 @pytest.mark.parametrize("change", ["add-wall", "remove-wall"])
@@ -148,7 +148,7 @@ def test_geometry_changes_visible_or_rejected(backend: str, change: str) -> None
         )
     else:
         with wp.ScopedDevice("cpu" if backend == "warp-cpu" else "cuda:0"):
-            assert ray_hit(engine, (1.5, 1.0), (2.5, 1.0)) == expected_hit
+            assert path_blocked(engine, scene.agent, (2.5, 1.0)) == expected_hit
 
 
 def test_threshold_pause_and_continue(backend: str) -> None:

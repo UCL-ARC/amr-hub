@@ -6,9 +6,11 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+from shapely.geometry import Polygon
 
 # Note: Adjust the import path if needed
 from amr_hub_abm.spatial.engine_gpu import GPUSpatialQuery
+from amr_hub_abm.spatial.wall import Wall
 
 
 @pytest.fixture
@@ -47,12 +49,12 @@ def test_gpu_physics_engine_initialization(tmp_path: Path) -> None:
 def test_build_mesh_from_space() -> None:
     """Verify that 2D walls are correctly extruded into a 3D Warp mesh."""
     # Setup mock hierarchy mimicking Building -> Floor -> Room -> Wall
-    mock_wall = MagicMock()
-    mock_wall.start = (0.0, 0.0)
-    mock_wall.end = (10.0, 0.0)
+    mock_wall = Wall((0.0, 0.0), (10.0, 0.0))
 
     mock_room = MagicMock()
     mock_room.walls = [mock_wall]
+    # Initialisation validates physical geometry before constructing Warp data.
+    mock_room.region = Polygon([(0, 0), (10, 0), (10, 1), (0, 1)])
 
     mock_floor = MagicMock()
     mock_floor.rooms = [mock_room]

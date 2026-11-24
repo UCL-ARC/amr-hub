@@ -7,16 +7,11 @@ from math import isfinite
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-import warp as wp
 from shapely.geometry import LineString, Point
 from shapely.ops import unary_union
 
 from amr_hub_abm.spatial.building import Building
 from amr_hub_abm.spatial.engine import SpatialQuery
-from amr_hub_abm.spatial.engine_gpu import (
-    GPUSpatialQuery,
-    cuda_warp_kernel_kinematic_agent_movement,
-)
 from amr_hub_abm.spatial.floor import Floor
 from amr_hub_abm.spatial.wall import Wall
 from tests.collision_fixtures import (
@@ -29,6 +24,7 @@ from tests.collision_fixtures import (
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent.agent import Agent
+    from amr_hub_abm.spatial.engine_gpu import GPUSpatialQuery
 
 
 @dataclass(frozen=True)
@@ -232,64 +228,14 @@ def standard_step(
         return scene.engine.try_move_one_step(scene.agent)
 
 
-def warp_step(
-    engine: GPUSpatialQuery, agent: Agent, *, direct: bool = False
-) -> tuple[float, float]:
-    """Use the public physics wrapper, or its real movement kernel for NaN cases."""
-    if not direct:
-        engine.step_physics([agent])
-        return agent.location.x, agent.location.y
-    # Never feed NaN/Inf output into the unrelated proximity HashGrid.
-    positions: wp.array[wp.vec3] = wp.array(
-        [[agent.location.x, agent.location.y, 1.0]], dtype=wp.vec3
-    )
-    wp.launch(
-        cuda_warp_kernel_kinematic_agent_movement,
-        dim=1,
-        inputs=[
-            engine.mesh.id,
-            positions,
-            wp.array([[agent.target_x, agent.target_y]], dtype=wp.vec2),
-            wp.array([agent.movement_speed], dtype=float),
-            wp.array([agent.stochasticity], dtype=float),
-            wp.array([agent.interaction_radius], dtype=float),
-            engine.current_tick,
-            engine.max_movement_attempts,
-        ],
-    )
-    actual = positions.numpy()[0]
-    return float(actual[0]), float(actual[1])
+def warp_step(engine: GPUSpatialQuery, agent: Agent) -> tuple[float, float]:
+    """Exercise real Warp proposals, host enforcement and proximity in order."""
+    engine.step_physics([agent])
+    return agent.location.x, agent.location.y
 
 
-@wp.kernel
-def mesh_ray_probe(
-    mesh: wp.uint64,
-    start: wp.vec3,
-    end: wp.vec3,
-    hits: wp.array(dtype=wp.int32),  # type: ignore[valid-type]
-) -> None:
-    """Expose real mesh-query hits independently of unsafe fallback handling."""
-    delta = end - start
-    # Warp's runtime DSL supports these operations; its Python stubs omit the
-    # query result and type normalize() generically rather than preserving vec3.
-    hit = wp.mesh_query_ray(
-        mesh,
-        start,
-        wp.normalize(delta),  # type: ignore[arg-type]
-        wp.length(delta),
-        wp.int32(0),
-    )
-    hits[0] = wp.int32(hit.result)  # type: ignore[attr-defined]
-
-
-def ray_hit(
-    engine: GPUSpatialQuery, start: tuple[float, float], end: tuple[float, float]
+def path_blocked(
+    engine: GPUSpatialQuery, agent: Agent, end: tuple[float, float]
 ) -> bool:
-    """Query the production mesh without replacing or mocking its geometry."""
-    hits = wp.zeros(1, dtype=wp.int32)
-    wp.launch(
-        mesh_ray_probe,
-        dim=1,
-        inputs=[engine.mesh.id, wp.vec3(*start, 1.0), wp.vec3(*end, 1.0), hits],
-    )
-    return bool(hits.numpy()[0])
+    """Probe the actual acceptance boundary, now context-bound host geometry."""
+    return not engine.is_path_safe(agent, end)
