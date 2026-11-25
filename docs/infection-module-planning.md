@@ -59,6 +59,14 @@ Below is a small selection of prior research that contains useful points of comp
 - [Durazzi et al., 2023](https://www.nature.com/articles/s41598-023-42511-5) [9] adapted the Ross-Macdonald model (a deterministic mathematical model of mosquito-borne pathogen transmission) to describe hospital cross-transmission dynamics of resistant Klebsiella pneumoniae (CRKP) bacteria. The model predicts the impact of interventions in reducing the prevalence of CRKP colonisation and infection.
   - One of the stated limitations of the methodology is that "environmental contribution and patient-to-patient transmission were not modelled", and that "given the low numbers of infected patients, the choice of a stochastic approach could have been more informative in terms of model variability".
 
+### Novelty
+
+According to [Garira, 2018](https://www.sciencedirect.com/science/article/pii/S2468042718300113) [10], the frontiers of multiscale modelling of infectious disease systems lie more closely to the frontier of mathematical technology rather than the frontiers of conceptual frameworks or scientific applications. One of the challenges at the technical frontier our work may be able to take steps towards addressing is the development of multiscale models to account for the evolution of pathogens across scales.
+
+There is much existing research that focuses on a single illness or pathogen, but we have the data to create a model tracking multiple strains and organisms simultaneously. By writing an individual-based infection module, we can make a publicly accessible piece of software that could be used to identify patterns in pathogen infections, such as comorbidities, strain dominance, and other interactions.
+
+Based on an analysis by [Doran et al., 2023](https://www.sciencedirect.com/science/article/pii/S1755436523000609) [11], another issue that needs further exploration is capturing the impact of human behaviour on pathogen transmission. Our work could be well-paced to tackle this question as well, given that ABMs excel at modelling unique individual properties and emergent behaviours.
+
 ## References
 
 [1] Bowen, C. (2024). Clinical Nursing Skills, 6.1: Infection cycle. LibreTexts. <https://med.libretexts.org/Bookshelves/Nursing/Clinical_Nursing_Skills_(OpenStax)/06%3A_Infection_Prevention_Techniques_and_Safety_in_the_Clinical_Setting/6.01%3A_Infection_Cycle>.
@@ -80,3 +88,7 @@ Below is a small selection of prior research that contains useful points of comp
 [8] Ramaswamy, H., Oberai, A.A. and Yortsos, Y.C. (2021). A comprehensive spatial-temporal infection model. Chemical engineering science 233, 116347. <https://pmc.ncbi.nlm.nih.gov/articles/PMC7833503>.
 
 [9] Durazzi, F., Maria Diletta Pezzani, Fabiana Arieti, Simonetti, O., Lorenzo Maria Canziani, Carrara, E., Barbato, L., Onorati, F., Remondini, D. and Tacconelli, E. (2023). Modelling antimicrobial resistance transmission to guide personalized antimicrobial stewardship interventions and infection control policies in healthcare setting: A pilot study. Scientific Reports 13(1). <https://www.nature.com/articles/s41598-023-42511-5>.
+
+[10] Garira, W. (2018). A primer on multiscale modelling of infectious disease systems. Infectious Disease Modelling 3, 176–191. <https://www.sciencedirect.com/science/article/pii/S2468042718300113>.
+
+[11] Doran, J.W.G., Thompson, R.N., Yates, C.A. and Bowness, R. (2023). Mathematical methods for scaling from within-host to population-scale in infectious disease systems. Epidemics 45, 100724. <https://www.sciencedirect.com/science/article/pii/S1755436523000609>.
