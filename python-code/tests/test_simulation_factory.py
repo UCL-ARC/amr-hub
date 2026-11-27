@@ -9,12 +9,16 @@ from amr_hub_abm.config import sim_config
 from amr_hub_abm.exceptions import SimulationModeError
 from amr_hub_abm.simulation_factory import create_simulation, parse_location_timeseries
 from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.task.task import TaskSource
 
 
 def test_successful_simulation_creation() -> None:
     """Test successful creation of a simulation instance."""
     simulation = create_simulation(sim_config)
     assert simulation is not None
+    tasks = [task for agent in simulation.agents for task in agent.tasks]
+    assert tasks
+    assert all(task.source == TaskSource.LOCATION_DATA for task in tasks)
 
 
 @pytest.fixture

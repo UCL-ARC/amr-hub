@@ -73,6 +73,14 @@ class TaskType(IntEnum):
     OCCUPY_CONTENT = 12
 
 
+class TaskSource(IntEnum):
+    """Origin of a task."""
+
+    OTHER = 0
+    LOCATION_DATA = 1
+    NEED = 2
+
+
 # ---------------------------------------------------------------------------
 # Base task
 # ---------------------------------------------------------------------------
@@ -103,6 +111,8 @@ class Task:
         Current progress. Defaults to NOT_STARTED.
     priority : int, optional
         Priority; higher values take precedence for equal due times. Defaults to 2.
+    source : TaskSource, optional
+        Origin of the task. Defaults to OTHER.
 
     """
 
@@ -113,6 +123,7 @@ class Task:
     task_type: TaskType = field(default=TaskType.GENERIC, kw_only=True)
     progress: TaskProgress = field(default=TaskProgress.NOT_STARTED, kw_only=True)
     priority: int = field(default=2, kw_only=True)
+    source: TaskSource = field(default=TaskSource.OTHER, kw_only=True)
 
     time_started: int | None = field(init=False, default=None)
     time_completed: int | None = field(init=False, default=None)

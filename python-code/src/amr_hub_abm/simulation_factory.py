@@ -21,6 +21,7 @@ from amr_hub_abm.simulation import Simulation, SimulationMode
 from amr_hub_abm.spatial.furniture import ContentType
 from amr_hub_abm.spatial.location import Location
 from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.task.task import TaskSource
 from amr_hub_abm.task.task_duration import TaskDurationConfig
 
 logger = logging.getLogger(__name__)
@@ -322,6 +323,7 @@ def update_hcw(  # noqa: PLR0913
         location=location,
         event_type=event_type,
         additional_info=additional_info,
+        source=TaskSource.LOCATION_DATA,
     )
 
 

@@ -25,6 +25,7 @@ from amr_hub_abm.spatial.furniture import ContentType
 from amr_hub_abm.task.task import (
     Task,
     TaskOccupyContent,
+    TaskSource,
     TaskType,
 )
 from amr_hub_abm.task.task_builders import TASK_BUILDERS, build_task_context
@@ -159,13 +160,15 @@ class Agent:
             f"{self.infection_status.value})"
         )
 
-    def add_task(
+    def add_task(  # noqa: PLR0913
         self,
         time: int,
         time_needed: int,
         location: Location,
         event_type: str,
         additional_info: dict | None = None,
+        *,
+        source: TaskSource = TaskSource.OTHER,
     ) -> None:
         """
         Add a task to the agent's task list and log the addition.
@@ -180,6 +183,8 @@ class Agent:
             The type of task to add.
         additional_info : dict | None, optional
             Additional information required for certain task types.
+        source : TaskSource, optional
+            Origin of the task.
 
         Raises
         ------
@@ -203,6 +208,7 @@ class Agent:
         )
 
         task = TASK_BUILDERS[task_type](context)
+        task.source = source
         self.tasks.append(task)
 
     def perform_task(
