@@ -308,7 +308,7 @@ def test_tick_moving(
         rng_generator=np.random.default_rng(42),
     )
 
-    sample_engine.space[0].floors[0].rooms.append(room)  # type: ignore # noqa: PGH003
+    sample_engine.space[0].floors.append(Floor(floor_number=1, rooms=[room]))
 
     old_location = Location(building="A", floor=1, x=2.0, y=2.0)
     sample_agent.location = old_location
