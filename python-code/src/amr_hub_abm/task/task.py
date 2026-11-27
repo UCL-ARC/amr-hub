@@ -127,6 +127,8 @@ class Task:
 
     time_started: int | None = field(init=False, default=None)
     time_completed: int | None = field(init=False, default=None)
+    elapsed_before_pause: int = field(init=False, default=0)
+    active_since: int | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
         """Validate timing attributes."""
@@ -172,6 +174,14 @@ class Task:
     def on_started(self, agent: Agent, current_time: int) -> None:
         """Handle the transition to IN_PROGRESS."""
 
+    def on_resumed(self, agent: Agent, current_time: int) -> None:
+        """Handle the resumption of previously started work."""
+
+    def on_suspended(
+        self, agent: Agent, current_time: int, engine: SpatialQuery
+    ) -> None:
+        """Release resources held by an interrupted task."""
+
     def on_completed(
         self, agent: Agent, current_time: int, engine: SpatialQuery
     ) -> None:
@@ -197,15 +207,36 @@ class Task:
             if self.time_completed is None:
                 msg = "Task marked as completed but completion time is None."
                 raise TimeError(msg)
-            return self.time_completed - self.time_started
+            start = self.active_since
+            if start is None:
+                start = self.time_started
+            return self.elapsed_before_pause + self.time_completed - start
 
         if self.progress == TaskProgress.IN_PROGRESS:
             if self.time_started is None:
                 msg = "Task marked as in progress but start time is None."
                 raise TimeError(msg)
-            return current_time - self.time_started
+            start = self.active_since
+            if start is None:
+                start = self.time_started
+            return self.elapsed_before_pause + current_time - start
 
-        return 0
+        return self.elapsed_before_pause
+
+    def suspend(self, current_time: int, agent: Agent, engine: SpatialQuery) -> None:
+        """Suspend active work or travel without losing elapsed work."""
+        if self.progress not in {
+            TaskProgress.IN_PROGRESS,
+            TaskProgress.MOVING_TO_LOCATION,
+        }:
+            msg = "Only active or moving tasks can be suspended."
+            raise SimulationModeError(msg)
+        if self.progress == TaskProgress.IN_PROGRESS:
+            self.elapsed_before_pause = self.time_spent(current_time)
+            self.active_since = None
+        self.on_suspended(agent, current_time, engine)
+        remove_agent_occupancy(agent, current_time=current_time, engine=engine)
+        self.progress = TaskProgress.SUSPENDED
 
     # -- state machine ---------------------------------------------------------
 
@@ -297,8 +328,12 @@ class Task:
 
     def _start(self, current_time: int, agent: Agent) -> None:
         self.progress = TaskProgress.IN_PROGRESS
-        self.time_started = current_time
-        self.on_started(agent, current_time)
+        self.active_since = current_time
+        if self.time_started is None:
+            self.time_started = current_time
+            self.on_started(agent, current_time)
+        else:
+            self.on_resumed(agent, current_time)
 
     def __repr__(self) -> str:
         """Representation of the task."""
@@ -445,6 +480,16 @@ class TaskOccupyContent(Task):
         self.content = None
         self.location = None
         return False
+
+    def on_suspended(
+        self,
+        agent: Agent,
+        current_time: int,  # noqa: ARG002
+        engine: SpatialQuery,  # noqa: ARG002
+    ) -> None:
+        """Release a content reservation while the task is suspended."""
+        if self.content is not None:
+            self.content.release_reservation((agent.idx, agent.agent_type))
 
     def on_completed(
         self, agent: Agent, current_time: int, engine: SpatialQuery

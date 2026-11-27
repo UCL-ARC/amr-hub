@@ -83,6 +83,11 @@ def perform_suspended_task(
     )
     if task is None:
         return False
+    if not task.prepare(agent) or not task.on_dispatch(agent):
+        logger.info(
+            "Agent %s cannot yet resume task %s.", agent.idx, task.task_type.name
+        )
+        return False
     task.update_progress(current_time=current_time, agent=agent, engine=engine)
     return True
 

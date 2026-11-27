@@ -24,6 +24,7 @@ from amr_hub_abm.task.task import (
     TaskType,
 )
 from amr_hub_abm.task.tasklist import (
+    perform_suspended_task,
     perform_to_be_started_task,
     select_task_based_on_progress,
 )
@@ -47,6 +48,52 @@ def test_task_selection_uses_higher_integer_priority_for_equal_due_times() -> No
         )
         is higher
     )
+
+
+def test_suspension_preserves_active_work(
+    sample_agent: Agent, sample_engine: SpatialQuery
+) -> None:
+    """Paused time does not count towards task completion."""
+    sample_agent.location = Location(building="A", floor=0, x=1.0, y=1.0)
+    task = Task(time_needed=5, time_due=5, location=sample_agent.location)
+    sample_agent.tasks = [task]
+    task.update_progress(0, sample_agent, sample_engine)
+    assert task.progress == TaskProgress.IN_PROGRESS
+
+    task.suspend(2, sample_agent, sample_engine)
+    assert task.time_spent(9) == 2
+    assert perform_suspended_task(sample_agent, 10, sample_engine)
+    assert task.time_started == 0
+    assert task.time_spent(12) == 4
+    task.update_progress(13, sample_agent, sample_engine)
+    assert task.progress == TaskProgress.COMPLETED
+    assert task.time_spent(13) == 5
+
+
+def test_suspended_content_task_releases_and_reacquires_reservation(
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """A suspended moving task waits until its content can be reserved again."""
+    sample_agent.location = Location(building="A", floor=0, x=1.0, y=1.0)
+    task = sample_occupy_content_task
+    sample_agent.tasks = [task]
+    assert task.prepare(sample_agent)
+    assert task.on_dispatch(sample_agent)
+    assert task.content is not None
+    chair = task.content
+    task.progress = TaskProgress.MOVING_TO_LOCATION
+    task.suspend(1, sample_agent, sample_engine)
+    assert chair.reserver_id is None
+
+    other = (999, AgentType.HEALTHCARE_WORKER)
+    assert chair.try_reserve(other)
+    assert not perform_suspended_task(sample_agent, 2, sample_engine)
+    assert task.progress == TaskProgress.SUSPENDED
+    assert chair.release_reservation(other)
+    assert perform_suspended_task(sample_agent, 3, sample_engine)
+    assert chair.reserver_id == (sample_agent.idx, sample_agent.agent_type)
 
 
 @pytest.fixture
