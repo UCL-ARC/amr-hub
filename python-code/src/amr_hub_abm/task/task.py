@@ -73,14 +73,6 @@ class TaskType(IntEnum):
     OCCUPY_CONTENT = 12
 
 
-class TaskPriority(IntEnum):
-    """Enumeration of possible task priority levels."""
-
-    LOW = 1
-    MEDIUM = 2
-    HIGH = 3
-
-
 # ---------------------------------------------------------------------------
 # Base task
 # ---------------------------------------------------------------------------
@@ -109,8 +101,8 @@ class Task:
         in ``__post_init__`` / ``prepare``.
     progress : TaskProgress, optional
         Current progress. Defaults to NOT_STARTED.
-    priority : TaskPriority, optional
-        Priority level. Defaults to MEDIUM.
+    priority : int, optional
+        Priority; higher values take precedence for equal due times. Defaults to 2.
 
     """
 
@@ -120,7 +112,7 @@ class Task:
 
     task_type: TaskType = field(default=TaskType.GENERIC, kw_only=True)
     progress: TaskProgress = field(default=TaskProgress.NOT_STARTED, kw_only=True)
-    priority: TaskPriority = field(default=TaskPriority.MEDIUM, kw_only=True)
+    priority: int = field(default=2, kw_only=True)
 
     time_started: int | None = field(init=False, default=None)
     time_completed: int | None = field(init=False, default=None)
@@ -301,7 +293,7 @@ class Task:
         """Representation of the task."""
         return (
             f"{type(self).__name__}(type={self.task_type.name}, "
-            f"priority={self.priority.name}, progress={self.progress.name}, "
+            f"priority={self.priority}, progress={self.progress.name}, "
             f"time_needed={self.time_needed}, time_due={self.time_due})"
         )
 

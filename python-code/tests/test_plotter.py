@@ -13,8 +13,8 @@ from amr_hub_abm.spatial.location import Location
 from amr_hub_abm.task.task import (
     Task,
     TaskAttendPatient,
-    TaskPriority,
     TaskProgress,
+    TaskType,
     TaskWorkstation,
 )
 
@@ -147,13 +147,14 @@ def test_plot_agent_selects_next_upcoming_task_by_due_and_priority(
         time_needed=5,
         time_due=8,
         progress=TaskProgress.NOT_STARTED,
-        priority=TaskPriority.HIGH,
+        priority=100,
+        task_type=TaskType.WORKSTATION,
     )
     earlier_priority_same_due = Task(
         time_needed=5,
         time_due=8,
         progress=TaskProgress.NOT_STARTED,
-        priority=TaskPriority.LOW,
+        priority=1,
     )
     sample_agent.tasks = [
         later_task,
@@ -167,7 +168,7 @@ def test_plot_agent_selects_next_upcoming_task_by_due_and_priority(
     ax.text.assert_called_once_with(
         sample_agent.location.x + 0.1,
         sample_agent.location.y + 0.05,
-        "Healthcare Worker 10\n[next: generic]",
+        "Healthcare Worker 10\n[next: workstation]",
         fontsize=7,
         ha="left",
         va="bottom",

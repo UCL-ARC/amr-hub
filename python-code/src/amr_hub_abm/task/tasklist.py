@@ -47,7 +47,7 @@ def select_task_based_on_progress(
         msg += f" with progress {progress.value}."
         logger.error(msg)
         raise RuntimeError(msg)
-    return min(tasks, key=lambda t: (t.time_due, t.priority.value))
+    return min(tasks, key=lambda t: (t.time_due, -t.priority))
 
 
 def perform_in_progress_task(

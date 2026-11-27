@@ -20,11 +20,33 @@ from amr_hub_abm.task.task import (
     TaskAttendPatient,
     TaskDoorAccess,
     TaskOccupyContent,
-    TaskPriority,
     TaskProgress,
     TaskType,
 )
-from amr_hub_abm.task.tasklist import perform_to_be_started_task
+from amr_hub_abm.task.tasklist import (
+    perform_to_be_started_task,
+    select_task_based_on_progress,
+)
+
+
+def test_task_selection_uses_higher_integer_priority_for_equal_due_times() -> None:
+    """Due time comes first, then higher integer priority."""
+    earlier = Task(time_needed=1, time_due=4, priority=-10)
+    lower = Task(time_needed=1, time_due=5, priority=1)
+    higher = Task(time_needed=1, time_due=5, priority=100)
+
+    assert (
+        select_task_based_on_progress(
+            [lower, higher, earlier], TaskProgress.NOT_STARTED, allow_multiple=True
+        )
+        is earlier
+    )
+    assert (
+        select_task_based_on_progress(
+            [lower, higher], TaskProgress.NOT_STARTED, allow_multiple=True
+        )
+        is higher
+    )
 
 
 @pytest.fixture
@@ -32,7 +54,7 @@ def sample_task() -> Task:
     """Create a sample task for testing."""
     return Task(
         progress=TaskProgress.NOT_STARTED,
-        priority=TaskPriority.MEDIUM,
+        priority=2,
         time_needed=30,
         time_due=60,
     )
@@ -110,7 +132,7 @@ def test_task_print_representation(sample_task: Task) -> None:
     task_str = str(task)
 
     assert "progress=NOT_STARTED" in task_str
-    assert "priority=MEDIUM" in task_str
+    assert "priority=2" in task_str
     assert "time_needed=30" in task_str
 
 
@@ -120,7 +142,7 @@ def test_task_initialization(sample_task: Task) -> None:
 
     assert task.task_type == TaskType.GENERIC
     assert task.progress == TaskProgress.NOT_STARTED
-    assert task.priority == TaskPriority.MEDIUM
+    assert task.priority == 2
     assert task.time_needed == 30
 
 
@@ -129,7 +151,7 @@ def test_task_negative_time_needed_raises() -> None:
     with pytest.raises(TimeError) as excinfo:
         Task(
             progress=TaskProgress.NOT_STARTED,
-            priority=TaskPriority.HIGH,
+            priority=3,
             time_needed=-10,
             time_due=50,
         )
@@ -155,13 +177,13 @@ def test_goto_location_task() -> None:
         time_due=30,
         location=Location(building="A", floor=1, x=10.0, y=20.0),
         progress=TaskProgress.NOT_STARTED,
-        priority=TaskPriority.HIGH,
+        priority=3,
         task_type=TaskType.GOTO_LOCATION,
     )
 
     assert goto_task.task_type == TaskType.GOTO_LOCATION
     assert goto_task.progress == TaskProgress.NOT_STARTED
-    assert goto_task.priority == TaskPriority.HIGH
+    assert goto_task.priority == 3
     assert goto_task.time_needed == 15
 
 
@@ -170,7 +192,7 @@ def test_task_negative_time_due_raises() -> None:
     with pytest.raises(TimeError) as excinfo:
         Task(
             progress=TaskProgress.NOT_STARTED,
-            priority=TaskPriority.LOW,
+            priority=1,
             time_needed=20,
             time_due=-5,
         )
@@ -192,7 +214,7 @@ def test_door_access_task_location_setting() -> None:
 
     door_task = TaskDoorAccess(
         progress=TaskProgress.NOT_STARTED,
-        priority=TaskPriority.MEDIUM,
+        priority=2,
         time_needed=10,
         time_due=20,
         door=door,
@@ -222,7 +244,7 @@ def test_door_access_task_with_invalid_door_raises() -> None:
     with pytest.raises(SimulationModeError) as excinfo:
         TaskDoorAccess(
             progress=TaskProgress.NOT_STARTED,
-            priority=TaskPriority.LOW,
+            priority=1,
             time_needed=5,
             time_due=15,
             door=door,
@@ -357,7 +379,7 @@ def sample_door_access_task() -> TaskDoorAccess:
 
     return TaskDoorAccess(
         progress=TaskProgress.NOT_STARTED,
-        priority=TaskPriority.MEDIUM,
+        priority=2,
         time_needed=10,
         time_due=20,
         door=door,
@@ -372,7 +394,7 @@ def test_door_access_task_no_door_raises() -> None:
     with pytest.raises(SimulationModeError) as excinfo:
         TaskDoorAccess(
             progress=TaskProgress.NOT_STARTED,
-            priority=TaskPriority.MEDIUM,
+            priority=2,
             time_needed=10,
             time_due=20,
             door=None,  # No door provided
@@ -416,7 +438,7 @@ def sample_occupy_content_task() -> TaskOccupyContent:
     """Create a sample TaskOccupyContent for testing."""
     return TaskOccupyContent(
         progress=TaskProgress.NOT_STARTED,
-        priority=TaskPriority.HIGH,
+        priority=3,
         time_needed=15,
         time_due=30,
         content_type=ContentType.CHAIR,
@@ -448,7 +470,7 @@ def test_occupy_content_task_no_room_raises() -> None:
     with pytest.raises(SimulationModeError) as excinfo:
         TaskOccupyContent(
             progress=TaskProgress.NOT_STARTED,
-            priority=TaskPriority.HIGH,
+            priority=3,
             time_needed=15,
             time_due=30,
             content_type=ContentType.CHAIR,
