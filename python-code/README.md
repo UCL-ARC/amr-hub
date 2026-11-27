@@ -135,6 +135,55 @@ That setting is deprecated and emits a `DeprecationWarning`. CSV input is normal
 to the same in-memory columns and goes through the same preflight validation as
 DuckDB input.
 
+#### Optional HCW needs behavior
+
+The following illustrative configuration enables autonomous rest, eating, and
+toilet breaks. The values are provisional modeling assumptions, not clinical
+parameters. With `needs_policy` omitted or disabled, existing data-driven
+behavior is unchanged except that higher integer task priority wins ties in due
+time.
+
+```yaml
+needs_policy:
+  enabled: true
+  eating_room:
+    building: Sample Hospital
+    floor: 0
+    name: Restaurant
+  travel_timeout: 600
+  retry_interval: 60
+  fatigue: { threshold: 0.6, urgent_threshold: 0.9, duration: 300, priority: 2 }
+  hunger: { threshold: 0.6, urgent_threshold: 0.9, duration: 300, priority: 2 }
+  toilet_need:
+    { threshold: 0.6, urgent_threshold: 0.9, duration: 120, priority: 3 }
+```
+
+Each threshold must be greater than zero and at most one; the urgent threshold
+must be at least the threshold and at most one. Durations, travel timeout and
+retry interval are positive simulation timesteps. Priorities are integers;
+urgent needs come first, followed by higher priority and then need name.
+Initial needs and per-step growth rates are configured separately using the
+existing `hcw_initial_*` and `hcw_*_rate` settings.
+
+The policy uses chairs for rest, chairs in the specified eating room for
+meals, and toilets for toilet breaks. It chooses facilities on the same floor
+using clear straight-line segments, including routes through known door
+openings. It does not navigate between floors or around arbitrary obstacles
+within a room; door state and access control are not yet modeled by this
+routing. If no route or facility is available, the need remains pending and a
+warning is logged. A trip that exceeds `travel_timeout` active movement
+steps is abandoned and retried after `retry_interval`; a task interrupted by
+that trip is allowed to finish before the same need interrupts it again.
+Needs reset only after the full activity completes.
+
+Due location-data tasks take precedence over non-urgent needs. An urgent need
+may suspend an active task after reserving a facility; the task is then resumed
+with its completed work preserved. Temporarily unavailable data tasks are
+retained for retry, and unfinished data tasks are logged at the end of the
+simulation. The run is not extended. Patients do not make autonomous
+decisions. Calls for service, ward rounds, handwashing, and attendance/round
+history remain future work.
+
 #### Running from the terminal
 
 The simplest way to run a simulation is via `examples/simple.py`:

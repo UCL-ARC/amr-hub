@@ -72,6 +72,21 @@ def test_suspension_preserves_active_work(
     assert task.time_spent(13) == 5
 
 
+def test_externally_suspended_task_preserves_legacy_start_behavior(
+    sample_agent: Agent, sample_engine: SpatialQuery, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A legacy suspended task starts without a new preparation attempt."""
+    task = Task(time_needed=5, time_due=5, location=sample_agent.location)
+    task.time_started = 1
+    task.progress = TaskProgress.SUSPENDED
+    sample_agent.tasks = [task]
+    monkeypatch.setattr(task, "prepare", lambda _agent: False)
+
+    assert perform_suspended_task(sample_agent, 10, sample_engine)
+    assert task.progress == TaskProgress.IN_PROGRESS
+    assert task.time_started == 10
+
+
 def test_suspended_content_task_releases_and_reacquires_reservation(
     sample_occupy_content_task: TaskOccupyContent,
     sample_agent: Agent,

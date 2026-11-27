@@ -30,8 +30,10 @@ from amr_hub_abm.task.task import (
 )
 from amr_hub_abm.task.task_builders import TASK_BUILDERS, build_task_context
 from amr_hub_abm.task.tasklist import (
+    perform_due_data_task,
     perform_in_progress_task,
     perform_moving_to_task_location,
+    perform_need_task,
     perform_suspended_task,
     perform_to_be_started_task,
 )
@@ -66,6 +68,7 @@ class Agent:
     infection_status: InfectionStatus = field(default=InfectionStatus.SUSCEPTIBLE)
     infection_details: dict = field(default_factory=dict)
     internal_state: InternalState = field(default_factory=InternalState)
+    retry_data_tasks: bool = field(default=False)
 
     movement_speed: float = field(default=0.001)  # metres per simulation time step
     movement_strategy: MovementStrategy = field(default=MovementStrategy.FIXED)
@@ -243,6 +246,8 @@ class Agent:
         task_handlers = (
             perform_in_progress_task,
             perform_moving_to_task_location,
+            perform_need_task,
+            perform_due_data_task,
             perform_suspended_task,
             perform_to_be_started_task,
         )

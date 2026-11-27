@@ -22,6 +22,8 @@ def test_needs_policy_orders_urgent_needs_before_priority() -> None:
         eating_building="Hospital",
         eating_floor=0,
         eating_room="Restaurant",
+        travel_timeout=20,
+        retry_interval=5,
     )
     state = InternalState(fatigue=0.5, hunger=0.8, toilet_need=0.8)
     assert policy.eligible(state) == [Need.TOILET, Need.HUNGER, Need.FATIGUE]
@@ -53,6 +55,8 @@ def test_enabled_policy_requires_all_rules() -> None:
                 "needs_policy": {
                     "enabled": True,
                     "eating_room": {"building": "Hospital", "floor": 0, "name": "R"},
+                    "travel_timeout": 20,
+                    "retry_interval": 5,
                 }
             }
         )
@@ -66,6 +70,8 @@ def test_enabled_policy_parses_qualified_eating_room() -> None:
             "needs_policy": {
                 "enabled": True,
                 "eating_room": {"building": "Hospital", "floor": 0, "name": "R"},
+                "travel_timeout": 20,
+                "retry_interval": 5,
                 "fatigue": rule,
                 "hunger": rule,
                 "toilet_need": rule,

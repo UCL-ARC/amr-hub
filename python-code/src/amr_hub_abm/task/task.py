@@ -129,6 +129,7 @@ class Task:
     time_completed: int | None = field(init=False, default=None)
     elapsed_before_pause: int = field(init=False, default=0)
     active_since: int | None = field(init=False, default=None)
+    suspended_by_lifecycle: bool = field(init=False, default=False)
 
     def __post_init__(self) -> None:
         """Validate timing attributes."""
@@ -236,6 +237,7 @@ class Task:
             self.active_since = None
         self.on_suspended(agent, current_time, engine)
         remove_agent_occupancy(agent, current_time=current_time, engine=engine)
+        self.suspended_by_lifecycle = True
         self.progress = TaskProgress.SUSPENDED
 
     # -- state machine ---------------------------------------------------------
@@ -329,7 +331,7 @@ class Task:
     def _start(self, current_time: int, agent: Agent) -> None:
         self.progress = TaskProgress.IN_PROGRESS
         self.active_since = current_time
-        if self.time_started is None:
+        if self.time_started is None or not self.suspended_by_lifecycle:
             self.time_started = current_time
             self.on_started(agent, current_time)
         else:

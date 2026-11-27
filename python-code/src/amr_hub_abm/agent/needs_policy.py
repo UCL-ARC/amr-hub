@@ -101,6 +101,27 @@ class NeedsPolicy:
     eating_building: str
     eating_floor: int
     eating_room: str
+    travel_timeout: int
+    retry_interval: int
+
+    def __post_init__(self) -> None:
+        """Validate facility identity and retry timing."""
+        if (
+            not isinstance(self.eating_building, str)
+            or not self.eating_building
+            or isinstance(self.eating_floor, bool)
+            or not isinstance(self.eating_floor, int)
+            or not isinstance(self.eating_room, str)
+            or not self.eating_room
+        ):
+            msg = "An eating room requires a building, integer floor and name."
+            raise InvalidDefinitionError(msg)
+        if any(
+            isinstance(value, bool) or not isinstance(value, int) or value <= 0
+            for value in (self.travel_timeout, self.retry_interval)
+        ):
+            msg = "Travel timeout and retry interval must be positive integers."
+            raise InvalidDefinitionError(msg)
 
     @classmethod
     def from_config(cls, config: Mapping[str, object]) -> NeedsPolicy | None:
@@ -136,6 +157,19 @@ class NeedsPolicy:
                 "needs_policy.eating_room requires a building, integer floor and name."
             )
             raise InvalidDefinitionError(msg)
+        travel_timeout = block.get("travel_timeout")
+        retry_interval = block.get("retry_interval")
+        if any(
+            isinstance(value, bool) or not isinstance(value, int) or value <= 0
+            for value in (travel_timeout, retry_interval)
+        ):
+            msg = (
+                "needs_policy travel_timeout and retry_interval must be positive "
+                "integers."
+            )
+            raise InvalidDefinitionError(msg)
+        assert isinstance(travel_timeout, int)  # noqa: S101
+        assert isinstance(retry_interval, int)  # noqa: S101
         return cls(
             fatigue=NeedRule.from_config(block.get("fatigue"), Need.FATIGUE),
             hunger=NeedRule.from_config(block.get("hunger"), Need.HUNGER),
@@ -143,6 +177,8 @@ class NeedsPolicy:
             eating_building=building,
             eating_floor=floor,
             eating_room=name,
+            travel_timeout=travel_timeout,
+            retry_interval=retry_interval,
         )
 
     def rule(self, need: Need) -> NeedRule:
