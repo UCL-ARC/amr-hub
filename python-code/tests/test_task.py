@@ -6,6 +6,7 @@ import pytest
 from amr_hub_abm.agent.agent import Agent
 from amr_hub_abm.agent.enums import AgentType
 from amr_hub_abm.agent.kinematics import MovementStrategy
+from amr_hub_abm.agent.needs_policy import Need
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.spatial.building import Building
 from amr_hub_abm.spatial.door import Door
@@ -23,6 +24,7 @@ from amr_hub_abm.task.task import (
     TaskProgress,
     TaskType,
 )
+from amr_hub_abm.task.task_need import TaskNeed
 from amr_hub_abm.task.tasklist import (
     perform_suspended_task,
     perform_to_be_started_task,
@@ -94,6 +96,73 @@ def test_suspended_content_task_releases_and_reacquires_reservation(
     assert chair.release_reservation(other)
     assert perform_suspended_task(sample_agent, 3, sample_engine)
     assert chair.reserver_id == (sample_agent.idx, sample_agent.agent_type)
+
+
+@pytest.mark.parametrize("need", list(Need))
+def test_need_task_resets_only_after_timed_facility_use(
+    need: Need,
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """Need tasks occupy a facility for their duration and reset one need."""
+    room = sample_occupy_content_task.room
+    assert room is not None
+    content = room.contents[0]
+    sample_agent.location = content.location
+    sample_agent.internal_state.fatigue = 0.8
+    sample_agent.internal_state.hunger = 0.8
+    sample_agent.internal_state.toilet_need = 0.8
+    task = TaskNeed(
+        time_needed=2,
+        time_due=2,
+        room=room,
+        content_type=content.content_type,
+        need=need,
+    )
+    assert task.prepare(sample_agent)
+    assert task.on_dispatch(sample_agent)
+    task.update_progress(0, sample_agent, sample_engine)
+    assert content.occupier_id == (sample_agent.idx, sample_agent.agent_type)
+    task.update_progress(1, sample_agent, sample_engine)
+    assert getattr(sample_agent.internal_state, need.value) == 0.8
+    task.update_progress(2, sample_agent, sample_engine)
+    assert task.progress == TaskProgress.COMPLETED
+    assert content.occupier_id is None
+    assert getattr(sample_agent.internal_state, need.value) == 0.0
+    for other in Need:
+        if other != need:
+            assert getattr(sample_agent.internal_state, other.value) == 0.8
+
+
+def test_interrupted_need_task_retains_need_and_releases_facility(
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """A paused need has not yet been satisfied."""
+    room = sample_occupy_content_task.room
+    assert room is not None
+    content = room.contents[0]
+    sample_agent.location = content.location
+    sample_agent.internal_state.hunger = 0.8
+    task = TaskNeed(
+        time_needed=2,
+        time_due=2,
+        room=room,
+        content_type=content.content_type,
+        need=Need.HUNGER,
+    )
+    sample_agent.tasks = [task]
+    assert task.prepare(sample_agent)
+    assert task.on_dispatch(sample_agent)
+    task.update_progress(0, sample_agent, sample_engine)
+    task.suspend(1, sample_agent, sample_engine)
+    assert sample_agent.internal_state.hunger == 0.8
+    assert content.available
+    assert perform_suspended_task(sample_agent, 2, sample_engine)
+    task.update_progress(3, sample_agent, sample_engine)
+    assert sample_agent.internal_state.hunger == 0.0
 
 
 @pytest.fixture
