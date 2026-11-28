@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from amr_hub_abm.agent.kinematics import MovementStrategy
 from amr_hub_abm.config import sim_config
-from amr_hub_abm.task.task import TaskProgress
+from amr_hub_abm.task.task import TaskProgress, TaskSource
 
 if TYPE_CHECKING:
     from amr_hub_abm.agent.agent import Agent
@@ -47,7 +47,7 @@ def select_task_based_on_progress(
         msg += f" with progress {progress.value}."
         logger.error(msg)
         raise RuntimeError(msg)
-    return min(tasks, key=lambda t: (t.time_due, t.priority.value))
+    return min(tasks, key=lambda t: (t.time_due, -t.priority))
 
 
 def perform_in_progress_task(
@@ -79,12 +79,64 @@ def perform_suspended_task(
 ) -> bool:
     """Perform a suspended task and return True if a task was performed."""
     task = select_task_based_on_progress(
-        agent.tasks, TaskProgress.SUSPENDED, allow_multiple=True
+        [
+            task
+            for task in agent.tasks
+            if not (agent.retry_data_tasks and task.source == TaskSource.NEED)
+        ],
+        TaskProgress.SUSPENDED,
+        allow_multiple=True,
     )
     if task is None:
         return False
+    if task.suspended_by_lifecycle and (
+        not task.prepare(agent) or not task.on_dispatch(agent)
+    ):
+        logger.info(
+            "Agent %s cannot yet resume task %s.", agent.idx, task.task_type.name
+        )
+        return False
     task.update_progress(current_time=current_time, agent=agent, engine=engine)
     return True
+
+
+def perform_need_task(agent: Agent, current_time: int, engine: SpatialQuery) -> bool:
+    """Dispatch an already reserved autonomous need before suspended work."""
+    task = select_task_based_on_progress(
+        [task for task in agent.tasks if task.source == TaskSource.NEED],
+        TaskProgress.NOT_STARTED,
+        allow_multiple=True,
+    )
+    if task is None:
+        return False
+    if not task.prepare(agent) or not task.on_dispatch(agent):
+        logger.warning("Agent %s cannot dispatch its need task.", agent.idx)
+        task.on_suspended(agent, current_time, engine)
+        agent.tasks.remove(task)
+        return False
+    task.update_progress(current_time=current_time, agent=agent, engine=engine)
+    return True
+
+
+def perform_due_data_task(
+    agent: Agent, current_time: int, engine: SpatialQuery
+) -> bool:
+    """Prefer due recorded work to suspended autonomous work when enabled."""
+    if not agent.retry_data_tasks:
+        return False
+    task = select_task_based_on_progress(
+        [
+            task
+            for task in agent.tasks
+            if task.source == TaskSource.LOCATION_DATA
+            and task.time_due - task.time_needed <= current_time
+        ],
+        TaskProgress.NOT_STARTED,
+        allow_multiple=True,
+    )
+    if task is None:
+        return False
+    return _perform_not_started(task, agent, current_time, engine)
 
 
 def perform_to_be_started_task(
@@ -96,7 +148,20 @@ def perform_to_be_started_task(
     )
     if task is None:
         return False
+    return _perform_not_started(task, agent, current_time, engine)
+
+
+def _perform_not_started(
+    task: Task, agent: Agent, current_time: int, engine: SpatialQuery
+) -> bool:
     if not task.prepare(agent=agent):
+        if agent.retry_data_tasks and task.source == TaskSource.LOCATION_DATA:
+            logger.warning(
+                "Agent %s cannot yet prepare recorded task %s.",
+                agent.idx,
+                task.task_type.name,
+            )
+            return False
         agent.tasks[:] = [
             candidate for candidate in agent.tasks if candidate is not task
         ]

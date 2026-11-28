@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import TYPE_CHECKING, Any
@@ -9,10 +10,12 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from matplotlib import pyplot as plt
 
+from amr_hub_abm.agent.needs_controller import schedule_need
 from amr_hub_abm.agent.output import record_state
-from amr_hub_abm.exceptions import TimeError
+from amr_hub_abm.exceptions import InvalidDefinitionError, TimeError
 from amr_hub_abm.spatial.engine import SpatialQuery
 from amr_hub_abm.spatial.engine_gpu import GPUSpatialQuery
+from amr_hub_abm.task.task import TaskProgress, TaskSource
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,8 +24,13 @@ if TYPE_CHECKING:
 
     from amr_hub_abm.agent.agent import Agent
     from amr_hub_abm.agent.internal_state import InternalStateConfig
+    from amr_hub_abm.agent.needs_policy import Need, NeedsPolicy
     from amr_hub_abm.spatial.building import Building
     from amr_hub_abm.spatial.room import Room
+    from amr_hub_abm.task.task import Task
+
+
+logger = logging.getLogger(__name__)
 
 
 class SimulationMode(IntEnum):
@@ -83,6 +91,13 @@ class Simulation:
     spatial_engine: Any = field(default=None, init=False)
     agent_max_movement_attempts: int = field(default=5)
     internal_state_config: InternalStateConfig | None = field(default=None)
+    needs_policy: NeedsPolicy | None = field(default=None)
+    _need_retry_after: dict[tuple[int, Need], int] = field(
+        default_factory=dict, init=False
+    )
+    _need_retry_blocked: dict[tuple[int, Need], Task] = field(
+        default_factory=dict, init=False
+    )
     # ------------------------------------------------------------------------------
 
     def __post_init__(self) -> None:
@@ -98,6 +113,20 @@ class Simulation:
                 space=self.space,
                 max_movement_attempts=self.agent_max_movement_attempts,
             )
+
+        if self.needs_policy is not None:
+            matches = [
+                room
+                for room in self.rooms
+                if room.building == self.needs_policy.eating_building
+                and room.floor == self.needs_policy.eating_floor
+                and room.name == self.needs_policy.eating_room
+            ]
+            if len(matches) != 1:
+                msg = "Configured eating room must identify exactly one room."
+                raise InvalidDefinitionError(msg)
+            for agent in self.agents:
+                agent.retry_data_tasks = True
 
         self._agent_store = None
 
@@ -123,6 +152,16 @@ class Simulation:
                 self.internal_state_config.update_state(
                     agent.internal_state, agent.agent_type
                 )
+            if self.needs_policy is not None:
+                schedule_need(
+                    agent,
+                    self.time,
+                    self.spatial_engine,
+                    self.rooms,
+                    self.needs_policy,
+                    self._need_retry_after,
+                    self._need_retry_blocked,
+                )
             agent.perform_task(
                 current_time=self.time, engine=self.spatial_engine, record=record
             )
@@ -131,6 +170,8 @@ class Simulation:
         # 2. GPU Handover to do "move_one_step"
         # --------------------------------------------------------------------------
         if self.use_gpu:
+            if self.needs_policy is not None:
+                self._stop_idle_gpu_agents()
             # GPU computes collision, stochastics, and proximity in one parallel batch
             self.spatial_engine.step_physics(self.agents)
         # --------------------------------------------------------------------------
@@ -139,6 +180,32 @@ class Simulation:
             self.plot_current_state(directory_path=plot_path)
 
         self.time += 1
+        if self.needs_policy is not None and self.time == self.total_simulation_time:
+            self._report_unfinished_data_tasks()
+
+    def _stop_idle_gpu_agents(self) -> None:
+        for agent in self.agents:
+            if not any(
+                task.progress == TaskProgress.MOVING_TO_LOCATION for task in agent.tasks
+            ):
+                self.spatial_engine.head_to_point(
+                    agent, (agent.location.x, agent.location.y)
+                )
+
+    def _report_unfinished_data_tasks(self) -> None:
+        for agent in self.agents:
+            for task in agent.tasks:
+                if (
+                    task.source == TaskSource.LOCATION_DATA
+                    and task.progress != TaskProgress.COMPLETED
+                ):
+                    logger.warning(
+                        "Agent %s has unfinished recorded task %s (due %s, %s).",
+                        agent.idx,
+                        task.task_type.name,
+                        task.time_due,
+                        task.progress.name,
+                    )
 
     # ------------------------------------------------------------------------------
 

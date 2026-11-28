@@ -25,12 +25,15 @@ from amr_hub_abm.spatial.furniture import ContentType
 from amr_hub_abm.task.task import (
     Task,
     TaskOccupyContent,
+    TaskSource,
     TaskType,
 )
 from amr_hub_abm.task.task_builders import TASK_BUILDERS, build_task_context
 from amr_hub_abm.task.tasklist import (
+    perform_due_data_task,
     perform_in_progress_task,
     perform_moving_to_task_location,
+    perform_need_task,
     perform_suspended_task,
     perform_to_be_started_task,
 )
@@ -65,6 +68,7 @@ class Agent:
     infection_status: InfectionStatus = field(default=InfectionStatus.SUSCEPTIBLE)
     infection_details: dict = field(default_factory=dict)
     internal_state: InternalState = field(default_factory=InternalState)
+    retry_data_tasks: bool = field(default=False)
 
     movement_speed: float = field(default=0.001)  # metres per simulation time step
     movement_strategy: MovementStrategy = field(default=MovementStrategy.FIXED)
@@ -159,13 +163,15 @@ class Agent:
             f"{self.infection_status.value})"
         )
 
-    def add_task(
+    def add_task(  # noqa: PLR0913
         self,
         time: int,
         time_needed: int,
         location: Location,
         event_type: str,
         additional_info: dict | None = None,
+        *,
+        source: TaskSource = TaskSource.OTHER,
     ) -> None:
         """
         Add a task to the agent's task list and log the addition.
@@ -180,6 +186,8 @@ class Agent:
             The type of task to add.
         additional_info : dict | None, optional
             Additional information required for certain task types.
+        source : TaskSource, optional
+            Origin of the task.
 
         Raises
         ------
@@ -203,6 +211,7 @@ class Agent:
         )
 
         task = TASK_BUILDERS[task_type](context)
+        task.source = source
         self.tasks.append(task)
 
     def perform_task(
@@ -237,6 +246,8 @@ class Agent:
         task_handlers = (
             perform_in_progress_task,
             perform_moving_to_task_location,
+            perform_need_task,
+            perform_due_data_task,
             perform_suspended_task,
             perform_to_be_started_task,
         )

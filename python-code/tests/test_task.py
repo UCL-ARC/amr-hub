@@ -6,6 +6,7 @@ import pytest
 from amr_hub_abm.agent.agent import Agent
 from amr_hub_abm.agent.enums import AgentType
 from amr_hub_abm.agent.kinematics import MovementStrategy
+from amr_hub_abm.agent.needs_policy import Need
 from amr_hub_abm.exceptions import SimulationModeError, TimeError
 from amr_hub_abm.spatial.building import Building
 from amr_hub_abm.spatial.door import Door
@@ -20,11 +21,290 @@ from amr_hub_abm.task.task import (
     TaskAttendPatient,
     TaskDoorAccess,
     TaskOccupyContent,
-    TaskPriority,
     TaskProgress,
+    TaskSource,
     TaskType,
 )
-from amr_hub_abm.task.tasklist import perform_to_be_started_task
+from amr_hub_abm.task.task_need import TaskNeed
+from amr_hub_abm.task.tasklist import (
+    perform_due_data_task,
+    perform_need_task,
+    perform_suspended_task,
+    perform_to_be_started_task,
+    select_task_based_on_progress,
+)
+
+
+def test_task_selection_uses_higher_integer_priority_for_equal_due_times() -> None:
+    """Due time comes first, then higher integer priority."""
+    earlier = Task(time_needed=1, time_due=4, priority=-10)
+    lower = Task(time_needed=1, time_due=5, priority=1)
+    higher = Task(time_needed=1, time_due=5, priority=100)
+
+    assert (
+        select_task_based_on_progress(
+            [lower, higher, earlier], TaskProgress.NOT_STARTED, allow_multiple=True
+        )
+        is earlier
+    )
+    assert (
+        select_task_based_on_progress(
+            [lower, higher], TaskProgress.NOT_STARTED, allow_multiple=True
+        )
+        is higher
+    )
+
+
+def test_suspension_preserves_active_work(
+    sample_agent: Agent, sample_engine: SpatialQuery
+) -> None:
+    """Paused time does not count towards task completion."""
+    sample_agent.location = Location(building="A", floor=0, x=1.0, y=1.0)
+    task = Task(time_needed=5, time_due=5, location=sample_agent.location)
+    sample_agent.tasks = [task]
+    task.update_progress(0, sample_agent, sample_engine)
+    assert task.progress == TaskProgress.IN_PROGRESS
+
+    task.suspend(2, sample_agent, sample_engine)
+    assert task.time_spent(9) == 2
+    assert perform_suspended_task(sample_agent, 10, sample_engine)
+    assert task.time_started == 0
+    assert task.time_spent(12) == 4
+    task.update_progress(13, sample_agent, sample_engine)
+    assert task.progress == TaskProgress.COMPLETED
+    assert task.time_spent(13) == 5
+
+
+def test_externally_suspended_task_preserves_legacy_start_behavior(
+    sample_agent: Agent, sample_engine: SpatialQuery, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A legacy suspended task starts without a new preparation attempt."""
+    task = Task(time_needed=5, time_due=5, location=sample_agent.location)
+    task.time_started = 1
+    task.progress = TaskProgress.SUSPENDED
+    sample_agent.tasks = [task]
+    monkeypatch.setattr(task, "prepare", lambda _agent: False)
+
+    assert perform_suspended_task(sample_agent, 10, sample_engine)
+    assert task.progress == TaskProgress.IN_PROGRESS
+    assert task.time_started == 10
+
+
+def test_suspended_content_task_releases_and_reacquires_reservation(
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """A suspended moving task waits until its content can be reserved again."""
+    sample_agent.location = Location(building="A", floor=0, x=1.0, y=1.0)
+    task = sample_occupy_content_task
+    sample_agent.tasks = [task]
+    assert task.prepare(sample_agent)
+    assert task.on_dispatch(sample_agent)
+    assert task.content is not None
+    chair = task.content
+    task.progress = TaskProgress.MOVING_TO_LOCATION
+    task.suspend(1, sample_agent, sample_engine)
+    assert chair.reserver_id is None
+
+    other = (999, AgentType.HEALTHCARE_WORKER)
+    assert chair.try_reserve(other)
+    assert not perform_suspended_task(sample_agent, 2, sample_engine)
+    assert task.progress == TaskProgress.SUSPENDED
+    assert chair.release_reservation(other)
+    assert perform_suspended_task(sample_agent, 3, sample_engine)
+    assert chair.reserver_id == (sample_agent.idx, sample_agent.agent_type)
+
+
+@pytest.mark.parametrize("need", list(Need))
+def test_need_task_resets_only_after_timed_facility_use(
+    need: Need,
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """Need tasks occupy a facility for their duration and reset one need."""
+    room = sample_occupy_content_task.room
+    assert room is not None
+    content = room.contents[0]
+    sample_agent.location = content.location
+    sample_agent.internal_state.fatigue = 0.8
+    sample_agent.internal_state.hunger = 0.8
+    sample_agent.internal_state.toilet_need = 0.8
+    task = TaskNeed(
+        time_needed=2,
+        time_due=2,
+        room=room,
+        content_type=content.content_type,
+        need=need,
+    )
+    assert task.prepare(sample_agent)
+    assert task.on_dispatch(sample_agent)
+    task.update_progress(0, sample_agent, sample_engine)
+    assert content.occupier_id == (sample_agent.idx, sample_agent.agent_type)
+    task.update_progress(1, sample_agent, sample_engine)
+    assert getattr(sample_agent.internal_state, need.value) == 0.8
+    task.update_progress(2, sample_agent, sample_engine)
+    assert task.progress == TaskProgress.COMPLETED
+    assert content.occupier_id is None
+    assert getattr(sample_agent.internal_state, need.value) == 0.0
+    for other in Need:
+        if other != need:
+            assert getattr(sample_agent.internal_state, other.value) == 0.8
+
+
+def test_interrupted_need_task_retains_need_and_releases_facility(
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """A paused need has not yet been satisfied."""
+    room = sample_occupy_content_task.room
+    assert room is not None
+    content = room.contents[0]
+    sample_agent.location = content.location
+    sample_agent.internal_state.hunger = 0.8
+    task = TaskNeed(
+        time_needed=2,
+        time_due=2,
+        room=room,
+        content_type=content.content_type,
+        need=Need.HUNGER,
+    )
+    sample_agent.tasks = [task]
+    assert task.prepare(sample_agent)
+    assert task.on_dispatch(sample_agent)
+    task.update_progress(0, sample_agent, sample_engine)
+    task.suspend(1, sample_agent, sample_engine)
+    assert sample_agent.internal_state.hunger == 0.8
+    assert content.available
+    assert perform_suspended_task(sample_agent, 2, sample_engine)
+    task.update_progress(3, sample_agent, sample_engine)
+    assert sample_agent.internal_state.hunger == 0.0
+
+
+@pytest.mark.parametrize(
+    "progress",
+    [TaskProgress.NOT_STARTED, TaskProgress.SUSPENDED, TaskProgress.COMPLETED],
+)
+def test_suspending_inactive_task_fails(
+    progress: TaskProgress, sample_agent: Agent, sample_engine: SpatialQuery
+) -> None:
+    """Only active work or movement can be suspended."""
+    task = Task(time_needed=2, time_due=2, progress=progress)
+    with pytest.raises(SimulationModeError, match="Only active or moving"):
+        task.suspend(1, sample_agent, sample_engine)
+    assert task.progress == progress
+
+
+@pytest.mark.parametrize(
+    "progress", [TaskProgress.NOT_STARTED, TaskProgress.MOVING_TO_LOCATION]
+)
+def test_need_task_rejects_missing_facility_location(
+    progress: TaskProgress,
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """A broken task state fails rather than moving to an undefined location."""
+    task = TaskNeed(
+        time_needed=2,
+        time_due=2,
+        room=sample_occupy_content_task.room,
+        need=Need.FATIGUE,
+        progress=progress,
+    )
+    with pytest.raises(SimulationModeError, match="no facility location"):
+        task.update_progress(0, sample_agent, sample_engine)
+    with pytest.raises(SimulationModeError, match="no waypoint"):
+        task._move_to_waypoint(0, sample_agent, sample_engine)  # noqa: SLF001
+
+
+def test_need_task_requires_owned_facility(
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """A need cannot start or reset if its facility is not owned by the agent."""
+    task = TaskNeed(
+        time_needed=2,
+        time_due=2,
+        room=sample_occupy_content_task.room,
+        need=Need.HUNGER,
+    )
+    sample_agent.internal_state.hunger = 0.8
+    with pytest.raises(SimulationModeError, match="could not occupy"):
+        task.on_started(sample_agent, 0)
+    with pytest.raises(SimulationModeError, match="no longer occupies"):
+        task.on_completed(sample_agent, 2, sample_engine)
+    assert sample_agent.internal_state.hunger == 0.8
+
+
+def test_need_travel_without_waypoints_targets_its_facility(
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """A need task without a route begins travel toward its facility directly."""
+    room = sample_occupy_content_task.room
+    assert room is not None
+    chair = room.contents[0]
+    sample_agent.location = Location(building="A", floor=0, x=1.0, y=1.0)
+    task = TaskNeed(
+        time_needed=2,
+        time_due=10,
+        room=room,
+        content_type=chair.content_type,
+        need=Need.FATIGUE,
+    )
+    assert task.prepare(sample_agent)
+    assert task.on_dispatch(sample_agent)
+    assert task.location == chair.location
+    task.update_progress(0, sample_agent, sample_engine)
+    assert task.progress == TaskProgress.MOVING_TO_LOCATION
+    assert task.location == chair.location
+    assert task.travel_steps == 1
+
+
+def test_need_dispatch_failure_does_not_consume_need(
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A facility taken before dispatch drops the task without satisfying the need."""
+    room = sample_occupy_content_task.room
+    assert room is not None
+    chair = room.contents[0]
+    assert chair.try_reserve((999, AgentType.HEALTHCARE_WORKER))
+    sample_agent.internal_state.fatigue = 0.8
+    task = TaskNeed(
+        time_needed=2,
+        time_due=2,
+        room=room,
+        content_type=chair.content_type,
+        need=Need.FATIGUE,
+    )
+    sample_agent.tasks = [task]
+    assert not perform_need_task(sample_agent, 0, sample_engine)
+    assert not sample_agent.tasks
+    assert sample_agent.internal_state.fatigue == 0.8
+    assert "cannot dispatch its need task" in caplog.text
+
+
+def test_due_data_dispatch_is_disabled_without_retry_mode(
+    sample_agent: Agent, sample_engine: SpatialQuery
+) -> None:
+    """The autonomous dispatcher must not take over legacy recorded work."""
+    task = Task(
+        time_needed=1,
+        time_due=1,
+        location=sample_agent.location,
+        source=TaskSource.LOCATION_DATA,
+    )
+    sample_agent.tasks = [task]
+    assert not perform_due_data_task(sample_agent, 1, sample_engine)
+    assert task.progress == TaskProgress.NOT_STARTED
 
 
 @pytest.fixture
@@ -32,7 +312,7 @@ def sample_task() -> Task:
     """Create a sample task for testing."""
     return Task(
         progress=TaskProgress.NOT_STARTED,
-        priority=TaskPriority.MEDIUM,
+        priority=2,
         time_needed=30,
         time_due=60,
     )
@@ -110,7 +390,7 @@ def test_task_print_representation(sample_task: Task) -> None:
     task_str = str(task)
 
     assert "progress=NOT_STARTED" in task_str
-    assert "priority=MEDIUM" in task_str
+    assert "priority=2" in task_str
     assert "time_needed=30" in task_str
 
 
@@ -120,7 +400,7 @@ def test_task_initialization(sample_task: Task) -> None:
 
     assert task.task_type == TaskType.GENERIC
     assert task.progress == TaskProgress.NOT_STARTED
-    assert task.priority == TaskPriority.MEDIUM
+    assert task.priority == 2
     assert task.time_needed == 30
 
 
@@ -129,7 +409,7 @@ def test_task_negative_time_needed_raises() -> None:
     with pytest.raises(TimeError) as excinfo:
         Task(
             progress=TaskProgress.NOT_STARTED,
-            priority=TaskPriority.HIGH,
+            priority=3,
             time_needed=-10,
             time_due=50,
         )
@@ -155,13 +435,13 @@ def test_goto_location_task() -> None:
         time_due=30,
         location=Location(building="A", floor=1, x=10.0, y=20.0),
         progress=TaskProgress.NOT_STARTED,
-        priority=TaskPriority.HIGH,
+        priority=3,
         task_type=TaskType.GOTO_LOCATION,
     )
 
     assert goto_task.task_type == TaskType.GOTO_LOCATION
     assert goto_task.progress == TaskProgress.NOT_STARTED
-    assert goto_task.priority == TaskPriority.HIGH
+    assert goto_task.priority == 3
     assert goto_task.time_needed == 15
 
 
@@ -170,7 +450,7 @@ def test_task_negative_time_due_raises() -> None:
     with pytest.raises(TimeError) as excinfo:
         Task(
             progress=TaskProgress.NOT_STARTED,
-            priority=TaskPriority.LOW,
+            priority=1,
             time_needed=20,
             time_due=-5,
         )
@@ -192,7 +472,7 @@ def test_door_access_task_location_setting() -> None:
 
     door_task = TaskDoorAccess(
         progress=TaskProgress.NOT_STARTED,
-        priority=TaskPriority.MEDIUM,
+        priority=2,
         time_needed=10,
         time_due=20,
         door=door,
@@ -222,7 +502,7 @@ def test_door_access_task_with_invalid_door_raises() -> None:
     with pytest.raises(SimulationModeError) as excinfo:
         TaskDoorAccess(
             progress=TaskProgress.NOT_STARTED,
-            priority=TaskPriority.LOW,
+            priority=1,
             time_needed=5,
             time_due=15,
             door=door,
@@ -357,7 +637,7 @@ def sample_door_access_task() -> TaskDoorAccess:
 
     return TaskDoorAccess(
         progress=TaskProgress.NOT_STARTED,
-        priority=TaskPriority.MEDIUM,
+        priority=2,
         time_needed=10,
         time_due=20,
         door=door,
@@ -372,7 +652,7 @@ def test_door_access_task_no_door_raises() -> None:
     with pytest.raises(SimulationModeError) as excinfo:
         TaskDoorAccess(
             progress=TaskProgress.NOT_STARTED,
-            priority=TaskPriority.MEDIUM,
+            priority=2,
             time_needed=10,
             time_due=20,
             door=None,  # No door provided
@@ -416,7 +696,7 @@ def sample_occupy_content_task() -> TaskOccupyContent:
     """Create a sample TaskOccupyContent for testing."""
     return TaskOccupyContent(
         progress=TaskProgress.NOT_STARTED,
-        priority=TaskPriority.HIGH,
+        priority=3,
         time_needed=15,
         time_due=30,
         content_type=ContentType.CHAIR,
@@ -448,7 +728,7 @@ def test_occupy_content_task_no_room_raises() -> None:
     with pytest.raises(SimulationModeError) as excinfo:
         TaskOccupyContent(
             progress=TaskProgress.NOT_STARTED,
-            priority=TaskPriority.HIGH,
+            priority=3,
             time_needed=15,
             time_due=30,
             content_type=ContentType.CHAIR,

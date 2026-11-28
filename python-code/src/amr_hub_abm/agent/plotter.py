@@ -74,9 +74,7 @@ def plot_agent(agent: Agent, ax: Axes, *, show_tags: bool = True) -> None:
     )
     upcoming = [t for t in agent.tasks if t.progress == TaskProgress.NOT_STARTED]
     next_upcoming = (
-        min(upcoming, key=lambda t: (t.time_due, t.priority.value))
-        if upcoming
-        else None
+        min(upcoming, key=lambda t: (t.time_due, -t.priority)) if upcoming else None
     )
 
     display_task = in_progress or moving or next_upcoming

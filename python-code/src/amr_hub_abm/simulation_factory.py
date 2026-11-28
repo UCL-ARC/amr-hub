@@ -10,6 +10,7 @@ import pandas as pd
 from amr_hub_abm.agent.agent import Agent, AgentType
 from amr_hub_abm.agent.internal_state import InternalStateConfig
 from amr_hub_abm.agent.kinematics import AgentKinematicsConfig
+from amr_hub_abm.agent.needs_policy import NeedsPolicy
 from amr_hub_abm.config import SimulationConfig
 from amr_hub_abm.exceptions import InvalidDefinitionError, SimulationModeError
 from amr_hub_abm.location_data import (
@@ -21,6 +22,7 @@ from amr_hub_abm.simulation import Simulation, SimulationMode
 from amr_hub_abm.spatial.furniture import ContentType
 from amr_hub_abm.spatial.location import Location
 from amr_hub_abm.spatial.room import Room
+from amr_hub_abm.task.task import TaskSource
 from amr_hub_abm.task.task_duration import TaskDurationConfig
 
 logger = logging.getLogger(__name__)
@@ -123,6 +125,7 @@ def create_simulation(
         use_gpu=use_gpu,
         agent_max_movement_attempts=agent_kinematics.max_movement_attempts,
         internal_state_config=internal_state_config,
+        needs_policy=NeedsPolicy.from_config(config.config_data),
     )
 
 
@@ -322,6 +325,7 @@ def update_hcw(  # noqa: PLR0913
         location=location,
         event_type=event_type,
         additional_info=additional_info,
+        source=TaskSource.LOCATION_DATA,
     )
 
 

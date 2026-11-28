@@ -1,21 +1,33 @@
 """Test for the Simulation class in amr_hub_abm.simulation module."""
 
+from dataclasses import replace
 from pathlib import Path
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
 
 from amr_hub_abm.agent.agent import Agent, AgentType, InfectionStatus
 from amr_hub_abm.agent.internal_state import InternalState, InternalStateConfig
+from amr_hub_abm.agent.needs_controller import (
+    _find_facility,
+    _resume_need,
+    schedule_need,
+)
+from amr_hub_abm.agent.needs_policy import Need, NeedRule, NeedsPolicy
 from amr_hub_abm.exceptions import TimeError
 from amr_hub_abm.simulation import Simulation, SimulationMode
 from amr_hub_abm.spatial.building import Building
 from amr_hub_abm.spatial.door import Door
 from amr_hub_abm.spatial.engine import SpatialQuery
+from amr_hub_abm.spatial.engine_gpu import GPUSpatialQuery
 from amr_hub_abm.spatial.floor import Floor
+from amr_hub_abm.spatial.furniture import Content, ContentType
 from amr_hub_abm.spatial.location import Location
 from amr_hub_abm.spatial.room import Room
 from amr_hub_abm.spatial.wall import Wall
+from amr_hub_abm.task.task import Task, TaskOccupyContent, TaskProgress, TaskSource
+from amr_hub_abm.task.task_need import TaskNeed
 
 
 @pytest.fixture
@@ -148,6 +160,667 @@ def test_simulation_step_updates_internal_state(sample_simulation: Simulation) -
     assert sample_simulation.agents[0].internal_state == InternalState(
         fatigue=None, hunger=0.4, toilet_need=0.5
     )
+
+
+@pytest.fixture
+def needs_simulation(sample_building: Building, sample_agent: Agent) -> Simulation:
+    """Create an opt-in HCW simulation with an available chair."""
+    room = sample_building.floors[0].rooms[0]
+    room.contents.append(
+        Content(content_type=ContentType.CHAIR, location=sample_agent.location)
+    )
+    sample_agent.agent_type = AgentType.HEALTHCARE_WORKER
+    sample_agent.internal_state = InternalState(fatigue=0.0)
+    rule = NeedRule(threshold=0.5, urgent_threshold=0.9, duration=2, priority=10)
+    return Simulation(
+        name="Needs test",
+        description="Synthetic needs test",
+        mode=SimulationMode.SPATIAL,
+        space=[sample_building],
+        agents=[sample_agent],
+        total_simulation_time=12,
+        rng_generator=np.random.default_rng(42),
+        needs_policy=NeedsPolicy(
+            fatigue=rule,
+            hunger=rule,
+            toilet_need=rule,
+            eating_building="TestBuilding",
+            eating_floor=0,
+            eating_room="Room1",
+            travel_timeout=3,
+            retry_interval=2,
+        ),
+    )
+
+
+def test_need_facility_not_found_outside_known_rooms(
+    needs_simulation: Simulation,
+) -> None:
+    """A worker outside a known room cannot be assigned a fabricated route."""
+    agent = needs_simulation.agents[0]
+    agent.location = Location(building="TestBuilding", floor=0, x=100, y=100)
+    policy = needs_simulation.needs_policy
+    assert policy is not None
+    assert (
+        _find_facility(
+            agent,
+            Need.FATIGUE,
+            policy,
+            needs_simulation.rooms,
+            needs_simulation.spatial_engine,
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize("existing_need", [False, True])
+def test_scheduler_rejects_multiple_active_tasks(
+    needs_simulation: Simulation, *, existing_need: bool
+) -> None:
+    """Ambiguous active work is rejected both when creating and resuming a need."""
+    agent = needs_simulation.agents[0]
+    policy = needs_simulation.needs_policy
+    assert policy is not None
+    agent.tasks = [
+        Task(time_needed=5, time_due=5, progress=TaskProgress.MOVING_TO_LOCATION),
+        Task(time_needed=5, time_due=5, progress=TaskProgress.MOVING_TO_LOCATION),
+    ]
+    if existing_need:
+        agent.tasks.append(
+            TaskNeed(
+                time_needed=2,
+                time_due=2,
+                room=needs_simulation.rooms[0],
+                need=Need.FATIGUE,
+                progress=TaskProgress.SUSPENDED,
+            )
+        )
+        agent.internal_state.fatigue = 0.9
+    with pytest.raises(RuntimeError, match="multiple active tasks"):
+        schedule_need(
+            agent,
+            0,
+            needs_simulation.spatial_engine,
+            needs_simulation.rooms,
+            policy,
+            {},
+            {},
+        )
+
+
+def test_scheduler_rejects_multiple_pending_needs(needs_simulation: Simulation) -> None:
+    """Two pending needs violate the single-generated-task invariant."""
+    agent = needs_simulation.agents[0]
+    policy = needs_simulation.needs_policy
+    assert policy is not None
+    agent.tasks = [
+        TaskNeed(time_needed=2, time_due=2, room=needs_simulation.rooms[0], need=need)
+        for need in (Need.FATIGUE, Need.HUNGER)
+    ]
+    with pytest.raises(RuntimeError, match="multiple pending need tasks"):
+        schedule_need(
+            agent,
+            0,
+            needs_simulation.spatial_engine,
+            needs_simulation.rooms,
+            policy,
+            {},
+            {},
+        )
+
+
+def test_suspended_urgent_need_waits_for_current_completion_and_retry(
+    needs_simulation: Simulation,
+) -> None:
+    """Resume neither interrupts a finished task nor ignores a retry deadline."""
+    agent = needs_simulation.agents[0]
+    policy = needs_simulation.needs_policy
+    assert policy is not None
+    task = TaskNeed(
+        time_needed=2,
+        time_due=2,
+        room=needs_simulation.rooms[0],
+        content_type=ContentType.CHAIR,
+        need=Need.FATIGUE,
+        progress=TaskProgress.SUSPENDED,
+    )
+    current = Task(time_needed=1, time_due=1, progress=TaskProgress.IN_PROGRESS)
+    current.time_started = 0
+    agent.tasks = [task, current]
+    retry_after = {(agent.idx, Need.FATIGUE): 5}
+    _resume_need(
+        task,
+        agent,
+        1,
+        needs_simulation.spatial_engine,
+        needs_simulation.rooms,
+        policy,
+        retry_after,
+    )
+    assert task.progress == TaskProgress.SUSPENDED
+    assert current.progress == TaskProgress.IN_PROGRESS
+    agent.tasks.remove(current)
+    _resume_need(
+        task,
+        agent,
+        1,
+        needs_simulation.spatial_engine,
+        needs_simulation.rooms,
+        policy,
+        retry_after,
+    )
+    assert task.progress == TaskProgress.SUSPENDED
+    assert retry_after[(agent.idx, Need.FATIGUE)] == 5
+
+
+def test_suspended_need_retries_when_facility_is_unavailable(
+    needs_simulation: Simulation, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A blocked facility leaves the need suspended until the retry deadline."""
+    agent = needs_simulation.agents[0]
+    policy = needs_simulation.needs_policy
+    assert policy is not None
+    task = TaskNeed(
+        time_needed=2,
+        time_due=2,
+        room=needs_simulation.rooms[0],
+        need=Need.FATIGUE,
+        progress=TaskProgress.SUSPENDED,
+    )
+    agent.tasks = [task]
+    chair = needs_simulation.rooms[0].contents[0]
+    assert chair.try_reserve((999, AgentType.HEALTHCARE_WORKER))
+    retry_after: dict[tuple[int, Need], int] = {}
+    _resume_need(
+        task,
+        agent,
+        1,
+        needs_simulation.spatial_engine,
+        needs_simulation.rooms,
+        policy,
+        retry_after,
+    )
+    assert task.progress == TaskProgress.SUSPENDED
+    assert retry_after[(agent.idx, Need.FATIGUE)] == 3
+    assert "cannot resume its fatigue need" in caplog.text
+
+
+@pytest.mark.parametrize("resume", [False, True])
+def test_need_reservation_failure_preserves_work_and_retries(
+    needs_simulation: Simulation,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    *,
+    resume: bool,
+) -> None:
+    """Failure to reserve after discovery must not interrupt current work."""
+    agent = needs_simulation.agents[0]
+    policy = needs_simulation.needs_policy
+    assert policy is not None
+    agent.internal_state.fatigue = 0.9
+    current = Task(time_needed=5, time_due=5, progress=TaskProgress.MOVING_TO_LOCATION)
+    agent.tasks = [current]
+    task = TaskNeed(
+        time_needed=2,
+        time_due=2,
+        room=needs_simulation.rooms[0],
+        content_type=ContentType.CHAIR,
+        need=Need.FATIGUE,
+        progress=TaskProgress.SUSPENDED,
+    )
+    if resume:
+        agent.tasks.append(task)
+    monkeypatch.setattr(TaskNeed, "on_dispatch", lambda _self, _agent: False)
+    retry_after: dict[tuple[int, Need], int] = {}
+    schedule_need(
+        agent,
+        1,
+        needs_simulation.spatial_engine,
+        needs_simulation.rooms,
+        policy,
+        retry_after,
+        {},
+    )
+    assert current.progress == TaskProgress.MOVING_TO_LOCATION
+    assert retry_after[(agent.idx, Need.FATIGUE)] == 3
+    assert "could not reserve" in caplog.text
+    assert agent.tasks == ([current, task] if resume else [current])
+
+
+def test_completed_timeout_block_is_cleared_before_retry(
+    needs_simulation: Simulation,
+) -> None:
+    """After interrupted work finishes, the same urgent need may be scheduled again."""
+    agent = needs_simulation.agents[0]
+    agent.internal_state.fatigue = 0.9
+    policy = needs_simulation.needs_policy
+    assert policy is not None
+    completed = Task(time_needed=1, time_due=1, progress=TaskProgress.COMPLETED)
+    blocked = {(agent.idx, Need.FATIGUE): completed}
+    schedule_need(
+        agent,
+        2,
+        needs_simulation.spatial_engine,
+        needs_simulation.rooms,
+        policy,
+        {},
+        blocked,
+    )
+    assert not blocked
+    assert any(isinstance(task, TaskNeed) for task in agent.tasks)
+
+
+def test_urgent_need_suspends_and_resumes_recorded_work(
+    needs_simulation: Simulation,
+) -> None:
+    """An urgent need is satisfied before recorded work resumes with progress."""
+    agent = needs_simulation.agents[0]
+    data_task = Task(
+        time_needed=5,
+        time_due=5,
+        location=agent.location,
+        source=TaskSource.LOCATION_DATA,
+    )
+    agent.tasks.append(data_task)
+    needs_simulation.step()
+    assert data_task.progress == TaskProgress.IN_PROGRESS
+
+    agent.internal_state.fatigue = 0.9
+    needs_simulation.step()
+    need_task = next(task for task in agent.tasks if isinstance(task, TaskNeed))
+    assert data_task.progress == TaskProgress.SUSPENDED
+    assert data_task.time_spent(1) == 1
+    assert agent.internal_state.fatigue == 0.9
+    needs_simulation.step()
+    assert len([task for task in agent.tasks if isinstance(task, TaskNeed)]) == 1
+    needs_simulation.step()
+    assert need_task.progress == TaskProgress.COMPLETED
+    assert need_task not in agent.tasks
+    assert agent.internal_state.fatigue == 0.0
+    needs_simulation.step()
+    assert data_task.progress == TaskProgress.IN_PROGRESS
+    for _ in range(4):
+        needs_simulation.step()
+    assert data_task.progress == TaskProgress.COMPLETED
+    assert data_task.time_spent(needs_simulation.time) == 5
+
+
+def test_nonurgent_need_waits_for_due_data(needs_simulation: Simulation) -> None:
+    """Due recorded work takes precedence over a non-urgent need."""
+    agent = needs_simulation.agents[0]
+    agent.internal_state.fatigue = 0.5
+    task = Task(
+        time_needed=3,
+        time_due=3,
+        location=agent.location,
+        source=TaskSource.LOCATION_DATA,
+    )
+    agent.tasks.append(task)
+    needs_simulation.step()
+    assert task.progress == TaskProgress.IN_PROGRESS
+    assert not any(isinstance(candidate, TaskNeed) for candidate in agent.tasks)
+
+
+def test_due_data_interrupts_nonurgent_need_travel(
+    needs_simulation: Simulation,
+) -> None:
+    """Newly due recorded work interrupts non-urgent autonomous travel."""
+    agent = needs_simulation.agents[0]
+    agent.internal_state.fatigue = 0.5
+    needs_simulation.rooms[0].contents[0].location = Location(
+        building="TestBuilding", floor=0, x=2.0, y=2.0
+    )
+    assert needs_simulation.needs_policy is not None
+    needs_simulation.needs_policy = replace(
+        needs_simulation.needs_policy, travel_timeout=20
+    )
+    task = Task(
+        time_needed=1,
+        time_due=4,
+        location=agent.location,
+        source=TaskSource.LOCATION_DATA,
+    )
+    agent.tasks.append(task)
+    for _ in range(4):
+        needs_simulation.step()
+    need = next(
+        candidate for candidate in agent.tasks if isinstance(candidate, TaskNeed)
+    )
+    assert need.progress == TaskProgress.SUSPENDED
+    assert task.progress == TaskProgress.IN_PROGRESS
+    assert agent.internal_state.fatigue == 0.5
+    needs_simulation.step()
+    assert task.progress == TaskProgress.COMPLETED
+    needs_simulation.step()
+    assert need.progress == TaskProgress.MOVING_TO_LOCATION
+
+
+def test_suspended_need_can_become_urgent_and_interrupt_data(
+    needs_simulation: Simulation,
+) -> None:
+    """A pending need that becomes urgent may preempt recorded work."""
+    agent = needs_simulation.agents[0]
+    agent.internal_state.fatigue = 0.5
+    needs_simulation.rooms[0].contents[0].location = Location(
+        building="TestBuilding", floor=0, x=2.0, y=2.0
+    )
+    assert needs_simulation.needs_policy is not None
+    needs_simulation.needs_policy = replace(
+        needs_simulation.needs_policy, travel_timeout=20
+    )
+    task = Task(
+        time_needed=3,
+        time_due=6,
+        location=agent.location,
+        source=TaskSource.LOCATION_DATA,
+    )
+    agent.tasks.append(task)
+    for _ in range(4):
+        needs_simulation.step()
+    need = next(
+        candidate for candidate in agent.tasks if isinstance(candidate, TaskNeed)
+    )
+    assert need.progress == TaskProgress.SUSPENDED
+    assert task.progress == TaskProgress.IN_PROGRESS
+    agent.internal_state.fatigue = 0.9
+    needs_simulation.step()
+    assert need.progress == TaskProgress.MOVING_TO_LOCATION
+    assert task.progress == TaskProgress.SUSPENDED
+
+
+@pytest.mark.parametrize("need", [Need.HUNGER, Need.TOILET])
+def test_hunger_and_toilet_need_use_configured_facilities(
+    needs_simulation: Simulation, need: Need
+) -> None:
+    """Meals and toilet breaks reset their own needs after facility use."""
+    agent = needs_simulation.agents[0]
+    setattr(agent.internal_state, need.value, 0.9)
+    if need == Need.TOILET:
+        needs_simulation.rooms[0].contents.append(
+            Content(content_type=ContentType.TOILET, location=agent.location)
+        )
+    needs_simulation.step()
+    task = next(task for task in agent.tasks if isinstance(task, TaskNeed))
+    needs_simulation.step()
+    needs_simulation.step()
+    assert task.need == need
+    assert task.progress == TaskProgress.COMPLETED
+    assert getattr(agent.internal_state, need.value) == 0.0
+
+
+def test_rest_can_use_agent_owned_chair(needs_simulation: Simulation) -> None:
+    """An agent already seated can use its own chair to rest."""
+    agent = needs_simulation.agents[0]
+    chair = needs_simulation.rooms[0].contents[0]
+    assert chair.try_occupy((agent.idx, agent.agent_type))
+    agent.stationary = True
+    agent.internal_state.fatigue = 0.9
+    for _ in range(3):
+        needs_simulation.step()
+    assert agent.internal_state.fatigue == 0.0
+    assert chair.available
+
+
+def test_workers_take_turns_at_contested_facility(needs_simulation: Simulation) -> None:
+    """Two HCWs cannot use the same chair concurrently and both can retry."""
+    first = needs_simulation.agents[0]
+    first.internal_state.fatigue = 0.9
+    second = Agent(
+        idx=2,
+        agent_type=AgentType.HEALTHCARE_WORKER,
+        location=first.location,
+        heading_rad=0,
+        rng_generator=np.random.default_rng(42),
+        internal_state=InternalState(fatigue=0.9),
+        retry_data_tasks=True,
+    )
+    needs_simulation.agents.append(second)
+    for _ in range(8):
+        needs_simulation.step()
+    assert first.internal_state.fatigue == 0
+    assert second.internal_state.fatigue == 0
+    assert needs_simulation.rooms[0].contents[0].available
+
+
+def test_patient_needs_do_not_schedule_hcw_activities(
+    needs_simulation: Simulation,
+) -> None:
+    """The policy leaves patient behavior unchanged."""
+    patient = Agent(
+        idx=2,
+        agent_type=AgentType.PATIENT,
+        location=needs_simulation.agents[0].location,
+        heading_rad=0,
+        rng_generator=np.random.default_rng(42),
+        internal_state=InternalState(hunger=0.9),
+    )
+    needs_simulation.agents.append(patient)
+    needs_simulation.step()
+    assert not patient.tasks
+    assert patient.internal_state.hunger == 0.9
+
+
+def test_travel_timeout_releases_facility_and_resumes_data(
+    needs_simulation: Simulation, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A failed need trip cannot repeatedly starve its interrupted data task."""
+    agent = needs_simulation.agents[0]
+    room = needs_simulation.rooms[0]
+    room.contents[0].location = Location(building="TestBuilding", floor=0, x=2.0, y=2.0)
+    data_task = Task(
+        time_needed=5,
+        time_due=5,
+        location=agent.location,
+        source=TaskSource.LOCATION_DATA,
+    )
+    agent.tasks.append(data_task)
+    needs_simulation.step()
+    agent.internal_state.fatigue = 0.9
+    for _ in range(8):
+        needs_simulation.step()
+    assert data_task.progress == TaskProgress.COMPLETED
+    assert agent.internal_state.fatigue == 0.9
+    assert "could not reach" in caplog.text
+    assert room.contents[0].available
+
+
+def test_travel_timeout_without_interrupted_task_retries(
+    needs_simulation: Simulation, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An idle worker's failed trip retries without blocking unrelated work."""
+    agent = needs_simulation.agents[0]
+    agent.internal_state.fatigue = 0.9
+    chair = needs_simulation.rooms[0].contents[0]
+    chair.location = Location(building="TestBuilding", floor=0, x=2.0, y=2.0)
+    needs_simulation.step()
+    task = next(task for task in agent.tasks if isinstance(task, TaskNeed))
+    for _ in range(3):
+        needs_simulation.step()
+    assert task not in agent.tasks
+    assert chair.available
+    assert agent.internal_state.fatigue == 0.9
+    assert not needs_simulation._need_retry_blocked  # noqa: SLF001
+    assert "could not reach" in caplog.text
+
+
+def test_blocked_route_does_not_interrupt(
+    needs_simulation: Simulation, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A facility with no clear direct or doorway route does not interrupt work."""
+    assert needs_simulation.needs_policy is not None
+    needs_simulation.needs_policy = replace(
+        needs_simulation.needs_policy, eating_room="Room2"
+    )
+    needs_simulation.rooms[0].doors.clear()
+    room = needs_simulation.rooms[1]
+    room.contents.append(
+        Content(
+            content_type=ContentType.CHAIR,
+            location=Location(building="TestBuilding", floor=0, x=9.0, y=4.0),
+        )
+    )
+    agent = needs_simulation.agents[0]
+    task = Task(
+        time_needed=3,
+        time_due=3,
+        location=agent.location,
+        source=TaskSource.LOCATION_DATA,
+    )
+    agent.tasks.append(task)
+    needs_simulation.step()
+    agent.internal_state.hunger = 0.9
+    needs_simulation.step()
+    assert task.progress == TaskProgress.IN_PROGRESS
+    assert "no available reachable" in caplog.text
+
+
+def test_unavailable_need_facility_does_not_interrupt(
+    needs_simulation: Simulation, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A blocked facility leaves the current recorded task active."""
+    agent = needs_simulation.agents[0]
+    chair = needs_simulation.rooms[0].contents[0]
+    assert chair.try_reserve((999, AgentType.HEALTHCARE_WORKER))
+    task = Task(
+        time_needed=3,
+        time_due=3,
+        location=agent.location,
+        source=TaskSource.LOCATION_DATA,
+    )
+    agent.tasks.append(task)
+    needs_simulation.step()
+    agent.internal_state.fatigue = 0.9
+    needs_simulation.step()
+    assert task.progress == TaskProgress.IN_PROGRESS
+    assert agent.internal_state.fatigue == 0.9
+    assert "no available reachable" in caplog.text
+
+
+def test_unavailable_recorded_task_is_retained_when_policy_enabled(
+    needs_simulation: Simulation,
+) -> None:
+    """Unavailable content for recorded work is retried, not discarded."""
+    agent = needs_simulation.agents[0]
+    room = needs_simulation.rooms[0]
+    chair = room.contents[0]
+    assert chair.try_reserve((999, AgentType.HEALTHCARE_WORKER))
+    task = TaskOccupyContent(
+        time_needed=1,
+        time_due=1,
+        room=room,
+        content_type=ContentType.CHAIR,
+        source=TaskSource.LOCATION_DATA,
+    )
+    agent.tasks.append(task)
+    needs_simulation.step()
+    assert task in agent.tasks
+    assert task.progress == TaskProgress.NOT_STARTED
+    assert chair.release_reservation((999, AgentType.HEALTHCARE_WORKER))
+    needs_simulation.step()
+    assert task.progress == TaskProgress.IN_PROGRESS
+
+
+def test_unfinished_recorded_task_is_reported_at_end(
+    needs_simulation: Simulation, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A finished run reports data work that could not be completed."""
+    agent = needs_simulation.agents[0]
+    agent.tasks.append(
+        Task(
+            time_needed=20,
+            time_due=20,
+            location=agent.location,
+            source=TaskSource.LOCATION_DATA,
+        )
+    )
+    for _ in range(needs_simulation.total_simulation_time):
+        needs_simulation.step()
+    assert "unfinished recorded task" in caplog.text
+    assert needs_simulation.time == needs_simulation.total_simulation_time
+
+
+def test_end_report_excludes_completed_and_non_data_tasks(
+    needs_simulation: Simulation, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Only unfinished recorded work appears in the end-of-run warning."""
+    agent = needs_simulation.agents[0]
+    agent.tasks = [
+        Task(time_needed=1, time_due=1, source=TaskSource.OTHER),
+        Task(
+            time_needed=1,
+            time_due=2,
+            source=TaskSource.LOCATION_DATA,
+            progress=TaskProgress.COMPLETED,
+        ),
+        Task(time_needed=1, time_due=3, source=TaskSource.LOCATION_DATA),
+    ]
+    needs_simulation._report_unfinished_data_tasks()  # noqa: SLF001
+    assert caplog.text.count("unfinished recorded task") == 1
+    assert "due 3" in caplog.text
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_gpu_handover_stops_only_idle_agents_when_needs_enabled(
+    needs_simulation: Simulation, monkeypatch: pytest.MonkeyPatch, *, enabled: bool
+) -> None:
+    """GPU targets for idle agents are reset only with the opt-in needs policy."""
+    idle = needs_simulation.agents[0]
+    moving = Agent(
+        idx=2,
+        agent_type=AgentType.PATIENT,
+        location=idle.location,
+        heading_rad=0,
+        rng_generator=np.random.default_rng(42),
+    )
+    moving.tasks = [
+        Task(time_needed=3, time_due=3, progress=TaskProgress.MOVING_TO_LOCATION)
+    ]
+    needs_simulation.agents.append(moving)
+    needs_simulation.use_gpu = True
+    if not enabled:
+        needs_simulation.needs_policy = None
+    engine = Mock(spec=GPUSpatialQuery)
+    needs_simulation.spatial_engine = engine
+    monkeypatch.setattr(Agent, "perform_task", lambda *_args, **_kwargs: None)
+
+    needs_simulation.step()
+
+    engine.step_physics.assert_called_once_with(needs_simulation.agents)
+    if enabled:
+        engine.head_to_point.assert_called_once_with(
+            idle, (idle.location.x, idle.location.y)
+        )
+    else:
+        engine.head_to_point.assert_not_called()
+    assert moving.tasks[0].progress == TaskProgress.MOVING_TO_LOCATION
+
+
+def test_gpu_need_movement_and_completion(needs_simulation: Simulation) -> None:
+    """Exercise opt-in need movement through the real GPU physics path."""
+    import warp as wp  # noqa: PLC0415
+
+    if not wp.is_cuda_available():
+        pytest.skip("CUDA device is not available")
+    agent = needs_simulation.agents[0]
+    agent.internal_state.fatigue = 0.9
+    agent.stochasticity = 0.0
+    agent.movement_speed = 0.3
+    agent.base_movement_speed = 0.3
+    needs_simulation.rooms[0].contents[0].location = Location(
+        building="TestBuilding", floor=0, x=1.1, y=0.5
+    )
+    assert needs_simulation.needs_policy is not None
+    needs_simulation.needs_policy = replace(
+        needs_simulation.needs_policy, travel_timeout=10
+    )
+    gpu_simulation = replace(needs_simulation, use_gpu=True)
+    gpu_simulation.step()
+    task = next(task for task in agent.tasks if isinstance(task, TaskNeed))
+    for _ in range(7):
+        gpu_simulation.step()
+    assert task.progress == TaskProgress.COMPLETED
+    assert agent.internal_state.fatigue == 0.0
+    assert agent.location.x == pytest.approx(1.1, abs=0.02)
 
 
 def test_simulation_excessive_current_time_raises(
