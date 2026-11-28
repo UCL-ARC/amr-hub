@@ -240,6 +240,32 @@ def test_need_task_requires_owned_facility(
     assert sample_agent.internal_state.hunger == 0.8
 
 
+def test_need_travel_without_waypoints_targets_its_facility(
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """A need task without a route begins travel toward its facility directly."""
+    room = sample_occupy_content_task.room
+    assert room is not None
+    chair = room.contents[0]
+    sample_agent.location = Location(building="A", floor=0, x=1.0, y=1.0)
+    task = TaskNeed(
+        time_needed=2,
+        time_due=10,
+        room=room,
+        content_type=chair.content_type,
+        need=Need.FATIGUE,
+    )
+    assert task.prepare(sample_agent)
+    assert task.on_dispatch(sample_agent)
+    assert task.location == chair.location
+    task.update_progress(0, sample_agent, sample_engine)
+    assert task.progress == TaskProgress.MOVING_TO_LOCATION
+    assert task.location == chair.location
+    assert task.travel_steps == 1
+
+
 def test_need_dispatch_failure_does_not_consume_need(
     sample_occupy_content_task: TaskOccupyContent,
     sample_agent: Agent,

@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
@@ -19,6 +20,7 @@ from amr_hub_abm.simulation import Simulation, SimulationMode
 from amr_hub_abm.spatial.building import Building
 from amr_hub_abm.spatial.door import Door
 from amr_hub_abm.spatial.engine import SpatialQuery
+from amr_hub_abm.spatial.engine_gpu import GPUSpatialQuery
 from amr_hub_abm.spatial.floor import Floor
 from amr_hub_abm.spatial.furniture import Content, ContentType
 from amr_hub_abm.spatial.location import Location
@@ -622,6 +624,25 @@ def test_travel_timeout_releases_facility_and_resumes_data(
     assert room.contents[0].available
 
 
+def test_travel_timeout_without_interrupted_task_retries(
+    needs_simulation: Simulation, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An idle worker's failed trip retries without blocking unrelated work."""
+    agent = needs_simulation.agents[0]
+    agent.internal_state.fatigue = 0.9
+    chair = needs_simulation.rooms[0].contents[0]
+    chair.location = Location(building="TestBuilding", floor=0, x=2.0, y=2.0)
+    needs_simulation.step()
+    task = next(task for task in agent.tasks if isinstance(task, TaskNeed))
+    for _ in range(3):
+        needs_simulation.step()
+    assert task not in agent.tasks
+    assert chair.available
+    assert agent.internal_state.fatigue == 0.9
+    assert not needs_simulation._need_retry_blocked  # noqa: SLF001
+    assert "could not reach" in caplog.text
+
+
 def test_blocked_route_does_not_interrupt(
     needs_simulation: Simulation, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -716,6 +737,62 @@ def test_unfinished_recorded_task_is_reported_at_end(
         needs_simulation.step()
     assert "unfinished recorded task" in caplog.text
     assert needs_simulation.time == needs_simulation.total_simulation_time
+
+
+def test_end_report_excludes_completed_and_non_data_tasks(
+    needs_simulation: Simulation, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Only unfinished recorded work appears in the end-of-run warning."""
+    agent = needs_simulation.agents[0]
+    agent.tasks = [
+        Task(time_needed=1, time_due=1, source=TaskSource.OTHER),
+        Task(
+            time_needed=1,
+            time_due=2,
+            source=TaskSource.LOCATION_DATA,
+            progress=TaskProgress.COMPLETED,
+        ),
+        Task(time_needed=1, time_due=3, source=TaskSource.LOCATION_DATA),
+    ]
+    needs_simulation._report_unfinished_data_tasks()  # noqa: SLF001
+    assert caplog.text.count("unfinished recorded task") == 1
+    assert "due 3" in caplog.text
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_gpu_handover_stops_only_idle_agents_when_needs_enabled(
+    needs_simulation: Simulation, monkeypatch: pytest.MonkeyPatch, *, enabled: bool
+) -> None:
+    """GPU targets for idle agents are reset only with the opt-in needs policy."""
+    idle = needs_simulation.agents[0]
+    moving = Agent(
+        idx=2,
+        agent_type=AgentType.PATIENT,
+        location=idle.location,
+        heading_rad=0,
+        rng_generator=np.random.default_rng(42),
+    )
+    moving.tasks = [
+        Task(time_needed=3, time_due=3, progress=TaskProgress.MOVING_TO_LOCATION)
+    ]
+    needs_simulation.agents.append(moving)
+    needs_simulation.use_gpu = True
+    if not enabled:
+        needs_simulation.needs_policy = None
+    engine = Mock(spec=GPUSpatialQuery)
+    needs_simulation.spatial_engine = engine
+    monkeypatch.setattr(Agent, "perform_task", lambda *_args, **_kwargs: None)
+
+    needs_simulation.step()
+
+    engine.step_physics.assert_called_once_with(needs_simulation.agents)
+    if enabled:
+        engine.head_to_point.assert_called_once_with(
+            idle, (idle.location.x, idle.location.y)
+        )
+    else:
+        engine.head_to_point.assert_not_called()
+    assert moving.tasks[0].progress == TaskProgress.MOVING_TO_LOCATION
 
 
 def test_gpu_need_movement_and_completion(needs_simulation: Simulation) -> None:
