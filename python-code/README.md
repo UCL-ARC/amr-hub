@@ -144,6 +144,10 @@ behavior is unchanged except that higher integer task priority wins ties in due
 time.
 
 ```yaml
+hcw_fatigue_rate: 0.00005556
+hcw_hunger_rate: 0.00004167
+hcw_toilet_rate: 0.00005556
+
 needs_policy:
   enabled: true
   eating_room:
@@ -165,6 +169,22 @@ urgent needs come first, followed by higher priority and then need name.
 Initial needs and per-step growth rates are configured separately using the
 existing `hcw_initial_*` and `hcw_*_rate` settings.
 
+The example rates match `tests/inputs/simulation_config.yml` and assume
+one-second timesteps. Starting from zero, fatigue and toilet need reach 0.6
+after approximately three hours and hunger after four hours. These intervals
+are illustrative sensitivity-testing assumptions, **not measured rates or
+clinical recommendations**. The rate is a normalized increment per timestep:
+for an assumed interval of `T` hours from zero to a threshold, use
+`threshold * length_of_timestep_in_seconds / (3600 * T)`. The simulation does not
+scale rates automatically when the timestep length changes.
+
+The literature informs the need to model context and variability, but does not
+calibrate these increments. For example, [Rao et al. (2024)](https://doi.org/10.1097/JU.0000000000003862)
+studied nursing workload and delayed voiding; [Özkan and Atasayar (2026)](https://doi.org/10.1111/nicc.70643)
+reported irregular eating patterns during ICU shifts; and [Hieber et al. (2026)](https://doi.org/10.1186/s13054-026-06249-6)
+examined workload and decision fatigue in a small exploratory study of ICU
+physicians. None establishes a numerical rate for this model.
+
 The policy uses chairs for rest, chairs in the specified eating room for
 meals, and toilets for toilet breaks. It chooses facilities on the same floor
 using clear straight-line segments, including routes through known door
@@ -174,7 +194,9 @@ routing. If no route or facility is available, the need remains pending and a
 warning is logged. A trip that exceeds `travel_timeout` active movement
 steps is abandoned and retried after `retry_interval`; a task interrupted by
 that trip is allowed to finish before the same need interrupts it again.
-Needs reset only after the full activity completes.
+Needs reset only after the full generated activity completes. Recorded toilet
+and restaurant tasks do not reset needs, so recorded and generated visits may
+both occur.
 
 Due location-data tasks take precedence over non-urgent needs. An urgent need
 may suspend an active task after reserving a facility; the task is then resumed

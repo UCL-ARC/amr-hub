@@ -19,9 +19,10 @@ hcw_initial_hunger: 0.0
 hcw_initial_toilet_need: 0.0
 patient_initial_hunger: 0.0
 patient_initial_toilet_need: 0.0
-hcw_fatigue_rate: 0.00001
-hcw_hunger_rate: 0.00001
-hcw_toilet_rate: 0.00001
+# Illustrative rates per timestep; see ../../README.md for assumptions and references.
+hcw_fatigue_rate: 0.00005556
+hcw_hunger_rate: 0.00004167
+hcw_toilet_rate: 0.00005556
 patient_hunger_rate: 0.00001
 patient_toilet_rate: 0.00001
 
