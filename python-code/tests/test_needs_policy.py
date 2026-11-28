@@ -1,5 +1,7 @@
 """Tests for healthcare-worker needs policy configuration."""
 
+from dataclasses import replace
+
 import pytest
 
 from amr_hub_abm.agent.internal_state import InternalState
@@ -81,3 +83,76 @@ def test_enabled_policy_parses_qualified_eating_room() -> None:
     assert policy is not None
     assert policy.eating_room == "R"
     assert policy.hunger == NeedRule(0.4, 0.8, 3, 7)
+
+
+@pytest.mark.parametrize("duration", [True, 1.5, "2"])
+def test_need_rule_rejects_non_integer_duration(duration: object) -> None:
+    """Durations cannot be booleans, fractions, or strings."""
+    with pytest.raises(InvalidDefinitionError, match="duration"):
+        NeedRule(0.5, 0.9, duration, 1)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        ({"threshold": 0.5}, "requires"),
+        (
+            {"threshold": True, "urgent_threshold": 0.9, "duration": 2, "priority": 1},
+            "Invalid parameter types",
+        ),
+    ],
+)
+def test_need_rule_config_rejects_missing_or_invalid_fields(
+    value: dict[str, object], message: str
+) -> None:
+    """A malformed rule cannot activate an incomplete needs policy."""
+    with pytest.raises(InvalidDefinitionError, match=message):
+        NeedRule.from_config(value, Need.FATIGUE)
+
+
+@pytest.mark.parametrize(
+    ("block", "message"),
+    [
+        ("enabled", "must be a mapping"),
+        ({"enabled": "yes"}, "enabled must be a boolean"),
+        ({"enabled": True}, "eating_room must identify"),
+        (
+            {"enabled": True, "eating_room": {"building": "A", "floor": True}},
+            "requires",
+        ),
+        (
+            {
+                "enabled": True,
+                "eating_room": {"building": "A", "floor": 0, "name": "R"},
+                "travel_timeout": 0,
+                "retry_interval": 2,
+            },
+            "travel_timeout and retry_interval",
+        ),
+    ],
+)
+def test_needs_policy_rejects_invalid_configuration(
+    block: object, message: str
+) -> None:
+    """Malformed enabled policy configuration fails before scheduling."""
+    with pytest.raises(InvalidDefinitionError, match=message):
+        NeedsPolicy.from_config({"needs_policy": block})
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"eating_building": ""}, "eating room"),
+        ({"eating_floor": True}, "eating room"),
+        ({"travel_timeout": 0}, "Travel timeout"),
+        ({"retry_interval": True}, "Travel timeout"),
+    ],
+)
+def test_direct_policy_construction_validates_facility_and_timing(
+    changes: dict[str, object], message: str
+) -> None:
+    """Direct construction enforces the same invariants as config parsing."""
+    rule = NeedRule(0.5, 0.9, 2, 1)
+    policy = NeedsPolicy(rule, rule, rule, "Hospital", 0, "Restaurant", 20, 5)
+    with pytest.raises(InvalidDefinitionError, match=message):
+        replace(policy, **changes)

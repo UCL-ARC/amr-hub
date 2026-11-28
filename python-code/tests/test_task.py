@@ -22,10 +22,13 @@ from amr_hub_abm.task.task import (
     TaskDoorAccess,
     TaskOccupyContent,
     TaskProgress,
+    TaskSource,
     TaskType,
 )
 from amr_hub_abm.task.task_need import TaskNeed
 from amr_hub_abm.task.tasklist import (
+    perform_due_data_task,
+    perform_need_task,
     perform_suspended_task,
     perform_to_be_started_task,
     select_task_based_on_progress,
@@ -178,6 +181,104 @@ def test_interrupted_need_task_retains_need_and_releases_facility(
     assert perform_suspended_task(sample_agent, 2, sample_engine)
     task.update_progress(3, sample_agent, sample_engine)
     assert sample_agent.internal_state.hunger == 0.0
+
+
+@pytest.mark.parametrize(
+    "progress",
+    [TaskProgress.NOT_STARTED, TaskProgress.SUSPENDED, TaskProgress.COMPLETED],
+)
+def test_suspending_inactive_task_fails(
+    progress: TaskProgress, sample_agent: Agent, sample_engine: SpatialQuery
+) -> None:
+    """Only active work or movement can be suspended."""
+    task = Task(time_needed=2, time_due=2, progress=progress)
+    with pytest.raises(SimulationModeError, match="Only active or moving"):
+        task.suspend(1, sample_agent, sample_engine)
+    assert task.progress == progress
+
+
+@pytest.mark.parametrize(
+    "progress", [TaskProgress.NOT_STARTED, TaskProgress.MOVING_TO_LOCATION]
+)
+def test_need_task_rejects_missing_facility_location(
+    progress: TaskProgress,
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """A broken task state fails rather than moving to an undefined location."""
+    task = TaskNeed(
+        time_needed=2,
+        time_due=2,
+        room=sample_occupy_content_task.room,
+        need=Need.FATIGUE,
+        progress=progress,
+    )
+    with pytest.raises(SimulationModeError, match="no facility location"):
+        task.update_progress(0, sample_agent, sample_engine)
+    with pytest.raises(SimulationModeError, match="no waypoint"):
+        task._move_to_waypoint(0, sample_agent, sample_engine)  # noqa: SLF001
+
+
+def test_need_task_requires_owned_facility(
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+) -> None:
+    """A need cannot start or reset if its facility is not owned by the agent."""
+    task = TaskNeed(
+        time_needed=2,
+        time_due=2,
+        room=sample_occupy_content_task.room,
+        need=Need.HUNGER,
+    )
+    sample_agent.internal_state.hunger = 0.8
+    with pytest.raises(SimulationModeError, match="could not occupy"):
+        task.on_started(sample_agent, 0)
+    with pytest.raises(SimulationModeError, match="no longer occupies"):
+        task.on_completed(sample_agent, 2, sample_engine)
+    assert sample_agent.internal_state.hunger == 0.8
+
+
+def test_need_dispatch_failure_does_not_consume_need(
+    sample_occupy_content_task: TaskOccupyContent,
+    sample_agent: Agent,
+    sample_engine: SpatialQuery,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A facility taken before dispatch drops the task without satisfying the need."""
+    room = sample_occupy_content_task.room
+    assert room is not None
+    chair = room.contents[0]
+    assert chair.try_reserve((999, AgentType.HEALTHCARE_WORKER))
+    sample_agent.internal_state.fatigue = 0.8
+    task = TaskNeed(
+        time_needed=2,
+        time_due=2,
+        room=room,
+        content_type=chair.content_type,
+        need=Need.FATIGUE,
+    )
+    sample_agent.tasks = [task]
+    assert not perform_need_task(sample_agent, 0, sample_engine)
+    assert not sample_agent.tasks
+    assert sample_agent.internal_state.fatigue == 0.8
+    assert "cannot dispatch its need task" in caplog.text
+
+
+def test_due_data_dispatch_is_disabled_without_retry_mode(
+    sample_agent: Agent, sample_engine: SpatialQuery
+) -> None:
+    """The autonomous dispatcher must not take over legacy recorded work."""
+    task = Task(
+        time_needed=1,
+        time_due=1,
+        location=sample_agent.location,
+        source=TaskSource.LOCATION_DATA,
+    )
+    sample_agent.tasks = [task]
+    assert not perform_due_data_task(sample_agent, 1, sample_engine)
+    assert task.progress == TaskProgress.NOT_STARTED
 
 
 @pytest.fixture
